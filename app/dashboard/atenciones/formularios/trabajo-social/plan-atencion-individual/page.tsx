@@ -1,0 +1,741 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { supabase } from '@/lib/supabase'
+import { Save, ArrowLeft, User, Plus, Trash2, Users } from 'lucide-react'
+import Link from 'next/link'
+
+interface Joven {
+  id: string
+  nombres: string
+  apellidos: string
+  fecha_nacimiento: string
+  edad: number
+  identidad?: string
+  sexo?: string
+  expediente_administrativo?: string
+  expediente_judicial?: string
+  direccion?: string
+  telefono?: string
+}
+
+interface AreaIntervencion {
+  area_atencion: string
+  valoracion_tecnica: string
+  objetivos: string
+  actividades: string
+  nombre_tecnico: string
+  tipo_responsable: string
+}
+
+interface FormData {
+  joven_id: string
+  servicio_regional: string
+  juez_dirigido: string
+  seccion_judicial: string
+  
+  // DATOS PERSONALES
+  exp_administrativo: string
+  nombre_completo: string
+  lugar_fecha_nacimiento: string
+  edad: number
+  documento_identidad: string
+  genero: string
+  escolaridad: string
+  estado_civil: string
+  numero_hijos: string
+  procedencia: string
+  direccion: string
+  telefono: string
+  
+  // DATOS DE FAMILIARES/RESPONSABLES
+  responsables: string
+  parentesco: string
+  direccion_responsable: string
+  telefonos_contacto: string
+  correos_electronicos: string
+  
+  // DATOS JUDICIALES
+  juzgado_remitente: string
+  nombre_juez: string
+  exp_judicial: string
+  infraccion: string
+  tipo_medida_socioeducativa: string
+  fecha_inicio_medida: string
+  fecha_finalizacion_medida: string
+  
+  // PLAN DE ATENCIÓN
+  fecha_inicio_plan: string
+  fecha_finalizacion_plan: string
+  areas_intervencion: AreaIntervencion[]
+  
+  // FIRMAS
+  lugar_fecha: string
+  firma_adolescente: string
+  firma_responsable: string
+  nombre_encargado: string
+  firma_encargado: string
+  trabajador_social: string
+}
+
+export default function PlanAtencionIndividualPage() {
+  const router = useRouter()
+  const [jovenes, setJovenes] = useState<Joven[]>([])
+  const [saving, setSaving] = useState(false)
+  const [errors, setErrors] = useState<Record<string, string>>({})
+
+  const [formData, setFormData] = useState<FormData>({
+    joven_id: '',
+    servicio_regional: '',
+    juez_dirigido: '',
+    seccion_judicial: '',
+    exp_administrativo: '',
+    nombre_completo: '',
+    lugar_fecha_nacimiento: '',
+    edad: 0,
+    documento_identidad: '',
+    genero: '',
+    escolaridad: '',
+    estado_civil: '',
+    numero_hijos: '',
+    procedencia: '',
+    direccion: '',
+    telefono: '',
+    responsables: '',
+    parentesco: '',
+    direccion_responsable: '',
+    telefonos_contacto: '',
+    correos_electronicos: '',
+    juzgado_remitente: '',
+    nombre_juez: '',
+    exp_judicial: '',
+    infraccion: '',
+    tipo_medida_socioeducativa: '',
+    fecha_inicio_medida: '',
+    fecha_finalizacion_medida: '',
+    fecha_inicio_plan: '',
+    fecha_finalizacion_plan: '',
+    areas_intervencion: [],
+    lugar_fecha: '',
+    firma_adolescente: '',
+    firma_responsable: '',
+    nombre_encargado: '',
+    firma_encargado: '',
+    trabajador_social: ''
+  })
+
+  useEffect(() => {
+    loadJovenes()
+  }, [])
+
+  const loadJovenes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('jovenes')
+        .select('id, nombres, apellidos, fecha_nacimiento, edad, identidad, sexo, expediente_administrativo, expediente_judicial, direccion, telefono')
+        .eq('estado', 'activo')
+        .order('nombres')
+
+      if (error) throw error
+      setJovenes(data || [])
+    } catch (error) {
+      console.error('Error loading jovenes:', error)
+      alert('Error al cargar los jóvenes')
+    }
+  }
+
+  const handleJovenChange = (jovenId: string) => {
+    const joven = jovenes.find(j => j.id === jovenId)
+    if (joven) {
+      setFormData(prev => ({
+        ...prev,
+        joven_id: jovenId,
+        nombre_completo: `${joven.nombres} ${joven.apellidos}`,
+        edad: joven.edad,
+        documento_identidad: joven.identidad || '',
+        genero: joven.sexo || '',
+        exp_administrativo: joven.expediente_administrativo || '',
+        exp_judicial: joven.expediente_judicial || '',
+        direccion: joven.direccion || '',
+        telefono: joven.telefono || '',
+        lugar_fecha_nacimiento: joven.fecha_nacimiento ? `${joven.fecha_nacimiento}` : ''
+      }))
+    }
+  }
+
+  const addAreaIntervencion = () => {
+    setFormData(prev => ({
+      ...prev,
+      areas_intervencion: [...prev.areas_intervencion, {
+        area_atencion: '',
+        valoracion_tecnica: '',
+        objetivos: '',
+        actividades: '',
+        nombre_tecnico: '',
+        tipo_responsable: ''
+      }]
+    }))
+  }
+
+  const updateAreaIntervencion = (index: number, field: keyof AreaIntervencion, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      areas_intervencion: prev.areas_intervencion.map((area, i) => 
+        i === index ? { ...area, [field]: value } : area
+      )
+    }))
+  }
+
+  const removeAreaIntervencion = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      areas_intervencion: prev.areas_intervencion.filter((_, i) => i !== index)
+    }))
+  }
+
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {}
+
+    if (!formData.joven_id) {
+      newErrors.joven_id = 'Debe seleccionar un joven'
+    }
+
+    if (!formData.trabajador_social.trim()) {
+      newErrors.trabajador_social = 'El nombre del trabajador social es requerido'
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!validateForm()) {
+      return
+    }
+
+    try {
+      setSaving(true)
+
+      // Obtener el usuario actual
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (!user) {
+        throw new Error('No se pudo obtener el usuario actual. Por favor, inicia sesión nuevamente.')
+      }
+
+      // Obtener el tipo de atención de trabajo social
+      const { data: tipoAtencion } = await supabase
+        .from('tipos_atencion')
+        .select('id')
+        .eq('profesional_responsable', 'trabajador_social')
+        .limit(1)
+        .maybeSingle()
+
+      let tipoAtencionId = tipoAtencion?.id
+      
+      if (!tipoAtencionId) {
+        const { data: anyTipo } = await supabase
+          .from('tipos_atencion')
+          .select('id')
+          .limit(1)
+          .maybeSingle()
+        
+        tipoAtencionId = anyTipo?.id
+      }
+
+      if (!tipoAtencionId) {
+        throw new Error('No se encontró ningún tipo de atención en la base de datos.')
+      }
+
+      // Verificar que el usuario tenga perfil
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', user.id)
+        .single()
+
+      if (!profile) {
+        throw new Error('Tu usuario no tiene un perfil configurado. Por favor, ejecuta el script crear-perfil-usuario.sql en Supabase.')
+      }
+
+      // Crear una nueva atención
+      const fechaAtencion = formData.fecha_inicio_plan || new Date().toISOString().split('T')[0]
+      const { data: nuevaAtencion, error: atencionError } = await supabase
+        .from('atenciones')
+        .insert({
+          joven_id: formData.joven_id,
+          tipo_atencion_id: tipoAtencionId,
+          profesional_id: user.id,
+          fecha_atencion: fechaAtencion,
+          motivo: 'Plan de Atención Individual (PLATIN)',
+          estado: 'completada'
+        })
+        .select()
+        .single()
+
+      if (atencionError) {
+        console.error('Error al crear atención:', atencionError)
+        throw new Error(`Error al crear la atención: ${atencionError.message}`)
+      }
+
+      if (!nuevaAtencion) {
+        throw new Error('No se pudo crear la atención')
+      }
+
+      const atencionId = nuevaAtencion.id
+
+      // Preparar datos para guardar
+      const datosJson = {
+        ...formData,
+        fecha_elaboracion: new Date().toISOString().split('T')[0]
+      }
+
+      // Guardar en formularios_atencion
+      const { error: insertError } = await supabase
+        .from('formularios_atencion')
+        .insert({
+          tipo_formulario: 'plan_atencion_individual',
+          joven_id: formData.joven_id,
+          atencion_id: atencionId,
+          datos_json: datosJson,
+          created_at: new Date().toISOString()
+        })
+        .select()
+        .single()
+
+      if (insertError) {
+        throw new Error(`Error al guardar el formulario: ${insertError.message}`)
+      }
+
+      alert('Plan de Atención Individual (PLATIN) guardado exitosamente')
+      router.push('/dashboard/atenciones')
+    } catch (error: any) {
+      console.error('Error saving form:', error)
+      alert(`Error al guardar el PLATIN: ${error.message || 'Error desconocido'}`)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-gray-50 dark:bg-gray-900 min-h-screen">
+      {/* Header */}
+      <div className="flex items-center gap-4 mb-8">
+        <Link href="/dashboard/atenciones" className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">
+          <ArrowLeft className="w-6 h-6" />
+        </Link>
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+            Plan de Atención Individual (PLATIN)
+          </h1>
+          <p className="text-gray-600 dark:text-gray-300 mt-2">
+            Área de Trabajo Social
+          </p>
+        </div>
+      </div>
+
+      {/* Encabezado del Formulario */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6 text-center border-2 border-gray-300 dark:border-gray-700">
+        <h2 className="text-xl font-bold mb-2">INSTITUTO NACIONAL PARA LA ATENCIÓN A MENORES INFRACTORES (INAMI)</h2>
+        <h3 className="text-lg font-semibold mb-2">PROGRAMA DE MEDIDAS SUSTITUTIVAS A LA PRIVACIÓN DE LIBERTAD</h3>
+        <p className="text-md font-medium">SERVICIO REGIONAL: <span className="font-normal">{formData.servicio_regional || '________________'}</span></p>
+        <h4 className="text-lg font-bold mt-4">PLAN DE ATENCIÓN INDIVIDUAL (PLATIN)</h4>
+        <p className="text-sm mt-2">
+          Dirigido a el/la Juez/a: <span className="font-normal">{formData.juez_dirigido || '________________'}</span> de la Sección Judicial <span className="font-normal">{formData.seccion_judicial || '________________'}</span> para su respectiva revisión y aprobación.
+        </p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* DATOS PERSONALES */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+          <h3 className="text-xl font-bold mb-4 text-gray-900 dark:text-white flex items-center gap-2">
+            <User className="w-5 h-5" />
+            I. DATOS PERSONALES
+          </h3>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Joven <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={formData.joven_id}
+                onChange={(e) => handleJovenChange(e.target.value)}
+                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white ${
+                  errors.joven_id ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                }`}
+              >
+                <option value="">Seleccione un joven</option>
+                {jovenes.map((joven) => (
+                  <option key={joven.id} value={joven.id}>
+                    {joven.nombres} {joven.apellidos}
+                  </option>
+                ))}
+              </select>
+              {errors.joven_id && <p className="mt-1 text-sm text-red-600">{errors.joven_id}</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">1.1 Número de Expediente Administrativo</label>
+              <input type="text" value={formData.exp_administrativo} readOnly className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-gray-100 dark:bg-gray-600 dark:text-white" />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">1.2 Nombre Completo</label>
+              <input type="text" value={formData.nombre_completo} readOnly className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-gray-100 dark:bg-gray-600 dark:text-white" />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">1.3 Lugar y fecha de nacimiento</label>
+              <input type="text" value={formData.lugar_fecha_nacimiento} onChange={(e) => setFormData(prev => ({ ...prev, lugar_fecha_nacimiento: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">1.4 Edad</label>
+              <input type="number" value={formData.edad} readOnly className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-gray-100 dark:bg-gray-600 dark:text-white" />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">1.5 Documento de Identidad</label>
+              <input type="text" value={formData.documento_identidad} readOnly className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-gray-100 dark:bg-gray-600 dark:text-white" />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">1.6 Género</label>
+              <input type="text" value={formData.genero} readOnly className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-gray-100 dark:bg-gray-600 dark:text-white" />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">1.7 Escolaridad</label>
+              <input type="text" value={formData.escolaridad} onChange={(e) => setFormData(prev => ({ ...prev, escolaridad: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">1.8 Estado Civil</label>
+              <input type="text" value={formData.estado_civil} onChange={(e) => setFormData(prev => ({ ...prev, estado_civil: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">1.9 Número de hijos/as y edad/es: (si aplica)</label>
+              <input type="text" value={formData.numero_hijos} onChange={(e) => setFormData(prev => ({ ...prev, numero_hijos: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">1.10 Procedencia</label>
+              <input type="text" value={formData.procedencia} onChange={(e) => setFormData(prev => ({ ...prev, procedencia: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">1.11 Dirección</label>
+              <input type="text" value={formData.direccion} onChange={(e) => setFormData(prev => ({ ...prev, direccion: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">1.12 Teléfono</label>
+              <input type="text" value={formData.telefono} onChange={(e) => setFormData(prev => ({ ...prev, telefono: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" />
+            </div>
+          </div>
+        </div>
+
+        {/* DATOS DE FAMILIARES/RESPONSABLES */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+          <h3 className="text-xl font-bold mb-4 text-gray-900 dark:text-white flex items-center gap-2">
+            <Users className="w-5 h-5" />
+            II. DATOS DE LOS/AS FAMILIARES/RESPONSABLES
+          </h3>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">2.1 Responsable/s de el/la adolescente</label>
+              <input type="text" value={formData.responsables} onChange={(e) => setFormData(prev => ({ ...prev, responsables: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">2.2 Parentesco</label>
+              <input type="text" value={formData.parentesco} onChange={(e) => setFormData(prev => ({ ...prev, parentesco: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">2.3 Dirección</label>
+              <input type="text" value={formData.direccion_responsable} onChange={(e) => setFormData(prev => ({ ...prev, direccion_responsable: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Teléfono/s de contacto</label>
+              <input type="text" value={formData.telefonos_contacto} onChange={(e) => setFormData(prev => ({ ...prev, telefonos_contacto: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Correo/s electrónico/s</label>
+              <input type="text" value={formData.correos_electronicos} onChange={(e) => setFormData(prev => ({ ...prev, correos_electronicos: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" />
+            </div>
+          </div>
+        </div>
+
+        {/* DATOS JUDICIALES */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+          <h3 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">III. DATOS JUDICIALES</h3>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">3.1 Juzgado Remitente</label>
+              <input type="text" value={formData.juzgado_remitente} onChange={(e) => setFormData(prev => ({ ...prev, juzgado_remitente: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">3.2 Nombre de el/la Juez/a</label>
+              <input type="text" value={formData.nombre_juez} onChange={(e) => setFormData(prev => ({ ...prev, nombre_juez: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">3.3 N.º de Expediente Judicial</label>
+              <input type="text" value={formData.exp_judicial} onChange={(e) => setFormData(prev => ({ ...prev, exp_judicial: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">3.4 Infracción</label>
+              <input type="text" value={formData.infraccion} onChange={(e) => setFormData(prev => ({ ...prev, infraccion: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">3.5 Tipo de Medida Socioeducativa</label>
+              <input type="text" value={formData.tipo_medida_socioeducativa} onChange={(e) => setFormData(prev => ({ ...prev, tipo_medida_socioeducativa: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">3.6 Fecha de inicio de la medida socioeducativa</label>
+              <input type="date" value={formData.fecha_inicio_medida} onChange={(e) => setFormData(prev => ({ ...prev, fecha_inicio_medida: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">3.7 Fecha de previsión de finalización de la medida socioeducativa</label>
+              <input type="date" value={formData.fecha_finalizacion_medida} onChange={(e) => setFormData(prev => ({ ...prev, fecha_finalizacion_medida: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" />
+            </div>
+          </div>
+        </div>
+
+        {/* PLAN DE ATENCIÓN */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+          <h3 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">IV. PLAN DE ATENCIÓN INDIVIDUAL</h3>
+          
+          <div className="space-y-4 mb-6">
+            <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-md">
+              <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">
+                Considerando la documentación penal recibida en el Servicio Regional <strong>{formData.servicio_regional || '________________'}</strong>, del Programa de Medidas Sustitutivas a la Privación de Libertad.
+              </p>
+              <p className="text-sm text-gray-700 dark:text-gray-300">
+                Considerando las evaluaciones técnicas realizadas por los/as profesionales de este Servicio Regional, investigando los aspectos biopsicosocial, educativo y legal de el/la adolescente y su entorno familiar y social y los informes técnicos interdisciplinares, vistos, analizados y debatidos adjuntos, correspondientes a las Áreas de Psicología, Pedagogía, Trabajo Social, Legal, (Médica y de la Salud, Laboral y de Ocio y Tiempo Libre: opcional si se realiza evaluación por parte de o en relación a estas áreas,) realizados a efectos del PLATIN.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Fecha de inicio de la implementación del Plan
+                </label>
+                <input type="date" value={formData.fecha_inicio_plan} onChange={(e) => setFormData(prev => ({ ...prev, fecha_inicio_plan: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Fecha de previsión de finalización del desarrollo del Plan
+                </label>
+                <input type="date" value={formData.fecha_finalizacion_plan} onChange={(e) => setFormData(prev => ({ ...prev, fecha_finalizacion_plan: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" />
+              </div>
+            </div>
+          </div>
+
+          {/* Tabla de Áreas de Intervención */}
+          <div className="mb-4">
+            <div className="flex justify-between items-center mb-4">
+              <h4 className="text-lg font-semibold text-gray-900 dark:text-white">Plan de Intervención Interdisciplinar</h4>
+              <button
+                type="button"
+                onClick={addAreaIntervencion}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Agregar Área
+              </button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="min-w-full border border-gray-300 dark:border-gray-600">
+                <thead>
+                  <tr className="bg-gray-100 dark:bg-gray-700">
+                    <th className="border border-gray-300 dark:border-gray-600 px-2 py-2 text-sm font-medium text-gray-700 dark:text-gray-300">Área de Atención</th>
+                    <th className="border border-gray-300 dark:border-gray-600 px-2 py-2 text-sm font-medium text-gray-700 dark:text-gray-300">Valoración Técnica</th>
+                    <th className="border border-gray-300 dark:border-gray-600 px-2 py-2 text-sm font-medium text-gray-700 dark:text-gray-300">Objetivos</th>
+                    <th className="border border-gray-300 dark:border-gray-600 px-2 py-2 text-sm font-medium text-gray-700 dark:text-gray-300">Actividades</th>
+                    <th className="border border-gray-300 dark:border-gray-600 px-2 py-2 text-sm font-medium text-gray-700 dark:text-gray-300">Nombre Técnico/a</th>
+                    <th className="border border-gray-300 dark:border-gray-600 px-2 py-2 text-sm font-medium text-gray-700 dark:text-gray-300">Tipo Responsable</th>
+                    <th className="border border-gray-300 dark:border-gray-600 px-2 py-2 text-sm font-medium text-gray-700 dark:text-gray-300">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {formData.areas_intervencion.map((area, index) => (
+                    <tr key={index}>
+                      <td className="border border-gray-300 dark:border-gray-600 px-2 py-2">
+                        <input
+                          type="text"
+                          value={area.area_atencion}
+                          onChange={(e) => updateAreaIntervencion(index, 'area_atencion', e.target.value)}
+                          className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white"
+                          placeholder="Ej: Psicología"
+                        />
+                      </td>
+                      <td className="border border-gray-300 dark:border-gray-600 px-2 py-2">
+                        <textarea
+                          value={area.valoracion_tecnica}
+                          onChange={(e) => updateAreaIntervencion(index, 'valoracion_tecnica', e.target.value)}
+                          rows={2}
+                          className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white"
+                          placeholder="Valoración"
+                        />
+                      </td>
+                      <td className="border border-gray-300 dark:border-gray-600 px-2 py-2">
+                        <textarea
+                          value={area.objetivos}
+                          onChange={(e) => updateAreaIntervencion(index, 'objetivos', e.target.value)}
+                          rows={2}
+                          className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white"
+                          placeholder="Objetivos"
+                        />
+                      </td>
+                      <td className="border border-gray-300 dark:border-gray-600 px-2 py-2">
+                        <textarea
+                          value={area.actividades}
+                          onChange={(e) => updateAreaIntervencion(index, 'actividades', e.target.value)}
+                          rows={2}
+                          className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white"
+                          placeholder="Actividades"
+                        />
+                      </td>
+                      <td className="border border-gray-300 dark:border-gray-600 px-2 py-2">
+                        <input
+                          type="text"
+                          value={area.nombre_tecnico}
+                          onChange={(e) => updateAreaIntervencion(index, 'nombre_tecnico', e.target.value)}
+                          className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white"
+                          placeholder="Nombre"
+                        />
+                      </td>
+                      <td className="border border-gray-300 dark:border-gray-600 px-2 py-2">
+                        <input
+                          type="text"
+                          value={area.tipo_responsable}
+                          onChange={(e) => updateAreaIntervencion(index, 'tipo_responsable', e.target.value)}
+                          className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white"
+                          placeholder="Centro/Externo"
+                        />
+                      </td>
+                      <td className="border border-gray-300 dark:border-gray-600 px-2 py-2">
+                        <button
+                          type="button"
+                          onClick={() => removeAreaIntervencion(index)}
+                          className="p-1 text-red-600 hover:text-red-800"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {formData.areas_intervencion.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="border border-gray-300 dark:border-gray-600 px-4 py-4 text-center text-gray-500 dark:text-gray-400">
+                        No hay áreas agregadas. Haga clic en "Agregar Área" para comenzar.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        {/* FIRMAS */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+          <h3 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">V. FIRMAS</h3>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Lugar y Fecha</label>
+              <input type="text" value={formData.lugar_fecha} onChange={(e) => setFormData(prev => ({ ...prev, lugar_fecha: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Firma de el/la Adolescente</label>
+                <input type="text" value={formData.firma_adolescente} onChange={(e) => setFormData(prev => ({ ...prev, firma_adolescente: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" />
+              </div>
+              <div className="border-t border-gray-300 dark:border-gray-600 pt-4">
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">Firma de el/la adolescente</p>
+                <div className="h-16 border-b-2 border-gray-400 dark:border-gray-500"></div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Firma de el/la Responsable</label>
+                <input type="text" value={formData.firma_responsable} onChange={(e) => setFormData(prev => ({ ...prev, firma_responsable: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" />
+              </div>
+              <div className="border-t border-gray-300 dark:border-gray-600 pt-4">
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">Firma del responsable o pariente</p>
+                <div className="h-16 border-b-2 border-gray-400 dark:border-gray-500"></div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-6">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Nombre, Firma y sello de el/la Encargado/a del Servicio Regional <span className="font-normal">{formData.servicio_regional || '________________'}</span> del Programa de Medidas No Privativas de Libertad
+            </label>
+            <input type="text" value={formData.nombre_encargado} onChange={(e) => setFormData(prev => ({ ...prev, nombre_encargado: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white mb-2" />
+            <div className="border-t border-gray-300 dark:border-gray-600 pt-4">
+              <div className="h-16 border-b-2 border-gray-400 dark:border-gray-500"></div>
+            </div>
+          </div>
+
+          <div className="mt-4">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Trabajador/a Social <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={formData.trabajador_social}
+              onChange={(e) => setFormData(prev => ({ ...prev, trabajador_social: e.target.value }))}
+              className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white ${
+                errors.trabajador_social ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+              }`}
+            />
+            {errors.trabajador_social && <p className="mt-1 text-sm text-red-600">{errors.trabajador_social}</p>}
+          </div>
+        </div>
+
+        {/* Botones de Acción */}
+        <div className="flex justify-end gap-4">
+          <Link
+            href="/dashboard/atenciones"
+            className="px-6 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+          >
+            Cancelar
+          </Link>
+          <button
+            type="submit"
+            disabled={saving}
+            className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            <Save className="w-4 h-4" />
+            {saving ? 'Guardando...' : 'Guardar PLATIN'}
+          </button>
+        </div>
+      </form>
+    </div>
+  )
+}
+

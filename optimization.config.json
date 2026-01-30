@@ -1,0 +1,38 @@
+{
+  "optimization": {
+    "webpack": {
+      "splitChunks": {
+        "chunks": "all",
+        "cacheGroups": {
+          "vendor": {
+            "test": {},
+            "name": "vendors",
+            "chunks": "all"
+          },
+          "supabase": {
+            "test": {},
+            "name": "supabase",
+            "chunks": "all"
+          },
+          "lucide": {
+            "test": {},
+            "name": "lucide",
+            "chunks": "all"
+          }
+        }
+      }
+    },
+    "compression": {
+      "gzip": true,
+      "brotli": true
+    },
+    "cache": {
+      "enabled": true,
+      "ttl": 3600
+    }
+  },
+  "bundleAnalyzer": {
+    "enabled": false,
+    "openAnalyzer": false
+  }
+}

@@ -1,0 +1,23 @@
+# Configuración de compatibilidad de navegadores
+# Usado por Autoprefixer, Babel y otras herramientas
+
+# Navegadores modernos (últimas 2 versiones)
+> 0.5%
+last 2 versions
+
+# Navegadores específicos importantes
+Firefox ESR
+not dead
+not op_mini all
+
+# Versiones mínimas para mejor compatibilidad
+Chrome >= 60
+Safari >= 12
+Edge >= 79
+iOS >= 12
+Android >= 6
+
+# Excluir navegadores muy antiguos
+not IE 11
+not IE_Mob 11
+

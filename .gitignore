@@ -1,0 +1,35 @@
+.env.local
+node_modules/
+.next/
+node_modules
+
+# TypeScript build info (archivos generados)
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+
+# Archivos temporales de configuración y diagnóstico
+scripts/diagnostico-completo-nginx.sh
+scripts/diagnosticar-nginx.sh
+scripts/verificar-y-completar-ssl.sh
+scripts/solucion-automatica-nginx.sh
+scripts/fix-nginx-conflict.sh
+scripts/setup-domain-ssl.sh
+scripts/configurar-dominio-paso-a-paso.sh
+scripts/completar-configuracion-ssl.sh
+scripts/limpiar-archivos-temporales.sh
+scripts/ver-archivos-temporales.sh
+
+# Configuraciones Nginx duplicadas (plantillas)
+nginx-inamiunah-initial.conf
+nginx-inamiunah.conf
+nginx-config.conf
+
+# Documentación temporal
+SOLUCION-PROBLEMAS-DOMINIO.md
+CONFIGURAR-DOMINIO-SSL.md
+CONFIGURAR-NGINX.md
+REBUILD-WITH-ENV.md
+GIT-RESOLVER-CONFLICTO.md
+SOLUCION-ENV-VPS.md
+PM2-FIX.md
+LIMPIAR-ARCHIVOS.md
