@@ -13,22 +13,40 @@ export function useAdminAccess() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Si aún está cargando, mantener loading
-    if (authLoading || permissionsLoading) {
+    // Si aún está cargando auth, mantener loading
+    if (authLoading) {
       setLoading(true)
       return
     }
 
-    // Si es admin, siempre tiene acceso
+    // Si es admin, siempre tiene acceso - NO ESPERAR permisos
     if (profile?.role === 'admin') {
-      console.log('useAdminAccess: Usuario es admin, acceso permitido')
+      console.log('useAdminAccess: Usuario es admin, acceso permitido inmediatamente')
       setHasAccess(true)
       setLoading(false)
       return
     }
 
+    // Si no hay perfil, no tiene acceso
+    if (!profile?.id) {
+      setHasAccess(false)
+      setLoading(false)
+      return
+    }
+
+    // Si aún está cargando permisos, esperar un máximo de 3 segundos
+    if (permissionsLoading) {
+      // Timeout de seguridad: después de 3 segundos, asumir que no tiene permisos
+      const timeoutId = setTimeout(() => {
+        console.warn('useAdminAccess: Timeout esperando permisos, asumiendo sin acceso')
+        setHasAccess(false)
+        setLoading(false)
+      }, 3000)
+      
+      return () => clearTimeout(timeoutId)
+    }
+
     // Si no es admin, verificar permisos directamente
-    // No usar useMemo porque puede ejecutarse antes de que los permisos se carguen
     const canAccessAdmin = canView('/dashboard/admin')
     
     console.log('useAdminAccess: Verificando permisos basados en roles', {
@@ -41,7 +59,7 @@ export function useAdminAccess() {
     
     setHasAccess(canAccessAdmin)
     setLoading(false)
-  }, [authLoading, permissionsLoading, profile?.role, canView, permissions])
+  }, [authLoading, permissionsLoading, profile?.role, profile?.id, canView, permissions])
 
   return {
     hasAccess,

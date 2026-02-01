@@ -2,15 +2,15 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-// PASO 1.1: Importar el "auth helper" en lugar de tu "lib/auth"
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+// Usar singleton para evitar múltiples instancias
+import { getSupabaseClient } from '@/lib/supabase-client'
 import Image from 'next/image'
 import { AlertCircle } from 'lucide-react'
 
 export default function LoginPage() {
   const router = useRouter()
-  // PASO 1.2: Crear el cliente de Supabase específico para Client Components
-  const supabase = createClientComponentClient()
+  // Usar singleton para evitar múltiples instancias de GoTrueClient
+  const supabase = getSupabaseClient()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -22,6 +22,40 @@ export default function LoginPage() {
 
   useEffect(() => {
     setMounted(true)
+
+    // Manejar logout - limpiar completamente la sesión
+    const handleLogout = async () => {
+      const urlParams = new URLSearchParams(window.location.search)
+      const isLogout = urlParams.get('logout') === 'true'
+      
+      if (isLogout) {
+        try {
+          // Asegurar que la sesión esté cerrada
+          await supabase.auth.signOut({ scope: 'global' }).catch(() => {
+            return supabase.auth.signOut()
+          })
+          
+          // Limpiar storage completamente
+          if (typeof window !== 'undefined') {
+            const authKeys = Object.keys(localStorage).filter(key => 
+              key.includes('supabase') || key.includes('auth') || key.includes('session')
+            )
+            authKeys.forEach(key => localStorage.removeItem(key))
+            
+            const sessionKeys = Object.keys(sessionStorage).filter(key => 
+              key.includes('supabase') || key.includes('auth') || key.includes('session')
+            )
+            sessionKeys.forEach(key => sessionStorage.removeItem(key))
+          }
+          
+          // Limpiar parámetros de URL para evitar que se vuelva a ejecutar
+          const cleanUrl = window.location.pathname
+          window.history.replaceState({}, '', cleanUrl)
+        } catch (error) {
+          console.error('Error durante limpieza de logout:', error)
+        }
+      }
+    }
 
     // Manejar el callback de Supabase cuando llega con código
     const handleAuthCallback = async () => {
@@ -50,8 +84,11 @@ export default function LoginPage() {
       }
     }
 
-    handleAuthCallback()
-  }, [router])
+    // Ejecutar logout primero, luego callback
+    handleLogout().then(() => {
+      handleAuthCallback()
+    })
+  }, [router, supabase])
 
   if (!mounted) {
     return null
@@ -74,13 +111,16 @@ export default function LoginPage() {
       setError('Credenciales incorrectas. Por favor, intenta de nuevo.')
     } else if (data?.user) {
       // Esperar un momento para que la sesión se establezca correctamente
-      await new Promise(resolve => setTimeout(resolve, 300))
+      await new Promise(resolve => setTimeout(resolve, 500))
 
       // Verificar que la sesión esté activa antes de redirigir
       const { data: { session } } = await supabase.auth.getSession()
       if (session) {
-        // Usar window.location para forzar una recarga completa y asegurar que el middleware funcione correctamente
-        window.location.href = '/dashboard'
+        // Limpiar cualquier cache antes de redirigir
+        if (typeof window !== 'undefined') {
+          // Forzar recarga completa usando replace para evitar problemas de cache
+          window.location.replace('/dashboard')
+        }
       } else {
         setError('Error al establecer la sesión. Por favor, intenta de nuevo.')
       }

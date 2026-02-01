@@ -14,6 +14,7 @@ export function usePermissions() {
   const loadPermissions = useCallback(async () => {
     if (!profile?.id) {
       setLoading(false)
+      setPermissions([])
       return
     }
 
@@ -21,27 +22,37 @@ export function usePermissions() {
       setLoading(true)
       setError(null)
       
-      // Timeout más corto (5 segundos) para que cargue más rápido
+      // Timeout más corto (3 segundos) para que cargue más rápido
       const timeoutPromise = new Promise<ModulePermission[]>((_, reject) => {
-        setTimeout(() => reject(new Error('Timeout al cargar permisos')), 5000)
+        setTimeout(() => reject(new Error('Timeout al cargar permisos')), 3000)
       })
       
-      const permsPromise = getUserPermissions()
-      const perms = await Promise.race([permsPromise, timeoutPromise])
-      
-      console.log('usePermissions: Permisos cargados', {
-        count: perms.length,
-        permisos: perms.map(p => ({
-          modulo: p.modulo.nombre,
-          ruta: p.modulo.ruta,
-          puede_ver: p.puede_ver,
-          puede_crear: p.puede_crear,
-          puede_editar: p.puede_editar,
-          puede_eliminar: p.puede_eliminar,
-        }))
-      })
-      
-      setPermissions(perms)
+      try {
+        const permsPromise = getUserPermissions(profile.id)
+        const perms = await Promise.race([permsPromise, timeoutPromise])
+        
+        console.log('usePermissions: Permisos cargados', {
+          count: perms.length,
+          permisos: perms.map(p => ({
+            modulo: p.modulo.nombre,
+            ruta: p.modulo.ruta,
+            puede_ver: p.puede_ver,
+            puede_crear: p.puede_crear,
+            puede_editar: p.puede_editar,
+            puede_eliminar: p.puede_eliminar,
+          }))
+        })
+        
+        setPermissions(perms)
+      } catch (fetchError) {
+        // Si es un timeout, establecer permisos vacíos y continuar
+        if (fetchError instanceof Error && fetchError.message.includes('Timeout')) {
+          console.warn('usePermissions: Timeout al cargar permisos, continuando sin permisos')
+          setPermissions([])
+        } else {
+          throw fetchError
+        }
+      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Error al cargar permisos'
       setError(errorMessage)
@@ -49,13 +60,21 @@ export function usePermissions() {
       // En caso de error, establecer permisos vacíos para que la app no se quede bloqueada
       setPermissions([])
     } finally {
+      // SIEMPRE establecer loading a false, incluso si hay errores
       setLoading(false)
     }
   }, [profile?.id])
 
   useEffect(() => {
+    // Si no hay perfil, no cargar permisos
+    if (!profile?.id) {
+      setLoading(false)
+      setPermissions([])
+      return
+    }
+    
     loadPermissions()
-  }, [loadPermissions])
+  }, [loadPermissions, profile?.id])
 
   // Memoizar las funciones de verificación para evitar recrearlas en cada render
   const canView = useCallback((moduleRoute: string): boolean => {

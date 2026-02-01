@@ -265,6 +265,7 @@ export default function EditarRolPage() {
               <input
                 type="text"
                 id="nombre"
+                name="nombre"
                 required
                 value={formData.nombre}
                 onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
@@ -278,6 +279,7 @@ export default function EditarRolPage() {
               </label>
               <textarea
                 id="descripcion"
+                name="descripcion"
                 rows={4}
                 value={formData.descripcion}
                 onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
@@ -287,9 +289,11 @@ export default function EditarRolPage() {
             </div>
 
             <div>
-              <label className="flex items-center gap-2">
+              <label htmlFor="activo" className="flex items-center gap-2">
                 <input
                   type="checkbox"
+                  id="activo"
+                  name="activo"
                   checked={formData.activo}
                   onChange={(e) => setFormData({ ...formData, activo: e.target.checked })}
                   className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"

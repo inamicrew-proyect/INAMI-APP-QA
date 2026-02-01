@@ -13,7 +13,7 @@ import {
   ArrowUpRight,
   Shield
 } from 'lucide-react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 interface Stats {
   totalJovenes: number
@@ -30,7 +30,7 @@ interface Centro {
 }
 
 export default function DashboardPage() {
-  const supabase = createClientComponentClient()
+  const supabase = getSupabaseClient()
 
   const [stats, setStats] = useState<Stats>({
     totalJovenes: 0,
@@ -42,6 +42,27 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [hasSecurityQuestions, setHasSecurityQuestions] = useState<boolean | null>(null)
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
+
+  // Verificar autenticación al cargar
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session) {
+          // Si no hay sesión, redirigir a login inmediatamente
+          window.location.replace('/login')
+          return
+        }
+        setIsAuthenticated(true)
+      } catch (error) {
+        console.error('Error verificando sesión:', error)
+        window.location.replace('/login')
+      }
+    }
+    
+    checkAuth()
+  }, [supabase])
 
   // Optimización: Cargar todas las estadísticas en paralelo con timeout y mejor manejo de errores
   const loadData = async () => {
@@ -211,9 +232,12 @@ export default function DashboardPage() {
   }
 
   useEffect(() => {
-    loadData()
+    // Solo cargar datos si está autenticado
+    if (isAuthenticated === true) {
+      loadData()
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [isAuthenticated])
 
   // Memoizar las tarjetas de estadísticas
   const statCards = useMemo(() => [
@@ -304,11 +328,11 @@ export default function DashboardPage() {
   )
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-stone-50 dark:bg-gray-900 min-h-screen">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Inicio</h1>
-        <p className="text-gray-600 dark:text-gray-300 mt-2">
+      <div className="mb-10">
+        <h1 className="text-3xl font-semibold text-gray-900 dark:text-white tracking-tight">Dashboard</h1>
+        <p className="text-gray-500 dark:text-gray-400 mt-2 text-sm">
           Bienvenido al Sistema de Gestión de Atenciones INAMI
         </p>
       </div>
@@ -353,22 +377,22 @@ export default function DashboardPage() {
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
           {statCards.map((stat, index) => (
             <div 
               key={index} 
-              className="card hover:shadow-lg transition-all duration-200 hover:-translate-y-1"
+              className="bg-stone-50 dark:bg-gray-800 rounded-xl border border-stone-200 dark:border-gray-700/50 p-5 hover:border-stone-300 dark:hover:border-gray-600 transition-all duration-200 hover:shadow-sm"
             >
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{stat.title}</p>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{stat.title}</p>
                 <div className={`${stat.bgColor} p-2 rounded-lg`}>
-                  <stat.icon className={`w-5 h-5 ${stat.textColor}`} />
+                  <stat.icon className={`w-4 h-4 ${stat.textColor}`} />
                 </div>
               </div>
               <div className="flex items-baseline justify-between">
-                <p className="text-3xl font-bold text-gray-900 dark:text-white">{stat.value}</p>
+                <p className="text-2xl font-semibold text-gray-900 dark:text-white">{stat.value}</p>
                 {stat.trend && (
-                  <div className="flex items-center gap-1 text-sm text-gray-500">
+                  <div className="flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500">
                     <span>{stat.trend}%</span>
                   </div>
                 )}
@@ -379,38 +403,34 @@ export default function DashboardPage() {
       )}
 
       {/* Quick Actions */}
-      <div className="mb-8">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Acciones Rápidas</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="mb-10">
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-5 tracking-tight">Acciones Rápidas</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {quickActions.map((action, index) => (
             <Link
               key={index}
               href={action.href}
-              className="card hover:shadow-lg transition-all duration-200 hover:-translate-y-1 cursor-pointer group"
+              className="bg-stone-50 dark:bg-gray-800 rounded-xl border border-stone-200 dark:border-gray-700/50 p-5 hover:border-stone-300 dark:hover:border-gray-600 transition-all duration-200 hover:shadow-sm cursor-pointer group"
             >
-              <div className={`${action.color} w-12 h-12 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
-                <action.icon className="w-6 h-6 text-white" />
+              <div className={`${action.color} w-10 h-10 rounded-lg flex items-center justify-center mb-4 group-hover:scale-105 transition-transform`}>
+                <action.icon className="w-5 h-5 text-white" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{action.title}</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400">{action.description}</p>
-              <div className="mt-4 flex items-center text-sm text-primary-600 dark:text-primary-400 group-hover:gap-2 transition-all">
-                <span>Ir</span>
-                <ArrowUpRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
-              </div>
+              <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-1.5">{action.title}</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">{action.description}</p>
             </Link>
           ))}
         </div>
       </div>
 
       {/* Information Cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Centros Info */}
-        <div className="card">
+        <div className="bg-stone-50 dark:bg-gray-800 rounded-xl border border-stone-200 dark:border-gray-700/50 p-6">
           <div className="flex items-center gap-3 mb-6">
-            <div className="p-2 bg-primary-100 dark:bg-primary-900/20 rounded-lg">
-              <Building2 className="w-6 h-6 text-primary-600 dark:text-primary-400" />
+            <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+              <Building2 className="w-5 h-5 text-blue-600 dark:text-blue-400" />
             </div>
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white">Centros de Atención</h3>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white tracking-tight">Centros de Atención</h3>
           </div>
           <div className="space-y-4">
             <div className="border-l-4 border-blue-500 pl-4 py-2 bg-blue-50/50 dark:bg-blue-900/10 rounded-r">
@@ -447,18 +467,18 @@ export default function DashboardPage() {
         </div>
 
         {/* Tipos de Atención */}
-        <div className="card">
+        <div className="bg-stone-50 dark:bg-gray-800 rounded-xl border border-stone-200 dark:border-gray-700/50 p-6">
           <div className="flex items-center gap-3 mb-6">
-            <div className="p-2 bg-primary-100 dark:bg-primary-900/20 rounded-lg">
-              <TrendingUp className="w-6 h-6 text-primary-600 dark:text-primary-400" />
+            <div className="p-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+              <TrendingUp className="w-5 h-5 text-purple-600 dark:text-purple-400" />
             </div>
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white">Tipos de Atención</h3>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white tracking-tight">Tipos de Atención</h3>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2.5">
             {tiposAtencion.map((tipo, i) => (
               <div 
                 key={i} 
-                className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 text-center hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors border-2 border-gray-300 dark:border-gray-600 shadow-sm"
+                className="bg-gray-50/50 dark:bg-gray-700/30 rounded-lg p-3 text-center hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors border border-gray-200 dark:border-gray-600/50"
               >
                 <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{tipo}</p>
               </div>

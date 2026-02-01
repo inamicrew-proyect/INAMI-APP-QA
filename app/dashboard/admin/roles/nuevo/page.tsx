@@ -80,6 +80,7 @@ export default function NuevoRolPage() {
             <input
               type="text"
               id="nombre"
+              name="nombre"
               required
               value={formData.nombre}
               onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
@@ -94,6 +95,7 @@ export default function NuevoRolPage() {
             </label>
             <textarea
               id="descripcion"
+              name="descripcion"
               rows={4}
               value={formData.descripcion}
               onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}

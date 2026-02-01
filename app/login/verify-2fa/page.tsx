@@ -2,12 +2,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { getSupabaseClient } from '@/lib/supabase-client'
 import { useRouter } from 'next/navigation'
 import { Shield } from 'lucide-react'
 
 export default function VerifyMfaPage() {
-  const supabase = createClientComponentClient()
+  const supabase = getSupabaseClient()
   const router = useRouter()
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)

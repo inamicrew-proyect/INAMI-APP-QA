@@ -328,11 +328,13 @@ export default function NuevoUsuarioPage() {
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-2">
                 Nombre completo
               </label>
               <input
                 type="text"
+                id="fullName"
+                name="fullName"
                 value={formData.fullName}
                 onChange={(e) => handleInputChange('fullName', e.target.value)}
                 className="input-field"
@@ -342,11 +344,13 @@ export default function NuevoUsuarioPage() {
             </div>
 
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
                 Correo institucional
               </label>
               <input
                 type="email"
+                id="email"
+                name="email"
                 value={formData.email}
                 onChange={(e) => handleInputChange('email', e.target.value)}
                 className="input-field"
@@ -377,7 +381,7 @@ export default function NuevoUsuarioPage() {
                 <div className="flex flex-col sm:flex-row gap-2">
                   <label className="btn-secondary cursor-pointer">
                     Seleccionar foto
-                    <input type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
+                    <input type="file" id="photo" name="photo" accept="image/*" className="hidden" onChange={handlePhotoChange} />
                   </label>
                   {photoPreview && (
                     <button type="button" className="btn-secondary" onClick={handleRemovePhoto}>
@@ -390,10 +394,12 @@ export default function NuevoUsuarioPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-2">
                 Rol dentro del sistema
               </label>
               <select
+                id="role"
+                name="role"
                 value={formData.role}
                 onChange={(e) => handleInputChange('role', e.target.value)}
                 className="input-field"
@@ -411,10 +417,12 @@ export default function NuevoUsuarioPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">Contraseña temporal</label>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700">Contraseña temporal</label>
               <div className="relative">
                 <input
                   type="text"
+                  id="password"
+                  name="password"
                   value={formData.password}
                   onChange={(e) => handleInputChange('password', e.target.value)}
                   className="input-field pr-24"
@@ -447,11 +455,13 @@ export default function NuevoUsuarioPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
                 Confirmar contraseña
               </label>
               <input
                 type="text"
+                id="confirmPassword"
+                name="confirmPassword"
                 value={formData.confirmPassword}
                 onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
                 className="input-field"

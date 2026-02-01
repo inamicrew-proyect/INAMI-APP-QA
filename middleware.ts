@@ -26,7 +26,11 @@ export async function middleware(req: NextRequest) {
   // Solo protegemos las rutas del dashboard
   if (isDashboardRoute && !session) {
     // Redirigir a login si intenta acceder al dashboard sin sesión
-    return NextResponse.redirect(new URL('/login', req.url))
+    // Agregar timestamp para evitar cache
+    const loginUrl = new URL('/login', req.url)
+    loginUrl.searchParams.set('redirect', pathname)
+    loginUrl.searchParams.set('t', Date.now().toString())
+    return NextResponse.redirect(loginUrl)
   }
 
   // 3. Si no hay sesión Y NO está en una ruta de autenticación, API, reset-password o callback, redirigir a /login
@@ -163,20 +167,43 @@ export async function middleware(req: NextRequest) {
     
     // 7. Si ya está autenticado e intenta ir a /login (excepto si es logout)
     if (isAuthRoute && !isLogoutRoute && !isVerifyRoute) {
+      // Si es logout, permitir acceso a login para limpiar sesión
       // Verificar si tiene 2FA completo antes de redirigir al dashboard
       try {
         const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
         if (aal && aal.currentLevel === 'aal2') {
           // Si tiene 2FA completo, redirigir al dashboard
-          return NextResponse.redirect(new URL('/dashboard', req.url))
+          const dashboardUrl = new URL('/dashboard', req.url)
+          dashboardUrl.searchParams.set('t', Date.now().toString())
+          return NextResponse.redirect(dashboardUrl)
         } else if (!aal || aal.currentLevel === 'aal1') {
           // Si no tiene 2FA o está en aal1, también puede ir al dashboard
-          return NextResponse.redirect(new URL('/dashboard', req.url))
+          const dashboardUrl = new URL('/dashboard', req.url)
+          dashboardUrl.searchParams.set('t', Date.now().toString())
+          return NextResponse.redirect(dashboardUrl)
         }
       } catch (error) {
         // Si hay error, asumir que puede ir al dashboard
-        return NextResponse.redirect(new URL('/dashboard', req.url))
+        const dashboardUrl = new URL('/dashboard', req.url)
+        dashboardUrl.searchParams.set('t', Date.now().toString())
+        return NextResponse.redirect(dashboardUrl)
       }
+    }
+    
+    // 7.5. Si es logout, forzar limpieza de sesión
+    if (isLogoutRoute) {
+      // Cerrar sesión en Supabase
+      try {
+        await supabase.auth.signOut({ scope: 'global' })
+      } catch (error) {
+        // Ignorar errores, solo intentar cerrar
+        try {
+          await supabase.auth.signOut()
+        } catch (e) {
+          // Ignorar
+        }
+      }
+      // Permitir acceso a login sin redirigir
     }
     
     // 8. Si ya está autenticado e intenta ir a /register

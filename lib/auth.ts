@@ -98,6 +98,29 @@ export function useAuth() {
         // Solo loguear errores críticos, no timeouts esperados
         if (error instanceof Error && !error.message.includes('Timeout')) {
           console.error('Error getting initial session:', error)
+          // Si hay un error de autenticación, limpiar sesión corrupta automáticamente
+          if (error.message.includes('JWT') || error.message.includes('session') || error.message.includes('token')) {
+            console.warn('Detectada sesión corrupta, limpiando automáticamente...')
+            try {
+              // Limpiar storage relacionado con auth
+              if (typeof window !== 'undefined') {
+                const authKeys = Object.keys(localStorage).filter(key => 
+                  key.includes('supabase') || key.includes('auth') || key.includes('session')
+                )
+                authKeys.forEach(key => localStorage.removeItem(key))
+                
+                const sessionKeys = Object.keys(sessionStorage).filter(key => 
+                  key.includes('supabase') || key.includes('auth') || key.includes('session')
+                )
+                sessionKeys.forEach(key => sessionStorage.removeItem(key))
+                
+                // Intentar cerrar sesión en Supabase
+                supabase.auth.signOut({ scope: 'global' }).catch(() => {})
+              }
+            } catch (cleanupError) {
+              console.error('Error durante limpieza automática:', cleanupError)
+            }
+          }
         }
         // Continuar sin sesión para que la app no se quede bloqueada
         // La sesión se cargará cuando el usuario interactúe o cuando onAuthStateChange se active

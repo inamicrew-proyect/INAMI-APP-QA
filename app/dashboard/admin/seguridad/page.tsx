@@ -220,6 +220,8 @@ export default function SeguridadPage() {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Estado</label>
             <select
+              id="filtro-resuelta"
+              name="filtro-resuelta"
               value={filtroResuelta || ''}
               onChange={(e) => setFiltroResuelta(e.target.value || null)}
               className="input-field"
@@ -232,6 +234,8 @@ export default function SeguridadPage() {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Severidad</label>
             <select
+              id="filtro-severidad"
+              name="filtro-severidad"
               value={filtroSeveridad || ''}
               onChange={(e) => setFiltroSeveridad(e.target.value || null)}
               className="input-field"

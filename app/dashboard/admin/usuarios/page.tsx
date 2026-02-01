@@ -250,6 +250,8 @@ export default function UsuariosPage() {
             <Search className="absolute left-1 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
+              id="search-usuarios"
+              name="search-usuarios"
               placeholder="  Buscar por nombre, email o rol..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -259,6 +261,8 @@ export default function UsuariosPage() {
           <div className="relative flex gap-2">
             <Filter className="absolute left-0.01 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 z-10" />
             <select
+              id="filter-role"
+              name="filter-role"
               value={filterRole}
               onChange={(e) => setFilterRole(e.target.value)}
               className="input-field pl-10 flex-1"

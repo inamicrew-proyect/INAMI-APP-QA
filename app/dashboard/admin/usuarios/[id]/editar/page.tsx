@@ -348,7 +348,7 @@ export default function EditarUsuarioPage() {
                 <div className="flex flex-col sm:flex-row gap-2">
                   <label className="btn-secondary cursor-pointer">
                     Seleccionar foto
-                    <input type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
+                    <input type="file" id="photo" name="photo" accept="image/*" className="hidden" onChange={handlePhotoChange} />
                   </label>
                   {photoPreview && (
                     <button type="button" className="btn-secondary" onClick={handleRemovePhoto}>
@@ -361,9 +361,11 @@ export default function EditarUsuarioPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Correo electrónico</label>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">Correo electrónico</label>
               <input
                 type="email"
+                id="email"
+                name="email"
                 value={user.email}
                 disabled
                 className="input-field bg-gray-100 cursor-not-allowed"
@@ -371,9 +373,11 @@ export default function EditarUsuarioPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Nombre completo</label>
+              <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-2">Nombre completo</label>
               <input
                 type="text"
+                id="fullName"
+                name="fullName"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 className="input-field"
@@ -383,7 +387,7 @@ export default function EditarUsuarioPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Rol</label>
+              <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-2">Rol</label>
               {loadingRoles ? (
                 <div className="input-field bg-gray-100">
                   <Loader2 className="w-4 h-4 animate-spin inline mr-2" />
@@ -391,6 +395,8 @@ export default function EditarUsuarioPage() {
                 </div>
               ) : (
                 <select
+                  id="role"
+                  name="role"
                   value={role}
                   onChange={(e) => setRole(e.target.value)}
                   className="input-field"
