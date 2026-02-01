@@ -385,17 +385,17 @@ export default function AtencionesPage() {
       <div className="card mb-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <Search className="absolute left-1 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
-              placeholder="Buscar por joven, tipo de atención, profesional..."
+              placeholder="  Buscar por joven, tipo de atención, profesional..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="input-field pl-10"
             />
           </div>
           <div className="relative">
-            <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <Filter className="absolute left-0.01 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <select
               value={filterEstado}
               onChange={(e) => setFilterEstado(e.target.value)}

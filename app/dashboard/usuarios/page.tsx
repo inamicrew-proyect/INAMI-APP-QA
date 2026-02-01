@@ -248,17 +248,17 @@ export default function UsuariosPage() {
       <div className="card mb-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <Search className="absolute left-1 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
-              placeholder="Buscar por nombre, email o rol..."
+              placeholder="  Buscar por nombre, email o rol..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="input-field pl-10"
             />
           </div>
           <div className="relative flex gap-2">
-            <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 z-10" />
+            <Filter className="absolute left-0.01 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 z-10" />
             <select
               value={filterRole}
               onChange={(e) => setFilterRole(e.target.value)}

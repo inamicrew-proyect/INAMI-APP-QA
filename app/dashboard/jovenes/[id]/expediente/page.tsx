@@ -409,11 +409,11 @@ export default function ExpedienteJovenPage() {
                 <div className="space-y-3">
                   <div>
                     <label className="text-sm font-medium text-gray-500">Expediente Administrativo</label>
-                    <p className="text-gray-900 font-mono text-sm">{joven.expediente_administrativo || 'No asignado'}</p>
+                    <p className="text-gray-900">{joven.expediente_administrativo || 'No asignado'}</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-500">Expediente Judicial</label>
-                    <p className="text-gray-900 font-mono text-sm">{joven.expediente_judicial || 'No asignado'}</p>
+                    <p className="text-gray-900">{joven.expediente_judicial || 'No asignado'}</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-500">Centro</label>
