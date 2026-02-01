@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 // PASO 1.1: Importar el "auth helper" en lugar de tu "lib/auth"
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import { Shield, AlertCircle } from 'lucide-react'
+import Image from 'next/image'
+import { AlertCircle } from 'lucide-react'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -21,7 +22,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     setMounted(true)
-    
+
     // Manejar el callback de Supabase cuando llega con código
     const handleAuthCallback = async () => {
       const urlParams = new URLSearchParams(window.location.search)
@@ -30,7 +31,7 @@ export default function LoginPage() {
       const currentHost = window.location.host
       const currentOrigin = window.location.origin
       const productionUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://31.220.20.232:3000'
-      
+
       // Si hay código y estamos en localhost, redirigir INMEDIATAMENTE a producción
       if (code && (currentHost.includes('localhost') || currentOrigin.includes('localhost'))) {
         if (type === 'recovery') {
@@ -40,7 +41,7 @@ export default function LoginPage() {
         }
         return
       }
-      
+
       // Si hay código pero no estamos en localhost, procesar normalmente
       if (code && type === 'recovery') {
         router.push(`/auth/callback?code=${code}&type=recovery&next=/reset-password`)
@@ -48,7 +49,7 @@ export default function LoginPage() {
         router.push(`/auth/callback?code=${code}`)
       }
     }
-    
+
     handleAuthCallback()
   }, [router])
 
@@ -74,7 +75,7 @@ export default function LoginPage() {
     } else if (data?.user) {
       // Esperar un momento para que la sesión se establezca correctamente
       await new Promise(resolve => setTimeout(resolve, 300))
-      
+
       // Verificar que la sesión esté activa antes de redirigir
       const { data: { session } } = await supabase.auth.getSession()
       if (session) {
@@ -90,7 +91,7 @@ export default function LoginPage() {
     e.preventDefault()
     setResetMessage('')
     setLoading(true)
-    
+
     if (!email) {
       setResetMessage('Por favor ingrese su correo electrónico')
       setLoading(false)
@@ -115,12 +116,12 @@ export default function LoginPage() {
     // Si no tiene preguntas secretas, usar el método tradicional por email
     // Usar la URL de producción (configurada en variable de entorno o hardcodeada como fallback)
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://31.220.20.232:3000'
-    
+
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${siteUrl}/auth/callback?type=recovery&next=/reset-password`,
       })
-      
+
       if (error) {
         // Detectar error 429 (Too Many Requests)
         if (error.status === 429 || error.message?.includes('429') || error.message?.toLowerCase().includes('too many requests')) {
@@ -147,10 +148,8 @@ export default function LoginPage() {
     }
   }
 
-  // ... el resto de tu JSX (formularios, UI) no necesita cambiar ...
-  // Pega el resto de tu return (...) aquí abajo
   return (
-    <div 
+    <div
       className="min-h-screen flex items-center justify-center p-4 relative"
       style={{
         backgroundImage: 'url(/login-background.jpg)',
@@ -161,23 +160,35 @@ export default function LoginPage() {
     >
       {/* Overlay oscuro para mejorar legibilidad */}
       <div className="absolute inset-0 bg-black bg-opacity-50"></div>
-      
+
       {/* Contenido con z-index para estar sobre el overlay */}
       <div className="relative z-10 max-w-md w-full">
         {/* Logo y header */}
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
-            <div className="bg-white p-4 rounded-full shadow-lg">
-              <Shield className="w-12 h-12 text-primary-600" />
-            </div>
+            <div className="bg-white w-28 h-28 rounded-full shadow-lg flex items-center justify-center">
+            <Image
+              src="/logo-inami-2026.png"
+              alt="Logo INAMI"
+              width={95}
+              height={95}
+              className="object-contain"
+              priority
+            />
           </div>
+          </div>
+
           <h1 className="text-3xl font-bold text-white mb-2 drop-shadow-lg">INAMI</h1>
-          <p className="text-white text-opacity-90 drop-shadow-md">Instituto Nacional para la Atención de Menores Infractores</p>
-          <p className="text-white text-opacity-80 text-sm mt-2 drop-shadow-md">Sistema de Gestión de Atenciones</p>
+          <p className="text-white text-opacity-90 drop-shadow-md">
+            Instituto Nacional para la Atención de Menores Infractores
+          </p>
+          <p className="text-white text-opacity-80 text-sm mt-2 drop-shadow-md">
+            Sistema de Gestión de Atenciones
+          </p>
         </div>
 
         {/* Formulario de login */}
-        <div className="card"> {/* Asumo que .card es una clase global tuya */}
+        <div className="card">
           <h2 className="text-2xl font-bold text-gray-900 mb-6">Iniciar Sesión</h2>
 
           {error && (
@@ -197,7 +208,7 @@ export default function LoginPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="input-field" // Asumo que .input-field es una clase global tuya
+                className="input-field"
                 placeholder="tu@correo.com"
                 required
               />
@@ -221,7 +232,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed" // Asumo clases tuyas
+              className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
             </button>
@@ -234,7 +245,7 @@ export default function LoginPage() {
             </p>
             <div className="text-sm text-gray-600">
               ¿Olvidaste tu contraseña?{' '}
-              <button 
+              <button
                 onClick={() => setShowResetPassword(true)}
                 className="text-primary-600 hover:text-primary-700 font-medium"
               >
@@ -249,13 +260,15 @@ export default function LoginPage() {
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-lg p-6 max-w-md w-full">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Recuperar Contraseña</h3>
-              
+
               {resetMessage && (
-                <div className={`mb-4 p-3 rounded-lg ${
-                  resetMessage.includes('Error') 
-                    ? 'bg-red-50 text-red-800 border border-red-200' 
-                    : 'bg-green-50 text-green-800 border border-green-200'
-                }`}>
+                <div
+                  className={`mb-4 p-3 rounded-lg ${
+                    resetMessage.includes('Error')
+                      ? 'bg-red-50 text-red-800 border border-red-200'
+                      : 'bg-green-50 text-green-800 border border-green-200'
+                  }`}
+                >
                   {resetMessage}
                 </div>
               )}
@@ -277,10 +290,7 @@ export default function LoginPage() {
                 </div>
 
                 <div className="flex gap-3">
-                  <button
-                    type="submit"
-                    className="flex-1 btn-primary"
-                  >
+                  <button type="submit" className="flex-1 btn-primary">
                     Enviar Correo
                   </button>
                   <button
