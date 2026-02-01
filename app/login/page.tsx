@@ -168,7 +168,7 @@ export default function LoginPage() {
           <div className="flex justify-center mb-4">
             <div className="bg-white w-28 h-28 rounded-full shadow-lg flex items-center justify-center">
             <Image
-              src="/logo-inami-2026.png"
+              src="/inami.png"
               alt="Logo INAMI"
               width={95}
               height={95}

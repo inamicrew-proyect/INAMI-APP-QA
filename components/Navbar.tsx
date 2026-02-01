@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { Shield, LogOut, Menu, X, User } from 'lucide-react'
+import Image from 'next/image'
+import { LogOut, Menu, X, User } from 'lucide-react'
 
 // --- 1. ¡LOS ÚNICOS IMPORTS DE AUTH QUE NECESITAS! ---
 import { useAuth } from '@/lib/auth' 
@@ -149,7 +150,16 @@ export default function Navbar() {
 		<div className="flex justify-between items-center h-16">
   		  <div className="flex items-center">
   			<Link href="/dashboard" className="flex items-center gap-3">
-  			  <Shield className="w-8 h-8 text-white" />
+  			  <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-md overflow-hidden">
+				<Image
+					src="/inami.png"
+					alt="Logo INAMI"
+					width={40}
+					height={40}
+					className="w-full h-full object-cover"
+					priority
+				/>
+				</div>
   			  <div>
   				<h1 className="text-xl font-bold text-white">INAMI</h1>
   				<p className="text-xs text-sky-100">Sistema de Gestión</p>
