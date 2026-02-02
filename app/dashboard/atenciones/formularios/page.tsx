@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import {
   Brain,
@@ -19,7 +20,8 @@ import {
   Stethoscope,
   AlertTriangle,
   Briefcase,
-  Home
+  Home,
+  ExternalLink
 } from 'lucide-react'
 
 const formularios = [
@@ -31,7 +33,7 @@ const formularios = [
     borderColor: 'border-purple-200',
     subsecciones: [
       {
-        nombre: 'PMSPL',
+        nombre: 'PAMSPL',
         formularios: [
         {
           nombre: 'Entrevista Inicial - Adolescente/Joven',
@@ -188,7 +190,7 @@ const formularios = [
     borderColor: 'border-blue-200',
     subsecciones: [
       {
-        nombre: 'PMSPL',
+        nombre: 'PAMSPL',
         formularios: [
           {
             nombre: 'Ficha Social',
@@ -472,36 +474,125 @@ const formularios = [
     color: 'text-indigo-600',
     bgColor: 'bg-indigo-50',
     borderColor: 'border-indigo-200',
-    formularios: [
+    subsecciones: [
       {
-        nombre: 'Datos Judiciales',
-        descripcion: 'Registro de datos judiciales',
-        ruta: '/dashboard/atenciones/formularios/legal/datos-judiciales',
-        icon: Gavel
+        nombre: 'CPI',
+        formularios: [
+          {
+            nombre: 'Asesoría/Intervención Legal',
+            descripcion: 'Ficha de asesoría e intervención legal para CPI',
+            ruta: '/dashboard/atenciones/formularios/legal/cpi/asesoria-intervencion',
+            icon: Gavel
+          },
+          {
+            nombre: 'Ficha de NNAJ Sancionado',
+            descripcion: 'Ficha de datos judiciales de NNAJ sancionado para CPI',
+            ruta: '/dashboard/atenciones/formularios/legal/cpi/ficha-nnaj-sancionado',
+            icon: Gavel
+          },
+          {
+            nombre: 'Datos Judiciales',
+            descripcion: 'Ficha de datos judiciales para CPI',
+            ruta: '/dashboard/atenciones/formularios/legal/cpi/datos-judiciales',
+            icon: Gavel
+          },
+          {
+            nombre: 'Informe Legal de Ingreso',
+            descripcion: 'Informe legal completo de ingreso al CPI',
+            ruta: '/dashboard/atenciones/formularios/legal/cpi/informe-legal-ingreso',
+            icon: FileText
+          },
+          {
+            nombre: 'Ficha de Entrevista Legal de Ingreso',
+            descripcion: 'Ficha de entrevista legal realizada al momento del ingreso',
+            ruta: '/dashboard/atenciones/formularios/legal/cpi/ficha-entrevista-legal-ingreso',
+            icon: FileText
+          },
+          {
+            nombre: 'Informe Legal de NNAJ Sancionado',
+            descripcion: 'Informe legal detallado de NNAJ sancionado',
+            ruta: '/dashboard/atenciones/formularios/legal/cpi/informe-legal-nnaj-sancionado',
+            icon: FileText
+          },
+          {
+            nombre: 'Informe Legal de Evaluación y Seguimiento del PLATIN',
+            descripcion: 'Informe legal de evaluación y seguimiento del PLATIN',
+            ruta: '/dashboard/atenciones/formularios/legal/cpi/informe-legal-evaluacion-seguimiento-platin',
+            icon: FileText
+          },
+          {
+            nombre: 'Resumen de Causas',
+            descripcion: 'Resumen de causas judiciales para CPI',
+            ruta: '/dashboard/atenciones/formularios/legal/cpi/resumen-causas',
+            icon: FileText
+          }
+        ]
       },
       {
-        nombre: 'Asesoría Legal',
-        descripcion: 'Registro de asesorías legales',
-        ruta: '/dashboard/atenciones/formularios/legal/asesoria-legal',
-        icon: Scale
-      },
-      {
-        nombre: 'Resumen de Causas',
-        descripcion: 'Resumen de causas judiciales',
-        ruta: '/dashboard/atenciones/formularios/legal/resumen-causas',
-        icon: FileText
+        nombre: 'PAMSPL',
+        formularios: [
+          {
+            nombre: 'Asesoría/Intervención Legal',
+            descripcion: 'Ficha de asesoría e intervención legal para PAMSPL',
+            ruta: '/dashboard/atenciones/formularios/legal/pamspl/asesoria-intervencion',
+            icon: Gavel
+          },
+          {
+            nombre: 'Ficha de Ingreso de NNAJ',
+            descripcion: 'Ficha completa de ingreso de NNAJ al PAMSPL',
+            ruta: '/dashboard/atenciones/formularios/legal/pamspl/ficha-ingreso-nnaj',
+            icon: FileText
+          },
+          {
+            nombre: 'Datos Judiciales',
+            descripcion: 'Ficha de datos judiciales para PAMSPL',
+            ruta: '/dashboard/atenciones/formularios/legal/pamspl/datos-judiciales',
+            icon: Gavel
+          },
+          {
+            nombre: 'Resumen de Causas',
+            descripcion: 'Resumen de causas judiciales para PAMSPL',
+            ruta: '/dashboard/atenciones/formularios/legal/pamspl/resumen-causas',
+            icon: FileText
+          }
+        ]
       }
     ]
   }
 ]
 
 export default function FormulariosPage() {
+  const [areaSeleccionada, setAreaSeleccionada] = useState<string | null>(null)
+
+  // Calcular totales por área
+  const calcularTotalFormularios = (area: any) => {
+    if (area.subsecciones) {
+      return area.subsecciones.reduce((total: number, sub: any) => total + sub.formularios.length, 0)
+    }
+    return area.formularios?.length || 0
+  }
+
+  // Obtener área actual a mostrar
+  const areaActual = areaSeleccionada 
+    ? formularios.find(a => a.area === areaSeleccionada)
+    : null
+
+  // Calcular estadísticas
+  const estadisticas = formularios.map(area => ({
+    nombre: area.area,
+    total: calcularTotalFormularios(area),
+    color: area.color.replace('text-', '')
+  }))
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-stone-50 dark:bg-gray-900 min-h-screen">
       {/* Header */}
       <div className="flex items-center gap-4 mb-8">
-        <Link href="/dashboard/atenciones" className="p-2 hover:bg-gray-100 rounded-lg">
-          <ArrowLeft className="w-6 h-6" />
+        <Link 
+          href="/dashboard/atenciones" 
+          className="p-2 hover:bg-stone-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+        >
+          <ArrowLeft className="w-6 h-6 text-gray-700 dark:text-gray-300" />
         </Link>
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
@@ -513,141 +604,166 @@ export default function FormulariosPage() {
         </div>
       </div>
 
-      {/* Formularios por Área */}
-      <div className="space-y-8">
-        {formularios.map((area) => {
-          const IconComponent = area.icon
-          const totalFormularios = area.subsecciones
-            ? area.subsecciones.reduce((total: number, sub: any) => total + sub.formularios.length, 0)
-            : area.formularios?.length || 0
+      {/* Selector de Áreas */}
+      <div className="mb-8">
+        <div className="bg-stone-50 dark:bg-gray-800 rounded-lg p-6 border border-stone-200 dark:border-gray-700 shadow-sm">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            Selecciona un área
+          </h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            {formularios.map((area) => {
+              const IconComponent = area.icon
+              const total = calcularTotalFormularios(area)
+              const isSelected = areaSeleccionada === area.area
 
-          return (
-            <div key={area.area} className="card">
-              <div className="flex items-center gap-3 mb-6">
-                <div className={`p-3 rounded-lg ${area.bgColor} ${area.borderColor} border`}>
-                  <IconComponent className={`w-6 h-6 ${area.color}`} />
-                </div>
-                <div>
-                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+              return (
+                <button
+                  key={area.area}
+                  onClick={() => setAreaSeleccionada(isSelected ? null : area.area)}
+                  className={`
+                    flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all duration-200
+                    ${isSelected 
+                      ? `${area.bgColor} ${area.borderColor} border-2 shadow-md` 
+                      : 'bg-white dark:bg-gray-700 border-stone-200 dark:border-gray-600 hover:border-stone-300 dark:hover:border-gray-500'
+                    }
+                  `}
+                >
+                  <div className={`p-2 rounded-lg ${isSelected ? area.bgColor : 'bg-stone-100 dark:bg-gray-600'}`}>
+                    <IconComponent className={`w-6 h-6 ${isSelected ? area.color : 'text-gray-600 dark:text-gray-300'}`} />
+                  </div>
+                  <span className={`text-sm font-medium ${isSelected ? area.color : 'text-gray-700 dark:text-gray-300'}`}>
                     {area.area}
-                  </h2>
-                  <p className="text-gray-600 dark:text-gray-300">
-                    {totalFormularios} formularios disponibles
-                  </p>
-                </div>
-              </div>
-
-              {/* Si tiene subsecciones (Trabajo Social) */}
-              {area.subsecciones ? (
-                <div className="space-y-6">
-                  {area.subsecciones.map((subseccion: any) => (
-                    <div key={subseccion.nombre}>
-                      <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4 pb-2 border-b border-gray-200 dark:border-gray-700">
-                        {subseccion.nombre}
-                      </h3>
-                      {subseccion.formularios.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {subseccion.formularios.map((formulario: any) => {
-                            const FormIcon = formulario.icon
-                            return (
-                              <Link
-                                key={formulario.nombre}
-                                href={formulario.ruta}
-                                className="block p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-md transition-all duration-200 group"
-                              >
-                                <div className="flex items-start gap-3">
-                                  <div className={`p-2 rounded-lg ${area.bgColor} group-hover:scale-110 transition-transform duration-200`}>
-                                    <FormIcon className={`w-5 h-5 ${area.color}`} />
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <h3 className="font-medium text-gray-900 dark:text-white group-hover:text-gray-700 dark:group-hover:text-gray-300">
-                                      {formulario.nombre}
-                                    </h3>
-                                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                                      {formulario.descripcion}
-                                    </p>
-                                  </div>
-                                  <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                                    <Plus className="w-4 h-4 text-gray-400" />
-                                  </div>
-                                </div>
-                              </Link>
-                            )
-                          })}
-                        </div>
-                      ) : (
-                        <p className="text-sm text-gray-500 dark:text-gray-400 italic">
-                          No hay formularios disponibles en esta sección aún.
-                        </p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                /* Sin subsecciones (otras áreas) */
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {area.formularios?.map((formulario: any) => {
-                    const FormIcon = formulario.icon
-                    return (
-                      <Link
-                        key={formulario.nombre}
-                        href={formulario.ruta}
-                        className="block p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-md transition-all duration-200 group"
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className={`p-2 rounded-lg ${area.bgColor} group-hover:scale-110 transition-transform duration-200`}>
-                            <FormIcon className={`w-5 h-5 ${area.color}`} />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-medium text-gray-900 dark:text-white group-hover:text-gray-700 dark:group-hover:text-gray-300">
-                              {formulario.nombre}
-                            </h3>
-                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                              {formulario.descripcion}
-                            </p>
-                          </div>
-                          <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                            <Plus className="w-4 h-4 text-gray-400" />
-                          </div>
-                        </div>
-                      </Link>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-          )
-        })}
+                  </span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                    {total} formularios
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
       </div>
 
+      {/* Formularios de la Área Seleccionada */}
+      {areaActual && (
+        <div className="mb-8">
+          <div className="bg-stone-50 dark:bg-gray-800 rounded-lg p-6 border border-stone-200 dark:border-gray-700 shadow-sm">
+            <div className="flex items-center gap-3 mb-6">
+              <div className={`p-3 rounded-lg ${areaActual.bgColor} ${areaActual.borderColor} border`}>
+                {(() => {
+                  const IconComponent = areaActual.icon
+                  return <IconComponent className={`w-6 h-6 ${areaActual.color}`} />
+                })()}
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                  {areaActual.area}
+                </h2>
+                <p className="text-gray-600 dark:text-gray-300">
+                  {calcularTotalFormularios(areaActual)} formularios disponibles
+                </p>
+              </div>
+              <button
+                onClick={() => setAreaSeleccionada(null)}
+                className="ml-auto px-3 py-1 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-stone-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                Ver todas las áreas
+              </button>
+            </div>
+
+            {/* Si tiene subsecciones */}
+            {areaActual.subsecciones ? (
+              <div className="space-y-6">
+                {areaActual.subsecciones.map((subseccion: any) => (
+                  <div key={subseccion.nombre}>
+                    <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4 pb-2 border-b border-stone-200 dark:border-gray-700">
+                      {subseccion.nombre}
+                    </h3>
+                    {subseccion.formularios.length > 0 ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {subseccion.formularios.map((formulario: any) => {
+                          const FormIcon = formulario.icon
+                          return (
+                            <Link
+                              key={formulario.nombre}
+                              href={formulario.ruta}
+                              className="block p-4 bg-white dark:bg-gray-700 border border-stone-200 dark:border-gray-600 rounded-lg hover:border-stone-300 dark:hover:border-gray-500 hover:shadow-md transition-all duration-200 group"
+                            >
+                              <div className="flex items-start gap-3">
+                                <div className={`p-2 rounded-lg ${areaActual.bgColor} group-hover:scale-110 transition-transform duration-200`}>
+                                  <FormIcon className={`w-5 h-5 ${areaActual.color}`} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <h3 className="font-medium text-gray-900 dark:text-white group-hover:text-gray-700 dark:group-hover:text-gray-300 mb-1">
+                                    {formulario.nombre}
+                                  </h3>
+                                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                                    {formulario.descripcion}
+                                  </p>
+                                </div>
+                                <ExternalLink className="w-4 h-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity duration-200 mt-1" />
+                              </div>
+                            </Link>
+                          )
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500 dark:text-gray-400 italic">
+                        No hay formularios disponibles en esta sección aún.
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              /* Sin subsecciones */
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {areaActual.formularios?.map((formulario: any) => {
+                  const FormIcon = formulario.icon
+                  return (
+                    <Link
+                      key={formulario.nombre}
+                      href={formulario.ruta}
+                      className="block p-4 bg-white dark:bg-gray-700 border border-stone-200 dark:border-gray-600 rounded-lg hover:border-stone-300 dark:hover:border-gray-500 hover:shadow-md transition-all duration-200 group"
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className={`p-2 rounded-lg ${areaActual.bgColor} group-hover:scale-110 transition-transform duration-200`}>
+                          <FormIcon className={`w-5 h-5 ${areaActual.color}`} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-medium text-gray-900 dark:text-white group-hover:text-gray-700 dark:group-hover:text-gray-300 mb-1">
+                            {formulario.nombre}
+                          </h3>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            {formulario.descripcion}
+                          </p>
+                        </div>
+                        <ExternalLink className="w-4 h-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity duration-200 mt-1" />
+                      </div>
+                    </Link>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Estadísticas */}
-      <div className="mt-8 grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="card text-center">
-          <div className="text-2xl font-bold text-purple-600">
-            {formularios[0].formularios?.length || 0}
+      <div className="mt-8 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        {estadisticas.map((stat) => (
+          <div 
+            key={stat.nombre} 
+            className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-stone-200 dark:border-gray-700 shadow-sm text-center"
+          >
+            <div className={`text-2xl font-bold ${stat.color}`}>
+              {stat.total}
+            </div>
+            <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+              {stat.nombre}
+            </p>
           </div>
-          <p className="text-sm text-gray-600 dark:text-gray-300">Psicología</p>
-        </div>
-        <div className="card text-center">
-          <div className="text-2xl font-bold text-blue-600">
-            {formularios[1].subsecciones
-              ? formularios[1].subsecciones.reduce((total: number, sub: any) => total + sub.formularios.length, 0)
-              : formularios[1].formularios?.length || 0}
-          </div>
-          <p className="text-sm text-gray-600 dark:text-gray-300">Trabajo Social</p>
-        </div>
-        <div className="card text-center">
-          <div className="text-2xl font-bold text-green-600">
-            {formularios[2].formularios?.length || 0}
-          </div>
-          <p className="text-sm text-gray-600 dark:text-gray-300">Educación</p>
-        </div>
-        <div className="card text-center">
-          <div className="text-2xl font-bold text-red-600">
-            {formularios[3].formularios?.length || 0 || 0}
-          </div>
-          <p className="text-sm text-gray-600 dark:text-gray-300">Salud</p>
-        </div>
+        ))}
       </div>
     </div>
   )
