@@ -14,6 +14,7 @@ import { usePermissions } from '@/lib/hooks/usePermissions'
 import NotificationCenter from './NotificationCenter'
 import NotificationSettings from './NotificationSettings'
 import ThemeToggle from './ThemeToggle'
+import UserProfileDropdown from './UserProfileDropdown'
 
 function Navbar() {
   // TODOS LOS HOOKS DEBEN ESTAR AQUÍ AL INICIO, ANTES DE CUALQUIER LÓGICA
@@ -328,39 +329,7 @@ function Navbar() {
   			  <NotificationCenter />
   			  <NotificationSettings />
   			  <ThemeToggle />
-  			  {profile && (
-  				<Link 
-  				  href={`/dashboard/usuarios/${profile.id}`}
-  				  className="flex items-center gap-3 hover:opacity-80 transition-opacity cursor-pointer"
-  				  title="Ver mi perfil"
-  				>
-  				  {profile.photo_url ? (
-  					<img 
-  					  src={profile.photo_url} 
-  					  alt={profile.full_name}
-  					  className="w-10 h-10 rounded-full object-cover border-2 border-white/50 shadow-md"
-  					/>
-  				  ) : (
-  					<div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center border-2 border-white/50 shadow-md">
-  					  <User className="w-6 h-6 text-white" />
-  					</div>
-  				  )}
-  				  <div className="text-right">
-  					<p className="text-sm font-medium text-white">{profile.full_name}</p>
-  					<p className="text-xs text-sky-100">{getRoleLabel(profile.role)}</p>
-  				  </div>
-  				</Link>
-  			  )}
-  			  <button
-				onClick={handleSignOut}
-				data-signout-button
-				disabled={isSigningOut}
-				className="flex items-center gap-2 px-3 py-2 text-white hover:text-red-100 hover:bg-white/20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-				title="Cerrar sesión"
-			  >
-				<LogOut className="w-4 h-4" />
-				<span className="text-sm">{isSigningOut ? 'Cerrando sesión...' : 'Cerrar Sesión'}</span>
-			  </button>
+  			  <UserProfileDropdown />
   			</div>
   		  </div>
 

@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { useRouter } from 'next/navigation'
-import { Settings, Bell, Mail, Smartphone, Clock, Save, X, Shield, ArrowRight } from 'lucide-react'
+import { Settings, Bell, Mail, Smartphone, Clock, Save, X } from 'lucide-react'
 import { NotificationService, type ConfiguracionNotificaciones } from '@/lib/notifications'
 import { useAuth } from '@/lib/auth'
 import { getSupabaseClient } from '@/lib/supabase-client'
@@ -20,14 +19,11 @@ export default function NotificationSettings({
   onClose 
 }: NotificationSettingsProps = {}) {
   const { user } = useAuth()
-  const router = useRouter()
   const supabase = getSupabaseClient()
   const [configuracion, setConfiguracion] = useState<ConfiguracionNotificaciones | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [internalShowModal, setInternalShowModal] = useState(false)
-  const [mfaEnabled, setMfaEnabled] = useState(false)
-  const [loadingMfa, setLoadingMfa] = useState(true)
 
   // Usar el modal externo si se proporciona, sino usar el interno
   // IMPORTANTE: Solo mostrar el modal si es explícitamente true
@@ -54,39 +50,8 @@ export default function NotificationSettings({
   useEffect(() => {
     if (user?.id) {
       loadConfiguracion()
-      checkMfaStatus()
     }
   }, [user?.id])
-
-  const checkMfaStatus = async () => {
-    if (!user?.id) return
-    
-    try {
-      setLoadingMfa(true)
-      const { data: factors, error } = await supabase.auth.mfa.listFactors()
-      
-      if (error) {
-        console.error('Error checking MFA status:', error)
-        return
-      }
-      
-      // Verificar si hay un factor TOTP verificado
-      const hasVerifiedTotp = factors.all?.some(
-        (factor) => factor.factor_type === 'totp' && factor.status === 'verified'
-      ) ?? false
-      
-      setMfaEnabled(hasVerifiedTotp)
-    } catch (error) {
-      console.error('Error checking MFA:', error)
-    } finally {
-      setLoadingMfa(false)
-    }
-  }
-
-  const handleGoToSecurity = () => {
-    handleCloseModal()
-    router.push('/dashboard/seguridad')
-  }
 
   const loadConfiguracion = async () => {
     if (!user?.id) return
@@ -249,43 +214,6 @@ export default function NotificationSettings({
                           className="rounded border-gray-300 dark:border-gray-600 text-blue-600 dark:text-blue-400 focus:ring-blue-500 dark:bg-gray-700 dark:checked:bg-blue-600"
                         />
                       </div>
-                    </div>
-                  </div>
-
-                  {/* Seguridad - Autenticación de Dos Factores */}
-                  <div>
-                    <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Seguridad</h3>
-                    
-                    <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                          <Shield className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Autenticación de Dos Factores (2FA)</span>
-                        </div>
-                        {!loadingMfa && (
-                          <span className={`text-xs px-2 py-1 rounded-full ${
-                            mfaEnabled 
-                              ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' 
-                              : 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300'
-                          }`}>
-                            {mfaEnabled ? 'Activo' : 'Inactivo'}
-                          </span>
-                        )}
-                      </div>
-                      
-                      <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
-                        Protege tu cuenta con una capa adicional de seguridad. Se te pedirá un código de tu app de autenticación cada vez que inicies sesión.
-                      </p>
-                      
-                      <button
-                        type="button"
-                        onClick={handleGoToSecurity}
-                        className="w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 dark:bg-blue-500 hover:bg-blue-700 dark:hover:bg-blue-600 rounded-md transition-colors flex items-center justify-center gap-2"
-                      >
-                        <Shield className="w-4 h-4" />
-                        {mfaEnabled ? 'Gestionar 2FA' : 'Activar 2FA'}
-                        <ArrowRight className="w-4 h-4" />
-                      </button>
                     </div>
                   </div>
 

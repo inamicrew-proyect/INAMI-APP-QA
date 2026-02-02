@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { User, Settings, Home, LogOut, ChevronDown } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
@@ -21,8 +21,13 @@ const getRoleLabel = (role: string) => {
 }
 
 export default function UserProfileDropdown() {
-  const router = useRouter()
+  const pathname = usePathname()
   const { profile } = useAuth()
+
+  const isActive = (path: string) => {
+    if (path === '/dashboard') return pathname === '/dashboard'
+    return pathname.startsWith(path)
+  }
   const supabase = getSupabaseClient()
   const [isOpen, setIsOpen] = useState(false)
   const [isSigningOut, setIsSigningOut] = useState(false)
@@ -100,24 +105,24 @@ export default function UserProfileDropdown() {
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-64 bg-gray-800 dark:bg-gray-700 rounded-lg shadow-xl border border-gray-700 dark:border-gray-600 z-50 overflow-hidden">
+        <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-600 z-50 overflow-hidden">
           {/* Header del dropdown con info del usuario */}
-          <div className="p-4 border-b border-gray-700 dark:border-gray-600">
+          <div className="p-4 border-b border-gray-200 dark:border-gray-600">
             <div className="flex items-center gap-3">
               {profile.photo_url ? (
                 <img 
                   src={profile.photo_url} 
                   alt={profile.full_name}
-                  className="w-12 h-12 rounded-full object-cover border-2 border-gray-600"
+                  className="w-12 h-12 rounded-full object-cover border-2 border-gray-300 dark:border-gray-600"
                 />
               ) : (
-                <div className="w-12 h-12 rounded-full bg-gray-600 flex items-center justify-center border-2 border-gray-500">
-                  <User className="w-6 h-6 text-gray-300" />
+                <div className="w-12 h-12 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center border-2 border-gray-300 dark:border-gray-500">
+                  <User className="w-6 h-6 text-gray-500 dark:text-gray-300" />
                 </div>
               )}
               <div>
-                <p className="text-sm font-semibold text-white">{profile.full_name}</p>
-                <p className="text-xs text-gray-400">{getRoleLabel(profile.role)}</p>
+                <p className="text-sm font-semibold text-gray-900 dark:text-white">{profile.full_name}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{getRoleLabel(profile.role)}</p>
               </div>
             </div>
           </div>
@@ -127,7 +132,11 @@ export default function UserProfileDropdown() {
             <Link
               href="/dashboard"
               onClick={() => setIsOpen(false)}
-              className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 dark:hover:bg-gray-600 transition-colors"
+              className={`flex items-center gap-3 px-4 py-2 text-sm transition-colors ${
+                isActive('/dashboard')
+                  ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+              }`}
             >
               <Home className="w-4 h-4" />
               Dashboard
@@ -135,7 +144,11 @@ export default function UserProfileDropdown() {
             <Link
               href={`/dashboard/usuarios/${profile.id}`}
               onClick={() => setIsOpen(false)}
-              className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 dark:hover:bg-gray-600 transition-colors"
+              className={`flex items-center gap-3 px-4 py-2 text-sm transition-colors ${
+                isActive(`/dashboard/usuarios/${profile.id}`)
+                  ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+              }`}
             >
               <User className="w-4 h-4" />
               Ver Perfil
@@ -143,7 +156,11 @@ export default function UserProfileDropdown() {
             <Link
               href="/dashboard/configuracion"
               onClick={() => setIsOpen(false)}
-              className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 dark:hover:bg-gray-600 transition-colors"
+              className={`flex items-center gap-3 px-4 py-2 text-sm transition-colors ${
+                isActive('/dashboard/configuracion')
+                  ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+              }`}
             >
               <Settings className="w-4 h-4" />
               Configuración
@@ -151,7 +168,7 @@ export default function UserProfileDropdown() {
             <button
               onClick={handleSignOut}
               disabled={isSigningOut}
-              className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-400 hover:bg-gray-700 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <LogOut className="w-4 h-4" />
               {isSigningOut ? 'Cerrando sesión...' : 'Cerrar Sesión'}
