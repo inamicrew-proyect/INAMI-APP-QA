@@ -190,9 +190,12 @@ export function useAuth() {
       try {
         console.log('🔍 [useAuth] Iniciando getInitialSession...')
         
-        // PRIMERO: Intentar cargar desde caché si hay sesión previa
+        // PRIMERO: Intentar cargar desde caché si hay sesión previa (solo en cliente)
         // Esto permite mostrar el perfil inmediatamente mientras se carga desde el servidor
-        const cachedProfile = getCachedProfile()
+        let cachedProfile: Profile | null = null
+        if (typeof window !== 'undefined') {
+          cachedProfile = getCachedProfile()
+        }
         
         // Obtener sesión primero para tener el usuario
         const { data: { session }, error: sessionError } = await supabase.auth.getSession()

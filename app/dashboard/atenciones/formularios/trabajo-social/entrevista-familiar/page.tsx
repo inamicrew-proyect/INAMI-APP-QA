@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { Save, ArrowLeft, User, Search, Users } from 'lucide-react'
 import Link from 'next/link'
+import JovenSearchInput from '@/components/JovenSearchInput'
 
 interface Joven {
   id: string
@@ -438,66 +439,19 @@ export default function EntrevistaFamiliarPMSPLPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Seleccionar Joven <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input
-                  type="text"
-                  placeholder="Buscar por nombre o expediente administrativo..."
-                  value={searchTerm}
-                  onChange={(e) => {
-                    setSearchTerm(e.target.value)
-                    setShowDropdown(true)
-                    if (!e.target.value) {
-                      setFormData(prev => ({
-                        ...prev,
-                        joven_id: '',
-                        nombre_completo_nnaj: '',
-                        exp_administrativo: ''
-                      }))
-                    }
-                  }}
-                  onFocus={() => setShowDropdown(true)}
-                  className={`w-full pl-10 pr-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white ${
-                    errors.joven_id ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                  }`}
-                />
-                {errors.joven_id && <p className="mt-1 text-sm text-red-600">{errors.joven_id}</p>}
-                
-                {/* Dropdown de resultados */}
-                {showDropdown && searchTerm && filteredJovenes.length > 0 && (
-                  <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-60 overflow-auto">
-                    {filteredJovenes.map((joven) => (
-                      <div
-                        key={joven.id}
-                        onClick={() => handleJovenSelect(joven)}
-                        className="px-4 py-2 hover:bg-blue-50 dark:hover:bg-gray-600 cursor-pointer border-b border-gray-200 dark:border-gray-600 last:border-b-0"
-                      >
-                        <div className="font-medium text-gray-900 dark:text-white">
-                          {joven.nombres} {joven.apellidos}
-                        </div>
-                        {joven.expediente_administrativo && (
-                          <div className="text-sm text-gray-500 dark:text-gray-400">
-                            Exp: {joven.expediente_administrativo}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {showDropdown && searchTerm && filteredJovenes.length === 0 && (
-                  <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg p-4">
-                    <p className="text-sm text-gray-500 dark:text-gray-400">No se encontraron resultados</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre completo</label>
-              <input type="text" value={formData.nombre_completo_nnaj} readOnly className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-gray-100 dark:bg-gray-600 dark:text-white" />
+              <JovenSearchInput
+                value={formData.nombre_completo_nnaj}
+                onChange={(value) => setFormData(prev => ({ ...prev, nombre_completo_nnaj: value }))}
+                onJovenSelect={(joven) => {
+                  if (joven.id) {
+                    handleJovenSelect(joven)
+                  }
+                }}
+                label="Seleccionar Joven"
+                required
+                placeholder="Buscar por nombre o expediente administrativo..."
+                error={errors.joven_id}
+              />
             </div>
 
             <div>

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { Save, ArrowLeft, User, Calendar } from 'lucide-react'
 import Link from 'next/link'
+import JovenSearchInput from '@/components/JovenSearchInput'
 
 interface Joven {
   id: string
@@ -376,38 +377,18 @@ export default function FichaIntervencionPage() {
 
             {/* Selección de Joven */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Nombre del NNAJ <span className="text-red-500">*</span>
-              </label>
-              <select
-                value={formData.joven_id}
-                onChange={(e) => handleJovenChange(e.target.value)}
-                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white ${
-                  errors.joven_id ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                }`}
-              >
-                <option value="">Seleccione un joven</option>
-                {jovenes.map((joven) => (
-                  <option key={joven.id} value={joven.id}>
-                    {joven.nombres} {joven.apellidos}
-                  </option>
-                ))}
-              </select>
-              {errors.joven_id && (
-                <p className="mt-1 text-sm text-red-600">{errors.joven_id}</p>
-              )}
-            </div>
-
-            {/* Nombre del NNAJ (auto-completado) */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Nombre del NNAJ
-              </label>
-              <input
-                type="text"
+              <JovenSearchInput
                 value={formData.nombre_nnaj}
-                readOnly
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-gray-100 dark:bg-gray-600 dark:text-white"
+                onChange={(value) => setFormData(prev => ({ ...prev, nombre_nnaj: value }))}
+                onJovenSelect={(joven) => {
+                  if (joven.id) {
+                    handleJovenChange(joven.id)
+                  }
+                }}
+                label="Nombre del NNAJ"
+                required
+                placeholder="Buscar joven por nombre..."
+                error={errors.joven_id}
               />
             </div>
 

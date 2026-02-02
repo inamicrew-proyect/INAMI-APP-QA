@@ -71,13 +71,16 @@ export default function RootLayout({
   return (
     <html lang="es" suppressHydrationWarning>
       <head>
-        {/* Script para aplicar tema antes de la hidratación */}
+        {/* Script para aplicar tema antes de la hidratación - DEBE SER EL PRIMERO */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
               (function() {
                 try {
-                  const theme = localStorage.getItem('theme') || 'light';
+                  var theme = 'light';
+                  if (typeof window !== 'undefined' && window.localStorage) {
+                    theme = window.localStorage.getItem('theme') || 'light';
+                  }
                   if (theme === 'dark') {
                     document.documentElement.classList.add('dark');
                   } else {
@@ -183,7 +186,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className={`${inter.className} ${inter.variable}`}>
+      <body className={`${inter.className} ${inter.variable}`} suppressHydrationWarning>
         {children}
       </body>
     </html>

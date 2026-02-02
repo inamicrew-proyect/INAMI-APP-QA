@@ -112,7 +112,10 @@ function Navbar() {
 
   // Evitar error de hidratación
   useEffect(() => {
-    setMounted(true)
+    // Solo marcar como montado en el cliente
+    if (typeof window !== 'undefined') {
+      setMounted(true)
+    }
   }, [])
 
   // 4. AHORA TODOS LOS HOOKS ESTÁN AL INICIO, NO HAY EARLY RETURNS
@@ -208,7 +211,8 @@ function Navbar() {
   }, [loading, permissionsLoading])
 
   // Mostrar navbar incluso si está cargando, pero sin el panel admin hasta que se cargue
-  if (!mounted) {
+  // No renderizar hasta que el componente esté montado en el cliente
+  if (typeof window === 'undefined' || !mounted) {
     return (
       <nav className="bg-gradient-to-r from-sky-500 via-sky-400 to-blue-500 shadow-lg w-full sticky top-0 z-50 backdrop-blur-sm border-b border-white/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">

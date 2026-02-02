@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { Save, ArrowLeft, User, Home, Users, Paperclip } from 'lucide-react'
 import Link from 'next/link'
+import JovenSearchInput from '@/components/JovenSearchInput'
 
 interface Joven {
   id: string
@@ -318,24 +319,19 @@ export default function InformeSocioeconomicoPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Joven <span className="text-red-500">*</span>
-              </label>
-              <select
-                value={formData.joven_id}
-                onChange={(e) => handleJovenChange(e.target.value)}
-                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white ${
-                  errors.joven_id ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                }`}
-              >
-                <option value="">Seleccione un joven</option>
-                {jovenes.map((joven) => (
-                  <option key={joven.id} value={joven.id}>
-                    {joven.nombres} {joven.apellidos}
-                  </option>
-                ))}
-              </select>
-              {errors.joven_id && <p className="mt-1 text-sm text-red-600">{errors.joven_id}</p>}
+              <JovenSearchInput
+                value={formData.nombre}
+                onChange={(value) => setFormData(prev => ({ ...prev, nombre: value }))}
+                onJovenSelect={(joven) => {
+                  if (joven && joven.id) {
+                    handleJovenChange(joven.id)
+                  }
+                }}
+                label="Joven"
+                required
+                placeholder="Buscar joven por nombre..."
+                error={errors.joven_id}
+              />
             </div>
 
             <div>

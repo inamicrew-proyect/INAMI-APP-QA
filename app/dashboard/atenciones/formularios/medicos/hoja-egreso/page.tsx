@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { ArrowLeft, Save, User, AlertTriangle } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import type { Joven } from '@/lib/supabase'
+import JovenSearchInput from '@/components/JovenSearchInput'
 
 export default function HojaEgresoPage() {
   const router = useRouter()
@@ -254,21 +255,25 @@ export default function HojaEgresoPage() {
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Nombre NNJA *
-                </label>
-                <input
-                  type="text"
-                  name="nombre_completo"
+                <JovenSearchInput
                   value={formData.nombre_completo}
-                  onChange={handleChange}
-                  className="input-field"
-                  placeholder="Nombre completo del NNAJ"
-                  disabled
+                  onChange={(value) => setFormData(prev => ({ ...prev, nombre_completo: value }))}
+                  onJovenSelect={(joven) => {
+                    if (joven.id) {
+                      setFormData(prev => ({
+                        ...prev,
+                        nombre_completo: `${joven.nombres} ${joven.apellidos}`,
+                        identidad: joven.identidad || prev.identidad,
+                        edad: calcularEdad(joven.fecha_nacimiento),
+                        fecha_ingreso: joven.fecha_ingreso || prev.fecha_ingreso
+                      }))
+                    }
+                  }}
+                  label="Nombre NNJA"
+                  required
+                  placeholder="Buscar joven por nombre..."
+                  error={errors.nombre_completo}
                 />
-                {errors.nombre_completo && (
-                  <p className="text-red-500 text-sm mt-1">{errors.nombre_completo}</p>
-                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">

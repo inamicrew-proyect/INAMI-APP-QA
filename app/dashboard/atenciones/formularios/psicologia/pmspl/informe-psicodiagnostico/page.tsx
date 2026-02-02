@@ -4,6 +4,12 @@ import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { ArrowLeft, Save } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { 
+  getUltimoFormulario, 
+  saveOrUpdateFormulario,
+  TIPOS_FORMULARIOS 
+} from '@/lib/formularios-psicologicos'
+import JovenSearchInput from '@/components/JovenSearchInput'
 
 export default function InformePsicodiagnosticoPage() {
   const router = useRouter()
@@ -13,6 +19,7 @@ export default function InformePsicodiagnosticoPage() {
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [formularioId, setFormularioId] = useState<string | null>(null)
 
   const [formData, setFormData] = useState({
     // Header Section
@@ -63,14 +70,16 @@ export default function InformePsicodiagnosticoPage() {
 
   useEffect(() => {
     if (jovenId) {
-      loadJovenData()
+      loadData()
     }
   }, [jovenId])
 
-  const loadJovenData = async () => {
+  const loadData = async () => {
     try {
       setLoading(true)
-      const { data: jovenData, error } = await supabase
+      
+      // Cargar datos del joven
+      const { data: jovenData, error: jovenError } = await supabase
         .from('jovenes')
         .select(`
           *,
@@ -79,25 +88,44 @@ export default function InformePsicodiagnosticoPage() {
         .eq('id', jovenId)
         .single()
 
-      if (error) throw error
+      if (jovenError) throw jovenError
+
+      // Cargar formulario existente si existe
+      const formularioExistente = await getUltimoFormulario(
+        jovenId,
+        TIPOS_FORMULARIOS.INFORME_PSICODIAGNOSTICO_PMSPL
+      )
 
       if (jovenData) {
-        setFormData(prev => ({
-          ...prev,
+        const datosIniciales: any = {
           nombre_nino: `${jovenData.nombres} ${jovenData.apellidos}`,
           fecha_informe: new Date().toISOString().slice(0, 10),
           edad: jovenData.edad?.toString() || '',
           fecha_nacimiento: jovenData.fecha_nacimiento || '',
           lugar_nacimiento: jovenData.lugar_nacimiento || '',
-          genero: jovenData.genero || '',
+          genero: jovenData.sexo || '',
           direccion: jovenData.direccion || '',
           telefono: jovenData.telefono || '',
           fecha_ingreso_pmspl: jovenData.fecha_ingreso || '',
-          expediente_judicial: jovenData.numero_expediente_judicial || ''
-        }))
+          expediente_judicial: jovenData.expediente_judicial || ''
+        }
+
+        // Si hay un formulario existente, cargar sus datos
+        if (formularioExistente && formularioExistente.datos_json) {
+          setFormularioId(formularioExistente.id || null)
+          setFormData({
+            ...datosIniciales,
+            ...formularioExistente.datos_json
+          })
+        } else {
+          setFormData(prev => ({
+            ...prev,
+            ...datosIniciales
+          }))
+        }
       }
     } catch (error) {
-      console.error('Error loading joven:', error)
+      console.error('Error loading data:', error)
     } finally {
       setLoading(false)
     }
@@ -115,20 +143,18 @@ export default function InformePsicodiagnosticoPage() {
     e.preventDefault()
     try {
       setSaving(true)
-      const { error } = await supabase
-        .from('formularios_psicologicos')
-        .insert([{
-          joven_id: jovenId,
-          tipo_formulario: 'informe_psicodiagnostico',
-          datos_json: formData,
-          fecha_creacion: new Date().toISOString()
-        }])
-      if (error) throw error
+      
+      await saveOrUpdateFormulario(
+        jovenId,
+        TIPOS_FORMULARIOS.INFORME_PSICODIAGNOSTICO_PMSPL,
+        formData
+      )
+      
       alert('Formulario guardado exitosamente')
       router.push(`/dashboard/jovenes/${jovenId}/expediente`)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving form:', error)
-      alert('Error al guardar el formulario')
+      alert(error.message || 'Error al guardar el formulario')
     } finally {
       setSaving(false)
     }
@@ -205,16 +231,21 @@ export default function InformePsicodiagnosticoPage() {
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Nombre del Niño (a) *
-                </label>
-                <input
-                  type="text"
-                  name="nombre_nino"
+                <JovenSearchInput
                   value={formData.nombre_nino}
-                  onChange={handleChange}
-                  className="input-field"
+                  onChange={(value) => setFormData(prev => ({ ...prev, nombre_nino: value }))}
+                  onJovenSelect={(joven) => {
+                    if (joven.id) {
+                      setFormData(prev => ({
+                        ...prev,
+                        nombre_nino: `${joven.nombres} ${joven.apellidos}`,
+                        edad: joven.edad?.toString() || prev.edad
+                      }))
+                    }
+                  }}
+                  label="Nombre del Niño (a)"
                   required
+                  placeholder="Buscar joven por nombre..."
                 />
               </div>
               <div>

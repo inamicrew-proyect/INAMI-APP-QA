@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { ArrowLeft, Save } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import JovenSearchInput from '@/components/JovenSearchInput'
 
 interface NucleoConvivencia {
   nombre: string
@@ -277,16 +278,21 @@ export default function EntrevistaPreeliminarPage() {
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Nombre y apellidos del NAJ *
-                </label>
-                <input
-                  type="text"
-                  name="nombre_apellidos_naj"
+                <JovenSearchInput
                   value={formData.nombre_apellidos_naj}
-                  onChange={handleChange}
-                  className="input-field"
+                  onChange={(value) => setFormData(prev => ({ ...prev, nombre_apellidos_naj: value }))}
+                  onJovenSelect={(joven) => {
+                    if (joven.id) {
+                      setFormData(prev => ({
+                        ...prev,
+                        nombre_apellidos_naj: `${joven.nombres} ${joven.apellidos}`,
+                        edad: joven.edad?.toString() || prev.edad
+                      }))
+                    }
+                  }}
+                  label="Nombre y apellidos del NAJ"
                   required
+                  placeholder="Buscar joven por nombre..."
                 />
               </div>
               <div>

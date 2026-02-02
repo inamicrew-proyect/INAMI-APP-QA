@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { ArrowLeft, Save, Heart, User, AlertTriangle } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import type { Joven } from '@/lib/supabase'
+import JovenSearchInput from '@/components/JovenSearchInput'
 
 export default function InformeSeguimientoSaludPage() {
   const router = useRouter()
@@ -260,22 +261,21 @@ export default function InformeSeguimientoSaludPage() {
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Nombre NNAJ *
-              </label>
-              <input
-                type="text"
+              <JovenSearchInput
                 value={formData.nombre_nnaj}
-                onChange={(e) => handleInputChange('nombre_nnaj', e.target.value)}
-                className={`input-field ${errors.nombre_nnaj ? 'border-red-500' : ''}`}
-                placeholder="Nombre completo del NNAJ"
+                onChange={(value) => handleInputChange('nombre_nnaj', value)}
+                onJovenSelect={(joven) => {
+                  if (joven.id) {
+                    handleInputChange('nombre_nnaj', `${joven.nombres} ${joven.apellidos}`)
+                    handleInputChange('edad', joven.edad?.toString() || '')
+                    handleInputChange('joven_id', joven.id)
+                  }
+                }}
+                label="Nombre NNAJ"
+                required
+                placeholder="Buscar joven por nombre..."
+                error={errors.nombre_nnaj}
               />
-              {errors.nombre_nnaj && (
-                <p className="text-red-500 text-sm mt-1 flex items-center gap-1">
-                  <AlertTriangle className="w-4 h-4" />
-                  {errors.nombre_nnaj}
-                </p>
-              )}
             </div>
 
             <div>

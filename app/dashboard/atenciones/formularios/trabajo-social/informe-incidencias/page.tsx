@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { ArrowLeft, Save, Users, AlertTriangle } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import type { Joven } from '@/lib/supabase'
+import JovenSearchInput from '@/components/JovenSearchInput'
 
 export default function InformeIncidenciasPage() {
   const router = useRouter()
@@ -185,35 +186,22 @@ export default function InformeIncidenciasPage() {
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Joven *
-              </label>
-              <select
-                value={formData.joven_id}
-                onChange={(e) => {
-                  const joven = jovenes.find(j => j.id === e.target.value)
-                  handleInputChange('joven_id', e.target.value)
-                  if (joven) {
+              <JovenSearchInput
+                value={formData.nombre_completo_nnaj}
+                onChange={(value) => handleInputChange('nombre_completo_nnaj', value)}
+                onJovenSelect={(joven) => {
+                  if (joven.id) {
+                    handleInputChange('joven_id', joven.id)
                     handleInputChange('nombre_completo_nnaj', `${joven.nombres} ${joven.apellidos}`)
                     handleInputChange('expediente_interno', joven.expediente_administrativo || '')
                     handleInputChange('expediente_judicial', joven.expediente_judicial || '')
                   }
                 }}
-                className={`input-field ${errors.joven_id ? 'border-red-500' : ''}`}
-              >
-                <option value="">Seleccionar joven</option>
-                {jovenes.map((joven) => (
-                  <option key={joven.id} value={joven.id}>
-                    {joven.nombres} {joven.apellidos}
-                  </option>
-                ))}
-              </select>
-              {errors.joven_id && (
-                <p className="text-red-500 text-sm mt-1 flex items-center gap-1">
-                  <AlertTriangle className="w-4 h-4" />
-                  {errors.joven_id}
-                </p>
-              )}
+                label="Joven"
+                required
+                placeholder="Buscar joven por nombre..."
+                error={errors.joven_id || errors.nombre_completo_nnaj}
+              />
             </div>
 
             <div>
@@ -249,25 +237,6 @@ export default function InformeIncidenciasPage() {
           <h2 className="text-xl font-bold text-gray-900 mb-6">Datos del Caso</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Nombre Completo NNAJ *
-              </label>
-              <input
-                type="text"
-                value={formData.nombre_completo_nnaj}
-                onChange={(e) => handleInputChange('nombre_completo_nnaj', e.target.value)}
-                className={`input-field ${errors.nombre_completo_nnaj ? 'border-red-500' : ''}`}
-                placeholder="Nombre completo del NNAJ"
-                readOnly
-              />
-              {errors.nombre_completo_nnaj && (
-                <p className="text-red-500 text-sm mt-1 flex items-center gap-1">
-                  <AlertTriangle className="w-4 h-4" />
-                  {errors.nombre_completo_nnaj}
-                </p>
-              )}
-            </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
