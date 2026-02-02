@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Settings, Palette, Bell, Shield, Lock, Sun, Moon, CheckCircle } from 'lucide-react'
+import { ArrowLeft, Settings, Palette, Bell, Shield, ShieldOff, Lock, Sun, Moon, CheckCircle } from 'lucide-react'
 import { useTheme } from '@/lib/useTheme'
 import NotificationSettings from '@/components/NotificationSettings'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
@@ -20,6 +20,7 @@ export default function ConfiguracionPage() {
   const [mfaSuccess, setMfaSuccess] = useState<string | null>(null)
   const [mfaLoading, setMfaLoading] = useState(false)
   const [mfaEnabled, setMfaEnabled] = useState(false)
+  const [enrolledFactorId, setEnrolledFactorId] = useState<string | null>(null)
   const [checkingMfaStatus, setCheckingMfaStatus] = useState(true)
 
   // Estados para cambiar contraseña
@@ -46,11 +47,13 @@ export default function ConfiguracionPage() {
           return
         }
 
-        const hasVerifiedTotp = factors?.all?.some(
+        const verifiedTotpFactor = factors?.all?.find(
           (factor) => factor.factor_type === 'totp' && factor.status === 'verified'
-        ) ?? false
+        )
+        const hasVerifiedTotp = !!verifiedTotpFactor
 
         setMfaEnabled(hasVerifiedTotp)
+        setEnrolledFactorId(verifiedTotpFactor?.id ?? null)
       } catch (err) {
         console.error('Error inesperado verificando 2FA:', err)
       } finally {
@@ -112,6 +115,33 @@ export default function ConfiguracionPage() {
       setFactorId(null)
       setMfaEnabled(true)
       setTimeout(() => {
+        router.refresh()
+      }, 2000)
+    }
+  }
+
+  // Función para desactivar 2FA
+  const handleDisableMFA = async () => {
+    if (!enrolledFactorId) return
+    if (!confirm('¿Estás seguro de que deseas desactivar la autenticación de dos factores? Tu cuenta tendrá menos seguridad.')) return
+
+    setMfaError(null)
+    setMfaSuccess(null)
+    setMfaLoading(true)
+
+    const { error } = await supabase.auth.mfa.unenroll({
+      factorId: enrolledFactorId,
+    })
+
+    setMfaLoading(false)
+    if (error) {
+      setMfaError(error.message)
+    } else {
+      setMfaSuccess('Autenticación de dos factores desactivada correctamente.')
+      setMfaEnabled(false)
+      setEnrolledFactorId(null)
+      setTimeout(() => {
+        setMfaSuccess(null)
         router.refresh()
       }, 2000)
     }
@@ -362,7 +392,7 @@ export default function ConfiguracionPage() {
                         )}
                       </div>
                       <p className="text-xs text-gray-500 dark:text-gray-400">
-                        Protege tu cuenta con una capa adicional de seguridad. Se te pedirá un código de tu app de autenticación cada vez que inicies sesión.
+                        Protege tu cuenta con una capa adicional de seguridad. Se te pedirá un código de Google Authenticator (u otra app compatible) cada vez que inicies sesión.
                       </p>
                     </div>
 
@@ -371,11 +401,31 @@ export default function ConfiguracionPage() {
                         <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
                       </div>
                     ) : mfaEnabled ? (
-                      <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-                        <p className="text-sm text-green-800 dark:text-green-200">
-                          Tu cuenta está protegida con autenticación de dos factores.
-                        </p>
-                      </div>
+                      <>
+                        <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg mb-4">
+                          <p className="text-sm text-green-800 dark:text-green-200">
+                            Tu cuenta está protegida con autenticación de dos factores.
+                          </p>
+                        </div>
+                        {mfaError && (
+                          <div className="mb-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                            <p className="text-sm text-red-800 dark:text-red-200">{mfaError}</p>
+                          </div>
+                        )}
+                        {mfaSuccess && (
+                          <div className="mb-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                            <p className="text-sm text-green-800 dark:text-green-200">{mfaSuccess}</p>
+                          </div>
+                        )}
+                        <button
+                          onClick={handleDisableMFA}
+                          disabled={mfaLoading}
+                          className="w-full px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        >
+                          <ShieldOff className="w-4 h-4" />
+                          {mfaLoading ? 'Desactivando...' : 'Desactivar 2FA'}
+                        </button>
+                      </>
                     ) : (
                       <>
                         {mfaError && (
@@ -404,7 +454,7 @@ export default function ConfiguracionPage() {
                           <div className="mt-4 space-y-4">
                             <div>
                               <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                1. Escanea este código QR con tu app de autenticación:
+                                1. Escanea este código QR con Google Authenticator:
                               </p>
                               <div 
                                 className="p-4 bg-white dark:bg-gray-900 rounded-lg inline-block border border-gray-200 dark:border-gray-700"
@@ -415,7 +465,7 @@ export default function ConfiguracionPage() {
                             <form onSubmit={handleVerifyMFA} className="space-y-3">
                               <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                  2. Ingresa el código de 6 dígitos:
+                                  2. Ingresa el código de 6 dígitos que muestra Google Authenticator:
                                 </label>
                                 <div className="flex gap-2">
                                   <input 
