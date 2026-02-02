@@ -52,15 +52,20 @@ export async function GET(request: NextRequest) {
 
     // Cargar atenciones con el cliente admin para evitar problemas de RLS
     // Especificar explícitamente la relación profesional_id para evitar ambigüedad
-    const { data, error } = await adminClient
+    const { searchParams } = new URL(request.url)
+    const limit = parseInt(searchParams.get('limit') || '50') // Límite por defecto
+    const offset = parseInt(searchParams.get('offset') || '0')
+    
+    const { data, error, count } = await adminClient
       .from('atenciones')
       .select(`
         *,
         jovenes (nombres, apellidos),
         tipos_atencion (nombre),
         profesional:profiles!atenciones_profesional_id_fkey (full_name, role)
-      `)
+      `, { count: 'exact' })
       .order('fecha_atencion', { ascending: false })
+      .range(offset, offset + limit - 1)
 
     // Debug: verificar datos cargados
     if (data && data.length > 0) {
@@ -91,8 +96,11 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({ 
+      success: true,
       atenciones: data || [],
-      success: true 
+      total: count ?? 0,
+      limit,
+      offset
     })
   } catch (error) {
     console.error('Error loading atenciones:', error)

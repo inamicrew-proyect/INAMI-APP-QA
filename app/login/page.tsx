@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 // PASO 1.1: Importar el "auth helper" en lugar de tu "lib/auth"
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import Image from 'next/image'
 import { AlertCircle } from 'lucide-react'
 
 export default function LoginPage() {
@@ -73,13 +72,49 @@ export default function LoginPage() {
     if (error) {
       setError('Credenciales incorrectas. Por favor, intenta de nuevo.')
     } else if (data?.user) {
+      console.log('✅ [Login] Login exitoso, esperando sesión...', { userId: data.user.id })
+      
       // Esperar un momento para que la sesión se establezca correctamente
-      await new Promise(resolve => setTimeout(resolve, 300))
+      await new Promise(resolve => setTimeout(resolve, 500))
 
       // Verificar que la sesión esté activa antes de redirigir
       const { data: { session } } = await supabase.auth.getSession()
+      console.log('🔍 [Login] Sesión verificada:', { hasSession: !!session, userId: session?.user?.id })
+      
       if (session) {
+        // CARGAR EL PERFIL INMEDIATAMENTE después del login antes de redirigir
+        console.log('🔄 [Login] Cargando perfil inmediatamente después del login...')
+        try {
+          const profileResponse = await fetch('/api/auth/profile', { 
+            cache: 'no-store',
+            credentials: 'include'
+          })
+          
+          if (profileResponse.ok) {
+            const profileResult = await profileResponse.json()
+            if (profileResult.profile) {
+              console.log('✅ [Login] Perfil cargado exitosamente:', {
+                id: profileResult.profile.id,
+                role: profileResult.profile.role
+              })
+              // Guardar en caché inmediatamente después del login
+              const { cacheProfile } = await import('@/lib/profile-cache')
+              cacheProfile(profileResult.profile)
+            } else {
+              console.warn('⚠️ [Login] Perfil no encontrado en respuesta')
+            }
+          } else {
+            console.warn('⚠️ [Login] Error cargando perfil:', profileResponse.status)
+          }
+        } catch (profileError) {
+          console.error('❌ [Login] Error cargando perfil:', profileError)
+        }
+        
+        // Esperar un poco más para asegurar que todo esté listo
+        await new Promise(resolve => setTimeout(resolve, 200))
+        
         // Usar window.location para forzar una recarga completa y asegurar que el middleware funcione correctamente
+        console.log('🔄 [Login] Redirigiendo a dashboard...')
         window.location.href = '/dashboard'
       } else {
         setError('Error al establecer la sesión. Por favor, intenta de nuevo.')
@@ -156,6 +191,7 @@ export default function LoginPage() {
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat',
+        backgroundAttachment: 'fixed',
       }}
     >
       {/* Overlay oscuro para mejorar legibilidad */}
@@ -166,30 +202,35 @@ export default function LoginPage() {
         {/* Logo y header */}
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
-            <div className="bg-white w-28 h-28 rounded-full shadow-lg flex items-center justify-center">
-            <Image
+            <div className="bg-white w-32 h-32 rounded-full shadow-2xl flex items-center justify-center overflow-hidden ring-4 ring-white/50 hover:ring-white/80 transition-all duration-300 hover:scale-110 animate-float">
+            <img
               src="/inami.png"
               alt="Logo INAMI"
-              width={95}
-              height={95}
-              className="object-contain"
-              priority
+              width={110}
+              height={110}
+              className="object-contain w-[110px] h-[110px] transition-transform duration-300"
+              style={{ display: 'block' }}
+              loading="eager"
             />
           </div>
           </div>
 
-          <h1 className="text-3xl font-bold text-white mb-2 drop-shadow-lg">INAMI</h1>
-          <p className="text-white text-opacity-90 drop-shadow-md">
+          <h1 className="text-4xl font-bold text-white mb-3 drop-shadow-2xl animate-slide-in-right">
+            INAMI
+          </h1>
+          <p className="text-white drop-shadow-lg text-lg font-semibold mb-2 animate-slide-in-left">
             Instituto Nacional para la Atención de Menores Infractores
           </p>
-          <p className="text-white text-opacity-80 text-sm mt-2 drop-shadow-md">
+          <p className="text-white/90 text-sm mt-2 drop-shadow-md font-medium animate-fade-in">
             Sistema de Gestión de Atenciones
           </p>
         </div>
 
-        {/* Formulario de login */}
-        <div className="card">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Iniciar Sesión</h2>
+        {/* Formulario de login - Mejorado */}
+        <div className="card-hover animate-scale-in backdrop-blur-sm bg-white/95 dark:bg-gray-800/95">
+          <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">
+            Iniciar Sesión
+          </h2>
 
           {error && (
             <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
@@ -200,7 +241,7 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="email" className="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">
                 Correo Electrónico
               </label>
               <input
@@ -215,7 +256,7 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="password" className="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">
                 Contraseña
               </label>
               <input
@@ -232,14 +273,28 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none relative overflow-hidden group"
             >
-              {loading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
+              <span className="relative z-10 flex items-center justify-center gap-2">
+                {loading ? (
+                  <>
+                    <div className="spinner w-4 h-4 border-2"></div>
+                    <span>Iniciando sesión...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Iniciar Sesión</span>
+                    <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                    </svg>
+                  </>
+                )}
+              </span>
             </button>
           </form>
 
           <div className="mt-6 text-center space-y-2">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-700 dark:text-gray-300 font-medium">
               El acceso está restringido al personal autorizado. Solicita asistencia al administrador
               institucional si necesitas una cuenta.
             </p>

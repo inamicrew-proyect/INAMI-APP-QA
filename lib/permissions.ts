@@ -1,6 +1,11 @@
 // lib/permissions.ts
 // Utilidades para verificar permisos basados en roles
 
+import { supabaseCache } from './optimization'
+
+// Cache de permisos en el cliente (5 minutos)
+const PERMISSIONS_CACHE_TTL = 5 * 60 * 1000
+
 export interface ModulePermission {
   modulo_id: string
   modulo: {
@@ -20,16 +25,23 @@ export interface ModulePermission {
  * Obtener permisos de un usuario basándose en sus roles
  * Con retry automático y timeout
  */
-export async function getUserPermissions(userId?: string, retries = 2): Promise<ModulePermission[]> {
+export async function getUserPermissions(userId?: string, retries = 1): Promise<ModulePermission[]> {
   const url = userId 
     ? `/api/admin/user-permissions?userId=${userId}`
     : '/api/admin/user-permissions'
   
+  // Verificar caché primero
+  const cacheKey = `client_permissions_${userId || 'current'}`
+  const cached = supabaseCache.get(cacheKey)
+  if (cached) {
+    return cached
+  }
+  
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
-      // Timeout más corto (5 segundos) para cargar más rápido
+      // Timeout más corto (3 segundos) para cargar más rápido
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 5000) // 5 segundos
+      const timeoutId = setTimeout(() => controller.abort(), 3000) // 3 segundos
 
       const response = await fetch(url, {
         cache: 'no-store',
@@ -56,7 +68,12 @@ export async function getUserPermissions(userId?: string, retries = 2): Promise<
       }
 
       const data = await response.json()
-      return data.permisos || []
+      const permisos = data.permisos || []
+      
+      // Guardar en caché
+      supabaseCache.set(cacheKey, permisos, PERMISSIONS_CACHE_TTL)
+      
+      return permisos
     } catch (error) {
       // Si es el último intento o es un error de aborto, retornar array vacío
       if (attempt === retries || (error instanceof Error && error.name === 'AbortError')) {

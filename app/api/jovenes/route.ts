@@ -38,11 +38,18 @@ export async function GET(request: NextRequest) {
   const { supabase, isAdmin } = authCheck
 
   try {
+    const { searchParams } = new URL(request.url)
+    const limit = parseInt(searchParams.get('limit') || '100') // Límite por defecto
+    const offset = parseInt(searchParams.get('offset') || '0')
+    
     // Intentar primero con el cliente con sesión
-    let { data, error } = await supabase
+    let query = supabase
       .from('jovenes')
-      .select('*, centros(*)')
+      .select('*, centros(*)', { count: 'exact' })
       .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1)
+    
+    let { data, error, count } = await query
 
     // Si hay un error de permisos y es admin, intentar con el cliente admin
     if (error && (error.code === 'PGRST301' || error.message?.includes('permission denied') || error.message?.includes('row-level security')) && isAdmin) {
@@ -51,17 +58,26 @@ export async function GET(request: NextRequest) {
       
       if (adminClient) {
         console.log('Cargando jóvenes con cliente admin (usuario es admin)')
-        const adminResult = await adminClient
+        const adminQuery = adminClient
           .from('jovenes')
-          .select('*, centros(*)')
+          .select('*, centros(*)', { count: 'exact' })
           .order('created_at', { ascending: false })
+          .range(offset, offset + limit - 1)
+        
+        const adminResult = await adminQuery
 
         if (adminResult.error) {
           console.error('Error listing jovenes with admin client:', adminResult.error)
           return NextResponse.json({ error: 'No se pudieron cargar los jóvenes.' }, { status: 500 })
         }
 
-        return NextResponse.json({ success: true, jovenes: adminResult.data ?? [] })
+        return NextResponse.json({ 
+          success: true, 
+          jovenes: adminResult.data ?? [],
+          total: adminResult.count ?? 0,
+          limit,
+          offset
+        })
       }
     }
 
@@ -70,7 +86,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'No se pudieron cargar los jóvenes.' }, { status: 500 })
     }
 
-    return NextResponse.json({ success: true, jovenes: data ?? [] })
+    return NextResponse.json({ 
+      success: true, 
+      jovenes: data ?? [],
+      total: count ?? 0,
+      limit,
+      offset
+    })
   } catch (error) {
     console.error('Unexpected error fetching jovenes:', error)
     return NextResponse.json({ error: 'Error inesperado al obtener los jóvenes.' }, { status: 500 })

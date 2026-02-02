@@ -239,6 +239,11 @@ const nextConfig = {
   experimental: {
     optimizeCss: true,
     optimizePackageImports: ['lucide-react', '@supabase/supabase-js'],
+    // Habilitar caché de rutas para mejor rendimiento
+    staleTimes: {
+      dynamic: 30,
+      static: 180,
+    },
   },
 
   // Configuración de output

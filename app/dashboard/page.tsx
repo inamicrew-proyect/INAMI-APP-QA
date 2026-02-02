@@ -61,59 +61,59 @@ export default function DashboardPage() {
         ]).catch(() => defaultValue)
       }
 
-      // Ejecutar consultas individuales con timeout y manejo de errores independiente
-      // Esto permite que si una consulta falla, las otras puedan completarse
+      // Ejecutar consultas individuales con timeout más corto y mejor manejo de errores
+      // Timeouts reducidos de 12s a 3s para mejor experiencia de usuario
       const queries = await Promise.allSettled([
-        // Consulta 1: Total de jóvenes (timeout 12s)
+        // Consulta 1: Total de jóvenes (timeout 3s)
         withTimeout(
           supabase
             .from('jovenes')
             .select('id', { count: 'exact', head: true })
             .then(result => ({ type: 'totalJovenes', count: result.count || 0, error: result.error })),
-          12000,
+          3000,
           { type: 'totalJovenes', count: 0, error: null }
         ),
         
-        // Consulta 2: Jóvenes activos (timeout 12s)
+        // Consulta 2: Jóvenes activos (timeout 3s)
         withTimeout(
           supabase
             .from('jovenes')
             .select('id', { count: 'exact', head: true })
             .eq('estado', 'activo')
             .then(result => ({ type: 'jovenesActivos', count: result.count || 0, error: result.error })),
-          12000,
+          3000,
           { type: 'jovenesActivos', count: 0, error: null }
         ),
         
-        // Consulta 3: Total de atenciones (timeout 12s)
+        // Consulta 3: Total de atenciones (timeout 3s)
         withTimeout(
           supabase
             .from('atenciones')
             .select('id', { count: 'exact', head: true })
             .then(result => ({ type: 'totalAtenciones', count: result.count || 0, error: result.error })),
-          12000,
+          3000,
           { type: 'totalAtenciones', count: 0, error: null }
         ),
         
-        // Consulta 4: Atenciones pendientes (timeout 12s)
+        // Consulta 4: Atenciones pendientes (timeout 3s)
         withTimeout(
           supabase
             .from('atenciones')
             .select('id', { count: 'exact', head: true })
             .in('estado', ['pendiente', 'en_proceso'])
             .then(result => ({ type: 'atencionesPendientes', count: result.count || 0, error: result.error })),
-          12000,
+          3000,
           { type: 'atencionesPendientes', count: 0, error: null }
         ),
         
-        // Consulta 5: Centros (timeout 8s)
+        // Consulta 5: Centros (timeout 2s - datos pequeños)
         withTimeout(
           supabase
             .from('centros')
             .select('id, nombre, tipo, ubicacion')
             .order('nombre')
             .then(result => ({ type: 'centros', data: result.data || [], error: result.error })),
-          8000,
+          2000,
           { type: 'centros', data: [], error: null }
         )
       ])
@@ -305,10 +305,12 @@ export default function DashboardPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-gray-50 dark:bg-gray-900 min-h-screen">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Inicio</h1>
-        <p className="text-gray-600 dark:text-gray-300 mt-2">
+      {/* Header con animación */}
+      <div className="mb-8 animate-fade-in">
+        <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
+          Inicio
+        </h1>
+        <p className="text-gray-700 dark:text-gray-200 mt-2 text-lg font-medium">
           Bienvenido al Sistema de Gestión de Atenciones INAMI
         </p>
       </div>
@@ -357,22 +359,31 @@ export default function DashboardPage() {
           {statCards.map((stat, index) => (
             <div 
               key={index} 
-              className="card hover:shadow-lg transition-all duration-200 hover:-translate-y-1"
+              className="card-hover group relative overflow-hidden"
+              style={{ animationDelay: `${index * 100}ms` }}
             >
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{stat.title}</p>
-                <div className={`${stat.bgColor} p-2 rounded-lg`}>
-                  <stat.icon className={`w-5 h-5 ${stat.textColor}`} />
+              {/* Efecto de brillo al hover */}
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+              
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">{stat.title}</p>
+                <div className={`${stat.bgColor} p-3 rounded-xl group-hover:scale-110 transition-transform duration-300 shadow-md`}>
+                  <stat.icon className={`w-6 h-6 ${stat.textColor} group-hover:rotate-12 transition-transform duration-300`} />
                 </div>
               </div>
               <div className="flex items-baseline justify-between">
-                <p className="text-3xl font-bold text-gray-900 dark:text-white">{stat.value}</p>
+                <p className="text-4xl font-bold text-gray-900 dark:text-white group-hover:scale-105 transition-transform duration-300">
+                  {stat.value}
+                </p>
                 {stat.trend && (
-                  <div className="flex items-center gap-1 text-sm text-gray-500">
+                  <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-xs font-semibold text-gray-700 dark:text-gray-200">
+                    <TrendingUp className="w-3 h-3 text-gray-700 dark:text-gray-200" />
                     <span>{stat.trend}%</span>
                   </div>
                 )}
               </div>
+              {/* Barra decorativa inferior */}
+              <div className={`absolute bottom-0 left-0 right-0 h-1 ${stat.color} opacity-0 group-hover:opacity-100 transition-opacity duration-300`}></div>
             </div>
           ))}
         </div>
@@ -386,17 +397,26 @@ export default function DashboardPage() {
             <Link
               key={index}
               href={action.href}
-              className="card hover:shadow-lg transition-all duration-200 hover:-translate-y-1 cursor-pointer group"
+              className="card-hover group relative overflow-hidden cursor-pointer"
+              style={{ animationDelay: `${index * 150}ms` }}
             >
-              <div className={`${action.color} w-12 h-12 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
-                <action.icon className="w-6 h-6 text-white" />
+              {/* Fondo con gradiente animado */}
+              <div className={`absolute inset-0 ${action.color} opacity-0 group-hover:opacity-5 transition-opacity duration-300`}></div>
+              
+              <div className={`${action.color} w-14 h-14 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 group-hover:rotate-6 transition-all duration-300 shadow-lg relative z-10`}>
+                <action.icon className="w-7 h-7 text-white group-hover:scale-110 transition-transform duration-300" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{action.title}</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400">{action.description}</p>
-              <div className="mt-4 flex items-center text-sm text-primary-600 dark:text-primary-400 group-hover:gap-2 transition-all">
-                <span>Ir</span>
-                <ArrowUpRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2 group-hover:text-primary-600 dark:group-hover:text-primary-300 transition-colors duration-300">
+                {action.title}
+              </h3>
+              <p className="text-sm text-gray-700 dark:text-gray-300 mb-4 font-medium">{action.description}</p>
+              <div className="mt-4 flex items-center text-sm font-semibold text-primary-600 dark:text-primary-400 group-hover:text-primary-700 dark:group-hover:text-primary-300 group-hover:gap-2 transition-all duration-300">
+                <span>Explorar</span>
+                <ArrowUpRight className="w-4 h-4 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300" />
               </div>
+              
+              {/* Efecto de borde animado */}
+              <div className="absolute inset-0 border-2 border-primary-500 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
             </Link>
           ))}
         </div>
@@ -404,63 +424,65 @@ export default function DashboardPage() {
 
       {/* Information Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Centros Info */}
-        <div className="card">
+        {/* Centros Info - Mejorado */}
+        <div className="card-hover animate-slide-in-left">
           <div className="flex items-center gap-3 mb-6">
-            <div className="p-2 bg-primary-100 dark:bg-primary-900/20 rounded-lg">
-              <Building2 className="w-6 h-6 text-primary-600 dark:text-primary-400" />
+            <div className="p-3 bg-gradient-to-br from-primary-100 to-primary-200 dark:from-primary-900/30 dark:to-primary-800/30 rounded-xl shadow-md">
+              <Building2 className="w-7 h-7 text-primary-600 dark:text-primary-400" />
             </div>
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white">Centros de Atención</h3>
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white">Centros de Atención</h3>
           </div>
           <div className="space-y-4">
-            <div className="border-l-4 border-blue-500 pl-4 py-2 bg-blue-50/50 dark:bg-blue-900/10 rounded-r">
+            <div className="border-l-4 border-blue-500 pl-4 py-2 bg-blue-50/50 dark:bg-blue-900/20 rounded-r">
               <h4 className="font-semibold text-gray-900 dark:text-white mb-2">CPI - Centros Pedagógicos</h4>
               {centrosCPI.length > 0 ? (
-                <ul className="text-sm text-gray-600 dark:text-gray-300 space-y-1">
+                <ul className="text-sm text-gray-700 dark:text-gray-200 space-y-1 font-medium">
                   {centrosCPI.map((centro) => (
                     <li key={centro.id} className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                      {centro.nombre} <span className="text-gray-400">({centro.ubicacion})</span>
+                      <span className="w-1.5 h-1.5 bg-blue-500 dark:bg-blue-400 rounded-full"></span>
+                      {centro.nombre} <span className="text-gray-500 dark:text-gray-400">({centro.ubicacion})</span>
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="text-sm text-gray-500 dark:text-gray-400">No hay centros CPI registrados</p>
+                <p className="text-sm text-gray-700 dark:text-gray-300">No hay centros CPI registrados</p>
               )}
             </div>
-            <div className="border-l-4 border-green-500 pl-4 py-2 bg-green-50/50 dark:bg-green-900/10 rounded-r">
+            <div className="border-l-4 border-green-500 pl-4 py-2 bg-green-50/50 dark:bg-green-900/20 rounded-r">
               <h4 className="font-semibold text-gray-900 dark:text-white mb-2">PAMSPL - Programas de Atención</h4>
               {centrosPAMSPL.length > 0 ? (
-                <ul className="text-sm text-gray-600 dark:text-gray-300 space-y-1">
+                <ul className="text-sm text-gray-700 dark:text-gray-200 space-y-1 font-medium">
                   {centrosPAMSPL.map((centro) => (
                     <li key={centro.id} className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
-                      {centro.nombre} <span className="text-gray-400">({centro.ubicacion})</span>
+                      <span className="w-1.5 h-1.5 bg-green-500 dark:bg-green-400 rounded-full"></span>
+                      {centro.nombre} <span className="text-gray-600 dark:text-gray-400">({centro.ubicacion})</span>
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="text-sm text-gray-500 dark:text-gray-400">No hay centros PAMSPL registrados</p>
+                <p className="text-sm text-gray-700 dark:text-gray-300">No hay centros PAMSPL registrados</p>
               )}
             </div>
           </div>
         </div>
 
-        {/* Tipos de Atención */}
-        <div className="card">
+        {/* Tipos de Atención - Mejorado */}
+        <div className="card-hover animate-slide-in-right">
           <div className="flex items-center gap-3 mb-6">
-            <div className="p-2 bg-primary-100 dark:bg-primary-900/20 rounded-lg">
-              <TrendingUp className="w-6 h-6 text-primary-600 dark:text-primary-400" />
+            <div className="p-3 bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-900/30 dark:to-purple-800/30 rounded-xl shadow-md">
+              <TrendingUp className="w-7 h-7 text-purple-600 dark:text-purple-400" />
             </div>
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white">Tipos de Atención</h3>
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white">Tipos de Atención</h3>
           </div>
           <div className="grid grid-cols-2 gap-3">
             {tiposAtencion.map((tipo, i) => (
               <div 
                 key={i} 
-                className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 text-center hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors border-2 border-gray-300 dark:border-gray-600 shadow-sm"
+                className="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 rounded-xl p-4 text-center hover:from-primary-50 hover:to-primary-100 dark:hover:from-primary-900/30 dark:hover:to-primary-800/30 transition-all duration-300 border-2 border-gray-200 dark:border-gray-600 hover:border-primary-300 dark:hover:border-primary-500 shadow-sm hover:shadow-md hover:-translate-y-1 group"
               >
-                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{tipo}</p>
+                <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 group-hover:text-primary-700 dark:group-hover:text-primary-300 transition-colors duration-300">
+                  {tipo}
+                </p>
               </div>
             ))}
           </div>

@@ -385,7 +385,7 @@ export default function AtencionesPage() {
       <div className="card mb-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="relative">
-            <Search className="absolute left-1 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <Search className="absolute left-1 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400 w-5 h-5" />
             <input
               type="text"
               placeholder="  Buscar por joven, tipo de atención, profesional..."
@@ -395,7 +395,7 @@ export default function AtencionesPage() {
             />
           </div>
           <div className="relative">
-            <Filter className="absolute left-0.01 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <Filter className="absolute left-0.01 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400 w-5 h-5" />
             <select
               value={filterEstado}
               onChange={(e) => setFilterEstado(e.target.value)}
@@ -423,8 +423,8 @@ export default function AtencionesPage() {
       ) : atenciones.length === 0 ? (
         <div className="card text-center py-12">
           <FileText className="w-16 h-16 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
-          <p className="text-gray-500 dark:text-gray-400 text-lg mb-2">No hay atenciones en la base de datos</p>
-          <p className="text-sm text-gray-400 dark:text-gray-500 mb-4">
+          <p className="text-gray-700 dark:text-gray-300 text-lg mb-2 font-medium">No hay atenciones en la base de datos</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
             {loading ? 'Cargando...' : 'Registra la primera atención para comenzar'}
           </p>
           {(canCreate || !isAuthReady) && (
@@ -437,10 +437,10 @@ export default function AtencionesPage() {
       ) : filteredAtenciones.length === 0 ? (
         <div className="card text-center py-12">
           <FileText className="w-16 h-16 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
-          <p className="text-gray-500 dark:text-gray-400 text-lg mb-2">
+          <p className="text-gray-700 dark:text-gray-300 text-lg mb-2 font-medium">
             No se encontraron atenciones con los filtros aplicados
           </p>
-          <p className="text-sm text-gray-400 dark:text-gray-500 mb-4">
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
             Intenta cambiar los filtros de búsqueda o estado
           </p>
           <button
@@ -531,7 +531,7 @@ export default function AtencionesPage() {
           {/* Paginación */}
           {totalPages > 1 && (
             <div className="flex items-center justify-between mb-6">
-              <div className="text-sm text-gray-600 dark:text-gray-400">
+              <div className="text-sm text-gray-700 dark:text-gray-300">
                 Mostrando {startIndex + 1} - {Math.min(endIndex, filteredAtenciones.length)} de {filteredAtenciones.length} resultados
               </div>
               <div className="flex items-center gap-2">
@@ -542,7 +542,7 @@ export default function AtencionesPage() {
                 >
                   <ChevronLeft className="w-5 h-5" />
                 </button>
-                <span className="text-sm text-gray-600 dark:text-gray-400 px-4">
+                <span className="text-sm text-gray-700 dark:text-gray-300 px-4 font-medium">
                   Página {currentPage} de {totalPages}
                 </span>
                 <button

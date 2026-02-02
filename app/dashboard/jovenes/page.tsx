@@ -29,17 +29,15 @@ export default function JovenesPage() {
     setLoading(true)
     setError(null)
 
-    // Timeout de seguridad: forzar desactivación del loading después de 15 segundos
-    // Sin mostrar error automáticamente - probablemente la carga está progresando
+    // Timeout de seguridad: forzar desactivación del loading después de 5 segundos
     const timeoutId = setTimeout(() => {
       setLoading(false)
-      // No mostrar error automático - la UI se mostrará con los datos que tenga
-    }, 15000)
+    }, 5000)
 
     try {
-      // Agregar timeout a la petición fetch (10 segundos)
+      // Agregar timeout a la petición fetch (3 segundos) - más rápido
       const controller = new AbortController()
-      const fetchTimeout = setTimeout(() => controller.abort(), 10000) // 10 segundos para la petición
+      const fetchTimeout = setTimeout(() => controller.abort(), 3000) // 3 segundos para la petición
 
       const response = await fetch('/api/jovenes', {
         cache: 'no-store',
@@ -222,7 +220,7 @@ export default function JovenesPage() {
       <div className="card mb-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="relative">
-            <Search className="absolute left-1 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <Search className="absolute left-1 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400 w-5 h-5" />
 
             <input
               type="text"
@@ -233,7 +231,7 @@ export default function JovenesPage() {
             />
           </div>
           <div className="relative">
-            <Filter className="absolute left-1 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <Filter className="absolute left-1 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400 w-5 h-5" />
             <select value={filterEstado} onChange={(e) => setFilterEstado(e.target.value)} className="input-field pl-10">
               <option value="todos">Todos los estados</option>
               <option value="activo">Activos</option>
@@ -262,7 +260,7 @@ export default function JovenesPage() {
         </div>
       ) : filteredJovenes.length === 0 ? (
         <div className="card text-center py-12">
-          <p className="text-gray-500 dark:text-gray-400 text-lg mb-4">No se encontraron jóvenes registrados</p>
+          <p className="text-gray-700 dark:text-gray-300 text-lg mb-4 font-medium">No se encontraron jóvenes registrados</p>
 
           {/* ✅ FIX: Siempre visible (ya no desaparece) */}
           <Link href="/dashboard/jovenes/nuevo" className="btn-primary inline-flex items-center gap-2">
@@ -344,7 +342,7 @@ export default function JovenesPage() {
           {/* Paginación */}
           {totalPages > 1 && (
             <div className="flex items-center justify-between mb-6">
-              <div className="text-sm text-gray-600 dark:text-gray-400">
+              <div className="text-sm text-gray-700 dark:text-gray-300">
                 Mostrando {startIndex + 1} - {Math.min(endIndex, filteredJovenes.length)} de {filteredJovenes.length}{' '}
                 resultados
               </div>
@@ -356,7 +354,7 @@ export default function JovenesPage() {
                 >
                   <ChevronLeft className="w-5 h-5" />
                 </button>
-                <span className="text-sm text-gray-600 dark:text-gray-400 px-4">
+                <span className="text-sm text-gray-700 dark:text-gray-300 px-4 font-medium">
                   Página {currentPage} de {totalPages}
                 </span>
                 <button

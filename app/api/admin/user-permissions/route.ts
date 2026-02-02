@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
+import { supabaseCache } from '@/lib/optimization'
+
+// Cache de permisos en memoria (5 minutos)
+const PERMISSIONS_CACHE_TTL = 5 * 60 * 1000
 
 export const dynamic = 'force-dynamic'
 export const fetchCache = 'force-no-store'
@@ -19,6 +23,13 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get('userId') || session.user.id
+
+    // Verificar caché primero
+    const cacheKey = `permissions_${userId}`
+    const cached = supabaseCache.get(cacheKey)
+    if (cached) {
+      return NextResponse.json(cached)
+    }
 
     // Si el usuario solicita permisos de otro usuario, debe ser admin
     if (userId !== session.user.id) {
@@ -114,10 +125,15 @@ export async function GET(request: NextRequest) {
       permisosPorModulo[moduloId].puede_eliminar = permisosPorModulo[moduloId].puede_eliminar || permiso.puede_eliminar
     })
 
-    return NextResponse.json({ 
+    const result = { 
       permisos: Object.values(permisosPorModulo),
       roles: roleIds 
-    })
+    }
+    
+    // Guardar en caché
+    supabaseCache.set(cacheKey, result, PERMISSIONS_CACHE_TTL)
+    
+    return NextResponse.json(result)
   } catch (error) {
     console.error('Unexpected error:', error)
     return NextResponse.json({ error: 'Error inesperado' }, { status: 500 })

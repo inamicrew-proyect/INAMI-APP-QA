@@ -20,13 +20,13 @@ export default function ThemeToggle() {
     >
       {theme === 'light' ? (
         <>
-          <Moon className="w-4 h-4 text-gray-600" />
-          <span className="text-sm text-gray-600">Oscuro</span>
+          <Moon className="w-4 h-4 text-gray-700 dark:text-gray-300" />
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Oscuro</span>
         </>
       ) : (
         <>
-          <Sun className="w-4 h-4 text-yellow-500" />
-          <span className="text-sm text-yellow-500">Claro</span>
+          <Sun className="w-4 h-4 text-yellow-500 dark:text-yellow-400" />
+          <span className="text-sm font-medium text-yellow-600 dark:text-yellow-400">Claro</span>
         </>
       )}
     </button>

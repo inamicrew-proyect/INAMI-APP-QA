@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react'
 import { getSupabaseClient } from './supabase-client'
 import type { Profile } from './supabase' // Tus tipos están bien
 import type { User } from '@supabase/supabase-js'
+import { cacheProfile, getCachedProfile, clearProfileCache } from './profile-cache'
 
 // Tipo del cliente de Supabase del singleton
 type SupabaseClientType = ReturnType<typeof getSupabaseClient>
@@ -15,13 +16,36 @@ type SupabaseClientType = ReturnType<typeof getSupabaseClient>
  * Ahora requiere que le pases el cliente de Supabase.
  */
 async function getUserProfile(supabase: SupabaseClientType, userId: string) {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', userId)
-    .single()
+  console.log('🔍 [getUserProfile] Iniciando consulta...', { userId })
   
-  return { data, error }
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single()
+    
+    if (error) {
+      console.error('❌ [getUserProfile] Error en consulta:', {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint
+      })
+    } else {
+      console.log('✅ [getUserProfile] Perfil obtenido:', {
+        hasData: !!data,
+        id: data?.id,
+        email: data?.email,
+        role: data?.role
+      })
+    }
+    
+    return { data, error }
+  } catch (err) {
+    console.error('❌ [getUserProfile] Excepción:', err)
+    return { data: null, error: err as Error }
+  }
 }
 
 
@@ -50,59 +74,304 @@ export function useAuth() {
     // Usar singleton para evitar múltiples instancias de GoTrueClient
     const supabase = getSupabaseClient()
 
+    // Función para cargar perfil desde API con reintentos automáticos
+    const loadProfileFromAPI = async (userId: string, retryCount = 0): Promise<boolean> => {
+      const maxRetries = 5
+      
+      try {
+        console.log(`🔄 [useAuth] Intentando cargar perfil desde API (intento ${retryCount + 1}/${maxRetries + 1})...`, { userId, isMounted })
+        
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 segundos timeout
+        
+        const response = await fetch('/api/auth/profile', { 
+          cache: 'no-store',
+          credentials: 'include',
+          signal: controller.signal,
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          }
+        })
+        
+        clearTimeout(timeoutId)
+        console.log('🔍 [useAuth] API Response status:', response.status, response.statusText)
+        
+        if (!response.ok) {
+          const errorText = await response.text()
+          console.error('❌ [useAuth] API response not OK:', {
+            status: response.status,
+            statusText: response.statusText,
+            errorText: errorText.substring(0, 200),
+            intento: retryCount + 1
+          })
+          
+          // Reintentar si no es el último intento y el error no es 401 (no autenticado)
+          if (retryCount < maxRetries && response.status !== 401 && isMounted) {
+            const delay = (retryCount + 1) * 500
+            console.log(`🔄 [useAuth] Reintentando después de error ${response.status} en ${delay}ms...`)
+            await new Promise(resolve => setTimeout(resolve, delay))
+            return await loadProfileFromAPI(userId, retryCount + 1)
+          }
+          
+          return false
+        }
+        
+        const result = await response.json()
+        console.log('🔍 [useAuth] API response JSON:', { 
+          hasProfile: !!result.profile, 
+          error: result.error,
+          profileId: result.profile?.id,
+          profileRole: result.profile?.role,
+          profileEmail: result.profile?.email,
+          intento: retryCount + 1
+        })
+        
+        if (result.profile && isMounted) {
+          console.log('✅ [useAuth] PERFIL CARGADO desde API:', {
+            id: result.profile.id,
+            email: result.profile.email,
+            role: result.profile.role,
+            full_name: result.profile.full_name,
+            intento: retryCount + 1
+          })
+          // Guardar en caché para acceso rápido
+          cacheProfile(result.profile)
+          setProfile(result.profile)
+          setLoading(false)
+          return true
+        } else {
+          console.warn('⚠️ [useAuth] API OK pero profile es null o componente desmontado:', {
+            hasProfile: !!result.profile,
+            isMounted,
+            error: result.error,
+            intento: retryCount + 1
+          })
+          
+          // Reintentar si no es el último intento
+          if (retryCount < maxRetries && isMounted) {
+            const delay = (retryCount + 1) * 500
+            console.log(`🔄 [useAuth] Reintentando porque profile es null en ${delay}ms...`)
+            await new Promise(resolve => setTimeout(resolve, delay))
+            return await loadProfileFromAPI(userId, retryCount + 1)
+          }
+        }
+        
+        return false
+      } catch (apiError) {
+        if (apiError instanceof Error && apiError.name === 'AbortError') {
+          console.error('❌ [useAuth] Timeout cargando perfil desde API (intento ' + (retryCount + 1) + ')')
+        } else {
+          console.error('❌ [useAuth] Error cargando perfil desde API:', {
+            error: apiError,
+            message: apiError instanceof Error ? apiError.message : 'Unknown error',
+            stack: apiError instanceof Error ? apiError.stack : undefined,
+            intento: retryCount + 1
+          })
+        }
+        
+        // Reintentar si no es el último intento
+        if (retryCount < maxRetries && isMounted) {
+          const delay = (retryCount + 1) * 500
+          console.log(`🔄 [useAuth] Reintentando después de excepción en ${delay}ms...`)
+          await new Promise(resolve => setTimeout(resolve, delay))
+          return await loadProfileFromAPI(userId, retryCount + 1)
+        }
+        
+        return false
+      }
+    }
+
     // 3. Obtenemos la sesión inicial con el cliente correcto
     const getInitialSession = async () => {
       try {
-        // Timeout más corto (5 segundos) para que la app cargue más rápido
-        const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error('Timeout al obtener sesión')), 5000)
-        })
-
-        const sessionPromise = supabase.auth.getSession()
-        const { data: { session } } = await Promise.race([sessionPromise, timeoutPromise])
+        console.log('🔍 [useAuth] Iniciando getInitialSession...')
         
-        if (!isMounted) return
+        // PRIMERO: Intentar cargar desde caché si hay sesión previa
+        // Esto permite mostrar el perfil inmediatamente mientras se carga desde el servidor
+        const cachedProfile = getCachedProfile()
+        
+        // Obtener sesión primero para tener el usuario
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+        
+        console.log('🔍 [useAuth] Sesión obtenida:', {
+          hasSession: !!session,
+          hasUser: !!session?.user,
+          userId: session?.user?.id,
+          email: session?.user?.email,
+          sessionError: sessionError?.message,
+          hasCachedProfile: !!cachedProfile
+        })
+        
+        if (sessionError) {
+          console.error('❌ [useAuth] Error getting session:', sessionError)
+        }
+        
+        if (!isMounted) {
+          console.log('⚠️ [useAuth] Componente desmontado, cancelando...')
+          return
+        }
 
         if (session?.user) {
+          console.log('✅ [useAuth] Usuario encontrado, cargando perfil...', { userId: session.user.id })
           setUser(session.user)
-          // 4. Pasamos el cliente a la función auxiliar con timeout más corto
-          try {
-            const profilePromise = getUserProfile(supabase, session.user.id)
-            const profileTimeout = new Promise<never>((_, reject) => {
-              setTimeout(() => reject(new Error('Timeout al obtener perfil')), 4000)
+          
+          // Si el perfil en caché es del mismo usuario, usarlo inmediatamente
+          if (cachedProfile && cachedProfile.id === session.user.id && isMounted) {
+            console.log('✅ [useAuth] Perfil en caché coincide con usuario actual, usando temporalmente:', {
+              id: cachedProfile.id,
+              role: cachedProfile.role
             })
-            const { data: profileData } = await Promise.race([profilePromise, profileTimeout])
+            setProfile(cachedProfile)
+            setLoading(false) // Permitir que la UI se renderice mientras se actualiza
+          } else {
+            // Si el usuario cambió, limpiar caché y perfil
+            if (cachedProfile) {
+              console.log('⚠️ [useAuth] Usuario cambió, limpiando caché')
+              clearProfileCache()
+              setProfile(null)
+            }
+          }
+          
+          // USAR SOLO LA API - más confiable
+          // Intentar múltiples veces para asegurar que se cargue
+          let profileLoaded = false
+          const maxRetries = 3
+          
+          for (let attempt = 1; attempt <= maxRetries && !profileLoaded && isMounted; attempt++) {
+            console.log(`🔄 [useAuth] Intento ${attempt}/${maxRetries} de cargar perfil desde API...`)
             
-            if (isMounted && profileData) {
+            try {
+              const apiResponse = await fetch('/api/auth/profile', { 
+                cache: 'no-store',
+                credentials: 'include',
+                headers: { 
+                  'Content-Type': 'application/json',
+                  'Accept': 'application/json'
+                }
+              })
+              
+              console.log(`🔍 [useAuth] API Response status (intento ${attempt}):`, apiResponse.status, apiResponse.statusText)
+              
+              if (apiResponse.ok) {
+                const apiResult = await apiResponse.json()
+                console.log(`🔍 [useAuth] API Result (intento ${attempt}):`, { 
+                  hasProfile: !!apiResult.profile, 
+                  error: apiResult.error,
+                  profileRole: apiResult.profile?.role
+                })
+                
+                if (apiResult.profile && isMounted) {
+                  console.log('✅ [useAuth] PERFIL CARGADO desde API:', {
+                    id: apiResult.profile.id,
+                    email: apiResult.profile.email,
+                    role: apiResult.profile.role,
+                    full_name: apiResult.profile.full_name,
+                    intento: attempt
+                  })
+                  setProfile(apiResult.profile)
+                  setLoading(false)
+                  profileLoaded = true
+                  return
+                } else {
+                  console.warn(`⚠️ [useAuth] API OK pero profile es null (intento ${attempt}):`, apiResult)
+                }
+              } else {
+                const errorText = await apiResponse.text()
+                console.error(`❌ [useAuth] API Error (intento ${attempt}):`, apiResponse.status, errorText.substring(0, 200))
+              }
+            } catch (apiError) {
+              console.error(`❌ [useAuth] Error en intento ${attempt}:`, apiError)
+            }
+            
+            // Esperar antes del siguiente intento (solo si no es el último)
+            if (attempt < maxRetries && isMounted) {
+              await new Promise(resolve => setTimeout(resolve, 500 * attempt))
+            }
+          }
+          
+          // Si después de todos los intentos no se cargó, intentar método directo como último recurso
+          if (!profileLoaded) {
+            console.log('🔄 [useAuth] API falló después de todos los intentos, intentando método directo...')
+          }
+          
+          // Cargar perfil sin timeout agresivo
+          try {
+            console.log('🔍 [useAuth] Llamando getUserProfile...', { userId: session.user.id })
+            const { data: profileData, error: profileError } = await getUserProfile(supabase, session.user.id)
+            
+            console.log('🔍 [useAuth] Respuesta getUserProfile:', {
+              hasData: !!profileData,
+              hasError: !!profileError,
+              errorMessage: profileError?.message,
+              errorCode: profileError?.code,
+              profileRole: profileData?.role
+            })
+            
+            if (profileError) {
+              console.error('❌ [useAuth] Error getting profile:', profileError)
+              // Si falla, intentar desde API inmediatamente
+              const loadedFromAPI = await loadProfileFromAPI(session.user.id)
+              if (!loadedFromAPI) {
+                // Si API también falla, reintentar después de un breve delay
+                setTimeout(async () => {
+                  if (isMounted) {
+                    console.log('🔄 [useAuth] Reintentando cargar perfil...')
+                    const retry = await getUserProfile(supabase, session.user.id)
+                    if (retry.data && isMounted) {
+                      console.log('✅ [useAuth] PERFIL CARGADO (retry):', {
+                        id: retry.data.id,
+                        email: retry.data.email,
+                        role: retry.data.role,
+                        full_name: retry.data.full_name
+                      })
+                      setProfile(retry.data)
+                    } else if (retry.error) {
+                      console.error('❌ [useAuth] Error en retry, intentando API de nuevo...')
+                      await loadProfileFromAPI(session.user.id)
+                    }
+                  }
+                }, 1000)
+              }
+            } else if (isMounted && profileData) {
+              console.log('✅ [useAuth] PERFIL CARGADO:', {
+                id: profileData.id,
+                email: profileData.email,
+                role: profileData.role,
+                full_name: profileData.full_name
+              })
               setProfile(profileData)
+            } else if (isMounted) {
+              console.warn('⚠️ [useAuth] PERFIL NO CARGADO - profileData es null, intentando API...')
+              await loadProfileFromAPI(session.user.id)
             }
           } catch (profileError) {
-            console.error('Error getting profile:', profileError)
-            // Continuar sin perfil para que la app no se quede bloqueada
-            // Si hay timeout, intentar obtener el perfil de forma diferida
-            if (isMounted) {
-              // Cargar perfil en segundo plano sin bloquear
-              getUserProfile(supabase, session.user.id)
-                .then(({ data: profileData }) => {
-                  if (isMounted && profileData) {
-                    setProfile(profileData)
-                  }
-                })
-                .catch(() => {
-                  // Ignorar errores silenciosamente en carga diferida
-                })
-            }
+            console.error('❌ [useAuth] Error getting profile (catch):', profileError)
+            // Intentar desde API si falla
+            await loadProfileFromAPI(session.user.id)
+          }
+        } else {
+          // No hay sesión, marcar como cargado
+          console.log('⚠️ [useAuth] No hay sesión activa')
+          if (isMounted) {
+            setLoading(false)
           }
         }
       } catch (error) {
-        // Solo loguear errores críticos, no timeouts esperados
-        if (error instanceof Error && !error.message.includes('Timeout')) {
-          console.error('Error getting initial session:', error)
+        console.error('❌ [useAuth] Error en getInitialSession:', error)
+        if (error instanceof Error) {
+          console.error('❌ [useAuth] Error details:', {
+            message: error.message,
+            stack: error.stack
+          })
         }
         // Continuar sin sesión para que la app no se quede bloqueada
-        // La sesión se cargará cuando el usuario interactúe o cuando onAuthStateChange se active
       } finally {
         if (isMounted) {
+          console.log('🔍 [useAuth] Finalizando getInitialSession, setting loading=false')
           setLoading(false)
         }
       }
@@ -111,33 +380,130 @@ export function useAuth() {
     getInitialSession()
 
     // 5. Escuchamos cambios de autenticación (login, logout)
+    // Este listener se dispara cuando hay cambios en la autenticación
     try {
       const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(
-        async (_event, session) => {
-          if (!isMounted) return
+        async (event, session) => {
+          console.log('🔔 [useAuth] onAuthStateChange:', { event, hasSession: !!session, userId: session?.user?.id })
+          
+          if (!isMounted) {
+            console.log('⚠️ [useAuth] Componente desmontado, ignorando cambio de auth')
+            return
+          }
 
           if (session?.user) {
+            console.log('✅ [useAuth] Sesión encontrada en onAuthStateChange, cargando perfil...', { 
+              event, 
+              userId: session.user.id,
+              currentProfile: profile?.id 
+            })
             setUser(session.user)
+            setLoading(true)
+            
             try {
-              const { data: profileData } = await getUserProfile(supabase, session.user.id)
-              if (isMounted && profileData) {
-                setProfile(profileData)
+              // Si ya tenemos el perfil y es del mismo usuario, verificar que esté actualizado
+              if (profile && profile.id === session.user.id) {
+                console.log('✅ [useAuth] Perfil ya cargado para este usuario')
+                // Pero si el evento es SIGNED_IN, forzar recarga para asegurar datos frescos
+                if (event === 'SIGNED_IN') {
+                  console.log('🔄 [useAuth] Evento SIGNED_IN detectado, forzando recarga del perfil...')
+                } else {
+                  setLoading(false)
+                  return
+                }
+              }
+              
+              // SIEMPRE intentar cargar desde API primero (más confiable después de login)
+              console.log('🔄 [useAuth] Cargando perfil desde API en onAuthStateChange...')
+              const loadedFromAPI = await loadProfileFromAPI(session.user.id)
+              
+              if (!loadedFromAPI) {
+                console.log('⚠️ [useAuth] API falló, intentando método directo...')
+                // Si API falla, intentar método directo
+                const { data: profileData, error: profileError } = await getUserProfile(supabase, session.user.id)
+                
+                if (profileError) {
+                  console.error('❌ [useAuth] Error getting profile in auth change:', profileError)
+                  // Reintentar desde API después de un breve delay
+                  setTimeout(async () => {
+                    if (isMounted) {
+                      await loadProfileFromAPI(session.user.id)
+                    }
+                  }, 1000)
+                } else if (isMounted && profileData) {
+                  console.log('✅ [useAuth] PERFIL CARGADO en onAuthStateChange (método directo):', {
+                    id: profileData.id,
+                    email: profileData.email,
+                    role: profileData.role,
+                    full_name: profileData.full_name
+                  })
+                  // Guardar en caché
+                  cacheProfile(profileData)
+                  setProfile(profileData)
+                } else {
+                  console.warn('⚠️ [useAuth] profileData es null o componente desmontado')
+                }
+              } else {
+                console.log('✅ [useAuth] Perfil cargado exitosamente desde API en onAuthStateChange')
               }
             } catch (profileError) {
-              console.error('Error getting profile in auth change:', profileError)
+              console.error('❌ [useAuth] Error getting profile in auth change (catch):', profileError)
+              // Reintentar desde API después de un breve delay
+              setTimeout(async () => {
+                if (isMounted) {
+                  await loadProfileFromAPI(session.user.id)
+                }
+              }, 1000)
+            }
+            
+            if (isMounted) {
+              setLoading(false)
             }
           } else {
-            setUser(null)
-            setProfile(null)
+            // Solo resetear si realmente no hay sesión (verificar dos veces para evitar race conditions)
+            console.log('⚠️ [useAuth] No hay sesión en onAuthStateChange, verificando...')
+            const { data: { session: doubleCheck } } = await supabase.auth.getSession()
+            
+            if (!doubleCheck) {
+              console.log('⚠️ [useAuth] Confirmado: no hay sesión, reseteando perfil')
+              setUser(null)
+              setProfile(null)
+              // Limpiar caché cuando no hay sesión
+              clearProfileCache()
+            } else {
+              console.log('✅ [useAuth] Sesión encontrada en verificación doble, manteniendo perfil')
+              // Si hay sesión pero el evento dice que no, puede ser un race condition
+              // Asegurarnos de que el perfil esté cargado
+              if (doubleCheck.user && isMounted) {
+                // Si ya tenemos el perfil para este usuario, no hacer nada
+                if (profile && profile.id === doubleCheck.user.id) {
+                  console.log('✅ [useAuth] Perfil ya existe para este usuario, manteniendo')
+                  setUser(doubleCheck.user)
+                } else {
+                  // Cargar el perfil de nuevo para asegurarnos
+                  console.log('🔄 [useAuth] Cargando perfil después de verificación doble...')
+                  const loaded = await loadProfileFromAPI(doubleCheck.user.id)
+                  if (!loaded) {
+                    const { data: profileData } = await getUserProfile(supabase, doubleCheck.user.id)
+                    if (profileData && isMounted) {
+                      setProfile(profileData)
+                    }
+                  }
+                  setUser(doubleCheck.user)
+                }
+              }
+            }
           }
+          
           if (isMounted) {
             setLoading(false)
           }
         }
       )
       subscription = authSubscription
+      console.log('✅ [useAuth] Listener de auth configurado correctamente')
     } catch (error) {
-      console.error('Error setting up auth listener:', error)
+      console.error('❌ [useAuth] Error setting up auth listener:', error)
     }
 
     return () => {

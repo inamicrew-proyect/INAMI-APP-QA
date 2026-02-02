@@ -12,7 +12,9 @@ export function usePermissions() {
   const [error, setError] = useState<string | null>(null)
 
   const loadPermissions = useCallback(async () => {
+    // Esperar a que el perfil esté cargado antes de intentar cargar permisos
     if (!profile?.id) {
+      console.log('⚠️ [usePermissions] Esperando perfil para cargar permisos...')
       setLoading(false)
       return
     }
@@ -21,16 +23,23 @@ export function usePermissions() {
       setLoading(true)
       setError(null)
       
-      // Timeout más corto (5 segundos) para que cargue más rápido
+      console.log('🔄 [usePermissions] Cargando permisos para usuario:', {
+        userId: profile.id,
+        role: profile.role
+      })
+      
+      // Timeout más largo (5 segundos) para dar más tiempo
       const timeoutPromise = new Promise<ModulePermission[]>((_, reject) => {
         setTimeout(() => reject(new Error('Timeout al cargar permisos')), 5000)
       })
       
-      const permsPromise = getUserPermissions()
+      const permsPromise = getUserPermissions(profile.id)
       const perms = await Promise.race([permsPromise, timeoutPromise])
       
-      console.log('usePermissions: Permisos cargados', {
+      console.log('✅ [usePermissions] Permisos cargados exitosamente:', {
         count: perms.length,
+        userId: profile.id,
+        role: profile.role,
         permisos: perms.map(p => ({
           modulo: p.modulo.nombre,
           ruta: p.modulo.ruta,
@@ -45,7 +54,7 @@ export function usePermissions() {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Error al cargar permisos'
       setError(errorMessage)
-      console.error('Error loading permissions:', err)
+      console.error('❌ [usePermissions] Error loading permissions:', err)
       // En caso de error, establecer permisos vacíos para que la app no se quede bloqueada
       setPermissions([])
     } finally {
