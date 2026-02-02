@@ -83,7 +83,8 @@ html {
 }
 
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {
@@ -101,7 +102,8 @@ html {
 }
 
 @keyframes float {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0px);
   }
   50% {
@@ -153,7 +155,8 @@ html {
 
 .hover-lift:hover {
   transform: translateY(-4px);
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
 
 .hover-glow {
@@ -236,16 +239,16 @@ img {
   .text-balance {
     text-wrap: balance;
   }
-  
+
   /* Asegurar contraste mínimo en textos */
   .text-gray-400 {
     @apply text-gray-600 dark:text-gray-300;
   }
-  
+
   .text-gray-500 {
     @apply text-gray-700 dark:text-gray-300;
   }
-  
+
   /* Corregir textos que pueden ser invisibles */
   .text-muted {
     @apply text-gray-600 dark:text-gray-300;
@@ -265,7 +268,12 @@ img {
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
   transition: left 0.5s;
 }
 
@@ -297,7 +305,12 @@ img {
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
   transition: left 0.5s;
 }
 
@@ -400,7 +413,197 @@ img {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
+/* ==========================
+   IMPRESIÓN: EXPEDIENTE FORMAL
+   ========================== */
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+    color: #000 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Oculta todo por defecto */
+  body * {
+    visibility: hidden !important;
+  }
+
+  /* Muestra solo el área de impresión */
+  #print-area,
+  #print-area * {
+    visibility: visible !important;
+  }
+
+  #print-area {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+  }
+
+  /* Oculta cualquier cosa marcada como print-hidden */
+  .print-hidden {
+    display: none !important;
+  }
+
+  /* Oculta elementos con print:hidden de Tailwind */
+  .print\\:hidden {
+    display: none !important;
+  }
+
+  /* Oculta botones en impresión */
+  button,
+  .btn-primary,
+  .btn-secondary,
+  .btn-danger {
+    display: none !important;
+  }
+
+  /* ====== ESTILOS DE FICHA (FORMULARIO) ====== */
+  .print-page {
+    border: 2px solid #000 !important;
+    padding: 10mm !important;
+  }
+
+  /* ====== HEADER (LOGO + TITULO + FOTO) ====== */
+  .print-header {
+    display: grid !important;
+    grid-template-columns: 32mm 1fr 32mm !important;
+    align-items: center !important;
+    gap: 6mm !important;
+    margin-bottom: 6mm !important;
+  }
+
+  .print-logo-wrap {
+    width: 32mm !important;
+    height: 22mm !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  .print-logo {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important;
+  }
+
+  .print-header-title {
+    text-align: center !important;
+  }
+
+  .print-title {
+    text-align: center !important;
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    font-size: 14px !important;
+    margin: 0 !important;
+  }
+
+  .print-subtitle {
+    margin-top: 1.5mm !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+  }
+
+  .print-photo-wrap {
+    width: 32mm !important;
+    height: 32mm !important;
+    border: 1px solid #000 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    overflow: hidden !important;
+  }
+
+  .print-photo {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+  }
+
+  .print-photo-placeholder {
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+  }
+
+  .print-section {
+    margin-top: 6mm !important;
+  }
+
+  .print-section-title {
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    font-size: 12px !important;
+    border-bottom: 1px solid #000 !important;
+    padding-bottom: 2mm !important;
+    margin-bottom: 3mm !important;
+  }
+
+  .two-cols {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8mm !important;
+  }
+
+  .field-row {
+    display: grid !important;
+    grid-template-columns: 45mm 1fr !important;
+    gap: 4mm !important;
+    margin: 2.5mm 0 !important;
+    font-size: 12px !important;
+  }
+
+  .field-label {
+    font-weight: 600 !important;
+  }
+
+  .field-value {
+    border-bottom: 1px solid #000 !important;
+    min-height: 6mm !important;
+    padding-bottom: 1mm !important;
+  }
+
+  .print-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    font-size: 11px !important;
+    margin-top: 3mm !important;
+  }
+
+  .print-table th,
+  .print-table td {
+    border: 1px solid #000 !important;
+    padding: 2.5mm !important;
+    vertical-align: top !important;
+  }
+
+  .print-table th {
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    font-size: 10px !important;
+  }
+
+  .page-break {
+    page-break-before: always !important;
+    break-before: page !important;
+  }
+}
