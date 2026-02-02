@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { Settings, Bell, Mail, Smartphone, Clock, Save, X, Shield, ArrowRight } from 'lucide-react'
 import { NotificationService, type ConfiguracionNotificaciones } from '@/lib/notifications'
@@ -29,7 +30,10 @@ export default function NotificationSettings({
   const [loadingMfa, setLoadingMfa] = useState(true)
 
   // Usar el modal externo si se proporciona, sino usar el interno
-  const showModal = externalShowModal !== undefined ? externalShowModal : internalShowModal
+  // IMPORTANTE: Solo mostrar el modal si es explícitamente true
+  const showModal = externalShowModal !== undefined 
+    ? Boolean(externalShowModal) 
+    : Boolean(internalShowModal)
   
   const handleOpenModal = () => {
     if (externalShowModal !== undefined && onClose) {
@@ -80,7 +84,7 @@ export default function NotificationSettings({
   }
 
   const handleGoToSecurity = () => {
-    setShowModal(false)
+    handleCloseModal()
     router.push('/dashboard/seguridad')
   }
 
@@ -136,46 +140,52 @@ export default function NotificationSettings({
     guardarConfiguracion(nuevaConfig)
   }
 
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   if (!user) return null
 
-  return (
-    <>
-      {/* Botón para abrir configuración - solo si showButton es true */}
-      {showButton && (
-        <button
-          onClick={handleOpenModal}
-          className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-          title="Configurar notificaciones"
-        >
-          <Settings className="w-5 h-5" />
-        </button>
-      )}
+  const modalContent = showModal ? (
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-[9999] p-4 overflow-y-auto"
+      onClick={(e) => {
+        // Cerrar modal al hacer clic fuera del contenido
+        if (e.target === e.currentTarget) {
+          handleCloseModal()
+        }
+      }}
+    >
+          <div 
+            className="bg-stone-50 dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full my-8 max-h-[90vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header fijo */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                <Bell className="w-5 h-5" />
+                Configuración de Notificaciones
+              </h2>
+              <button
+                onClick={handleCloseModal}
+                className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
 
-      {/* Modal de configuración */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50">
-          <div className="bg-stone-50 dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                  <Bell className="w-5 h-5" />
-                  Configuración de Notificaciones
-                </h2>
-                <button
-                  onClick={handleCloseModal}
-                  className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {loading ? (
-                <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-400 mx-auto"></div>
-                  <p className="text-gray-500 dark:text-gray-400 mt-2">Cargando configuración...</p>
-                </div>
-              ) : (
-                <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Contenido scrolleable */}
+            <div className="flex-1 overflow-y-auto">
+              <div className="p-6">
+                {loading ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-400 mx-auto"></div>
+                    <p className="text-gray-500 dark:text-gray-400 mt-2">Cargando configuración...</p>
+                  </div>
+                ) : (
+                  <form onSubmit={handleSubmit} id="notification-settings-form" className="space-y-6">
                   {/* Configuración general */}
                   <div>
                     <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Configuración General</h3>
@@ -325,30 +335,53 @@ export default function NotificationSettings({
                       </div>
                     </div>
                   </div>
-
-                  {/* Botones */}
-                  <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-                    <button
-                      type="button"
-                      onClick={() => setShowModal(false)}
-                      className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-md transition-colors"
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={saving}
-                      className="px-4 py-2 text-sm font-medium text-white bg-blue-600 dark:bg-blue-500 hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors flex items-center gap-2"
-                    >
-                      <Save className="w-4 h-4" />
-                      {saving ? 'Guardando...' : 'Guardar'}
-                    </button>
-                  </div>
                 </form>
-              )}
+                )}
+              </div>
             </div>
+
+            {/* Footer fijo con botones */}
+            {!loading && (
+              <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 dark:border-gray-700 flex-shrink-0 bg-stone-50 dark:bg-gray-800">
+                <button
+                  type="button"
+                  onClick={handleCloseModal}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-md transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  form="notification-settings-form"
+                  disabled={saving}
+                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 dark:bg-blue-500 hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors flex items-center gap-2"
+                >
+                  <Save className="w-4 h-4" />
+                  {saving ? 'Guardando...' : 'Guardar'}
+                </button>
+              </div>
+            )}
           </div>
         </div>
+      ) : null
+
+  return (
+    <>
+      {/* Botón para abrir configuración - solo si showButton es true */}
+      {showButton && (
+        <button
+          onClick={handleOpenModal}
+          className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+          title="Configurar notificaciones"
+        >
+          <Settings className="w-5 h-5" />
+        </button>
+      )}
+
+      {/* Modal de configuración - Renderizar en portal para evitar problemas de z-index */}
+      {mounted && typeof window !== 'undefined' && showModal && createPortal(
+        modalContent,
+        document.body
       )}
     </>
   )
