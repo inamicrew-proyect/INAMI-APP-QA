@@ -6,12 +6,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "HOSTNAME=0.0.0.0 PORT=3000 next start",
+    "start": "next start",
     "lint": "next lint",
-    "build:optimized": "NODE_ENV=production next build",
-    "start:optimized": "NODE_ENV=production HOSTNAME=0.0.0.0 PORT=3000 next start",
-    "analyze": "ANALYZE=true next build",
-    "optimize": "node scripts/optimize-build.js",
     "cleanup-users": "node scripts/cleanup-duplicate-users.js",
     "sync-user": "node scripts/sync-user-auth.js",
     "create-user": "node scripts/create-user-auth.js",
