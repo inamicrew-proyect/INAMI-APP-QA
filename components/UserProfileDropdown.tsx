@@ -50,29 +50,36 @@ export default function UserProfileDropdown() {
     }
   }, [isOpen])
 
-  const handleSignOut = async () => {
+  const handleSignOut = () => {
     if (isSigningOut) return
     
     setIsSigningOut(true)
     setIsOpen(false)
     
-    try {
-      // Cerrar sesión en Supabase
-      await supabase.auth.signOut({ scope: 'global' })
-      
-      // Limpiar storage
+    // Redirigir INMEDIATAMENTE - no esperar a Supabase (evita que se cuelgue)
+    const timestamp = new Date().getTime()
+    window.location.href = `/login?logout=true&t=${timestamp}`
+    
+    // Limpiar sesión en segundo plano (no bloquea la redirección)
+    setTimeout(() => {
+      supabase.auth.signOut({ scope: 'global' }).catch(() => {
+        supabase.auth.signOut().catch(() => {})
+      })
       if (typeof window !== 'undefined') {
-        localStorage.clear()
-        sessionStorage.clear()
+        try {
+          const authKeys = Object.keys(localStorage).filter(key =>
+            key.includes('supabase') || key.includes('auth') || key.includes('session')
+          )
+          authKeys.forEach(key => localStorage.removeItem(key))
+          const sessionKeys = Object.keys(sessionStorage).filter(key =>
+            key.includes('supabase') || key.includes('auth') || key.includes('session')
+          )
+          sessionKeys.forEach(key => sessionStorage.removeItem(key))
+        } catch {
+          // Ignorar errores de storage
+        }
       }
-      
-      // Redirigir a login
-      window.location.replace('/login')
-    } catch (error) {
-      console.error('Error al cerrar sesión:', error)
-      // Intentar redirigir de todas formas
-      window.location.replace('/login')
-    }
+    }, 0)
   }
 
   if (!profile) return null
