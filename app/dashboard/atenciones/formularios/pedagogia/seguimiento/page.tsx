@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { ArrowLeft, Save, User, AlertTriangle } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import type { Joven } from '@/lib/supabase'
+import JovenSearchInput from '@/components/JovenSearchInput'
 
 export default function SeguimientoPedagogicoPage() {
   const router = useRouter()
@@ -259,21 +260,24 @@ export default function SeguimientoPedagogicoPage() {
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Nombre del NNAJ *
-                </label>
-                <input
-                  type="text"
-                  name="nombre_nnaj"
+                <JovenSearchInput
                   value={formData.nombre_nnaj}
-                  onChange={handleChange}
-                  className="input-field"
-                  placeholder="Nombre completo del NNAJ"
-                  disabled
+                  onChange={(value) => setFormData(prev => ({ ...prev, nombre_nnaj: value }))}
+                  onJovenSelect={(joven) => {
+                    if (joven.id) {
+                      setFormData(prev => ({
+                        ...prev,
+                        nombre_nnaj: `${joven.nombres} ${joven.apellidos}`,
+                        edad: calcularEdad(joven.fecha_nacimiento),
+                        centro: joven.centros?.nombre || prev.centro
+                      }))
+                    }
+                  }}
+                  label="Nombre del NNAJ"
+                  required
+                  placeholder="Buscar joven por nombre..."
+                  error={errors.nombre_nnaj}
                 />
-                {errors.nombre_nnaj && (
-                  <p className="text-red-500 text-sm mt-1">{errors.nombre_nnaj}</p>
-                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">

@@ -6,9 +6,10 @@ import { useTheme } from '@/lib/useTheme'
 export default function ThemeToggle() {
   const { theme, toggleTheme, mounted } = useTheme()
 
-  if (!mounted) {
+  // No renderizar hasta que el componente esté montado en el cliente
+  if (typeof window === 'undefined' || !mounted) {
     return (
-      <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-800 animate-pulse"></div>
+      <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-800 animate-pulse" suppressHydrationWarning></div>
     )
   }
 

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { Save, ArrowLeft, User, FileText, Shield, AlertTriangle } from 'lucide-react'
 import Link from 'next/link'
+import JovenSearchInput from '@/components/JovenSearchInput'
 
 interface Joven {
   id: string
@@ -359,22 +360,18 @@ export default function FichaIngresoPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Seleccionar Joven *
-              </label>
-              <select
-                value={formData.joven_id}
-                onChange={(e) => handleJovenChange(e.target.value)}
-                className="input-field"
+              <JovenSearchInput
+                value={formData.nombre_completo}
+                onChange={(value) => setFormData(prev => ({ ...prev, nombre_completo: value }))}
+                onJovenSelect={(joven) => {
+                  if (joven && joven.id) {
+                    handleJovenChange(joven.id)
+                  }
+                }}
+                label="Seleccionar Joven"
                 required
-              >
-                <option value="">Seleccionar joven</option>
-                {jovenes.map(joven => (
-                  <option key={joven.id} value={joven.id}>
-                    {joven.nombres} {joven.apellidos}
-                  </option>
-                ))}
-              </select>
+                placeholder="Buscar joven por nombre..."
+              />
             </div>
 
             <div>

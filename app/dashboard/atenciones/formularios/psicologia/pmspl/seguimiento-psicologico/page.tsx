@@ -4,6 +4,12 @@ import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { ArrowLeft, Save } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { 
+  getUltimoFormulario, 
+  saveOrUpdateFormulario,
+  TIPOS_FORMULARIOS 
+} from '@/lib/formularios-psicologicos'
+import JovenSearchInput from '@/components/JovenSearchInput'
 
 export default function SeguimientoPsicologicoPage() {
   const router = useRouter()
@@ -13,6 +19,7 @@ export default function SeguimientoPsicologicoPage() {
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [formularioId, setFormularioId] = useState<string | null>(null)
 
   const [formData, setFormData] = useState({
     // Top Section
@@ -46,14 +53,16 @@ export default function SeguimientoPsicologicoPage() {
 
   useEffect(() => {
     if (jovenId) {
-      loadJovenData()
+      loadData()
     }
   }, [jovenId])
 
-  const loadJovenData = async () => {
+  const loadData = async () => {
     try {
       setLoading(true)
-      const { data: jovenData, error } = await supabase
+      
+      // Cargar datos del joven
+      const { data: jovenData, error: jovenError } = await supabase
         .from('jovenes')
         .select(`
           *,
@@ -62,17 +71,36 @@ export default function SeguimientoPsicologicoPage() {
         .eq('id', jovenId)
         .single()
 
-      if (error) throw error
+      if (jovenError) throw jovenError
+
+      // Cargar formulario existente si existe
+      const formularioExistente = await getUltimoFormulario(
+        jovenId,
+        TIPOS_FORMULARIOS.SEGUIMIENTO_PSICOLOGICO
+      )
 
       if (jovenData) {
-        setFormData(prev => ({
-          ...prev,
+        const datosIniciales: any = {
           nombre_nnaj: `${jovenData.nombres} ${jovenData.apellidos}`,
           fecha_atencion: new Date().toISOString().slice(0, 10)
-        }))
+        }
+
+        // Si hay un formulario existente, cargar sus datos
+        if (formularioExistente && formularioExistente.datos_json) {
+          setFormularioId(formularioExistente.id || null)
+          setFormData({
+            ...datosIniciales,
+            ...formularioExistente.datos_json
+          })
+        } else {
+          setFormData(prev => ({
+            ...prev,
+            ...datosIniciales
+          }))
+        }
       }
     } catch (error) {
-      console.error('Error loading joven:', error)
+      console.error('Error loading data:', error)
     } finally {
       setLoading(false)
     }
@@ -94,20 +122,18 @@ export default function SeguimientoPsicologicoPage() {
     e.preventDefault()
     try {
       setSaving(true)
-      const { error } = await supabase
-        .from('formularios_psicologicos')
-        .insert([{
-          joven_id: jovenId,
-          tipo_formulario: 'seguimiento_psicologico',
-          datos_json: formData,
-          fecha_creacion: new Date().toISOString()
-        }])
-      if (error) throw error
+      
+      await saveOrUpdateFormulario(
+        jovenId,
+        TIPOS_FORMULARIOS.SEGUIMIENTO_PSICOLOGICO,
+        formData
+      )
+      
       alert('Formulario guardado exitosamente')
       router.push(`/dashboard/jovenes/${jovenId}/expediente`)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving form:', error)
-      alert('Error al guardar el formulario')
+      alert(error.message || 'Error al guardar el formulario')
     } finally {
       setSaving(false)
     }
@@ -183,16 +209,21 @@ export default function SeguimientoPsicologicoPage() {
             </h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Nombre de NNAJ *
-                </label>
-                <input
-                  type="text"
-                  name="nombre_nnaj"
+                <JovenSearchInput
                   value={formData.nombre_nnaj}
-                  onChange={handleChange}
-                  className="input-field w-full border-orange-300 focus:border-orange-500 focus:ring-orange-500"
+                  onChange={(value) => setFormData(prev => ({ ...prev, nombre_nnaj: value }))}
+                  onJovenSelect={(joven) => {
+                    if (joven.id) {
+                      setFormData(prev => ({
+                        ...prev,
+                        nombre_nnaj: `${joven.nombres} ${joven.apellidos}`,
+                        edad: joven.edad?.toString() || prev.edad
+                      }))
+                    }
+                  }}
+                  label="Nombre de NNAJ"
                   required
+                  placeholder="Buscar joven por nombre..."
                 />
               </div>
               <div>

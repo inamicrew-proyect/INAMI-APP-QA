@@ -15,9 +15,9 @@ export function useTheme() {
     setMounted(true)
     
     try {
-      // Cargar tema guardado o usar light por defecto
+    // Cargar tema guardado o usar light por defecto
       const savedTheme = (localStorage.getItem('theme') as Theme) || 'light'
-      setTheme(savedTheme)
+    setTheme(savedTheme)
       
       // Aplicar clase dark al documento
       if (savedTheme === 'dark') {
@@ -38,11 +38,11 @@ export function useTheme() {
     if (typeof window === 'undefined') return
     
     try {
-      const newTheme = theme === 'light' ? 'dark' : 'light'
-      setTheme(newTheme)
+    const newTheme = theme === 'light' ? 'dark' : 'light'
+    setTheme(newTheme)
       
       // Guardar en localStorage
-      localStorage.setItem('theme', newTheme)
+    localStorage.setItem('theme', newTheme)
       
       // Aplicar o remover clase dark
       if (newTheme === 'dark') {

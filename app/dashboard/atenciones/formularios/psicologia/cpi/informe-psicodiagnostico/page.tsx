@@ -4,6 +4,12 @@ import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { ArrowLeft, Save } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { 
+  getUltimoFormulario, 
+  saveOrUpdateFormulario,
+  TIPOS_FORMULARIOS 
+} from '@/lib/formularios-psicologicos'
+import JovenSearchInput from '@/components/JovenSearchInput'
 
 export default function InformePsicodiagnosticoCPIPage() {
   const router = useRouter()
@@ -13,6 +19,7 @@ export default function InformePsicodiagnosticoCPIPage() {
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [formularioId, setFormularioId] = useState<string | null>(null)
 
   const [formData, setFormData] = useState({
     // Header Section
@@ -22,6 +29,7 @@ export default function InformePsicodiagnosticoCPIPage() {
     fecha_informe: '',
     
     // I. Datos Identificativos Personales, Judiciales y Familiares
+    joven_id: jovenId || '',
     nombre_apellidos: '',
     lugar_fecha_nacimiento: '',
     edad: '',
@@ -68,14 +76,16 @@ export default function InformePsicodiagnosticoCPIPage() {
 
   useEffect(() => {
     if (jovenId) {
-      loadJovenData()
+      loadData()
     }
   }, [jovenId])
 
-  const loadJovenData = async () => {
+  const loadData = async () => {
     try {
       setLoading(true)
-      const { data: jovenData, error } = await supabase
+      
+      // Cargar datos del joven
+      const { data: jovenData, error: jovenError } = await supabase
         .from('jovenes')
         .select(`
           *,
@@ -84,11 +94,16 @@ export default function InformePsicodiagnosticoCPIPage() {
         .eq('id', jovenId)
         .single()
 
-      if (error) throw error
+      if (jovenError) throw jovenError
+
+      // Cargar formulario existente si existe
+      const formularioExistente = await getUltimoFormulario(
+        jovenId,
+        TIPOS_FORMULARIOS.INFORME_PSICODIAGNOSTICO_CPI
+      )
 
       if (jovenData) {
-        setFormData(prev => ({
-          ...prev,
+        const datosIniciales: any = {
           nombre_apellidos: `${jovenData.nombres} ${jovenData.apellidos}`,
           fecha_informe: new Date().toISOString().slice(0, 10),
           edad: jovenData.edad?.toString() || '',
@@ -97,10 +112,27 @@ export default function InformePsicodiagnosticoCPIPage() {
             : '',
           fecha_ingreso_cpi: jovenData.fecha_ingreso || '',
           numero_expediente: jovenData.numero_expediente_judicial || ''
-        }))
+        }
+
+        // Si hay un formulario existente, cargar sus datos
+        if (formularioExistente && formularioExistente.datos_json) {
+          setFormularioId(formularioExistente.id || null)
+          const datosCargados = formularioExistente.datos_json as any
+          setFormData({
+            ...datosIniciales,
+            ...datosCargados,
+            joven_id: formularioExistente.joven_id || jovenId || ''
+          })
+        } else {
+          setFormData(prev => ({
+            ...prev,
+            ...datosIniciales,
+            joven_id: jovenId || prev.joven_id || ''
+          }))
+        }
       }
     } catch (error) {
-      console.error('Error loading joven:', error)
+      console.error('Error loading data:', error)
     } finally {
       setLoading(false)
     }
@@ -118,20 +150,76 @@ export default function InformePsicodiagnosticoCPIPage() {
     e.preventDefault()
     try {
       setSaving(true)
-      const { error } = await supabase
-        .from('formularios_psicologicos')
-        .insert([{
-          joven_id: jovenId,
-          tipo_formulario: 'informe_psicodiagnostico_cpi',
-          datos_json: formData,
-          fecha_creacion: new Date().toISOString()
-        }])
-      if (error) throw error
+      
+      console.log('FormData completo:', formData)
+      console.log('joven_id en formData:', formData.joven_id)
+      console.log('Tipo de joven_id:', typeof formData.joven_id)
+      
+      // Validar que se haya seleccionado un joven
+      if (!formData.joven_id) {
+        console.error('Error: joven_id no está definido en formData')
+        alert('Por favor, seleccione un joven desde el buscador. El campo "Nombre y apellidos" es obligatorio.')
+        setSaving(false)
+        return
+      }
+
+      // Convertir joven_id a string si es necesario
+      const joven_id = String(formData.joven_id).trim()
+      
+      if (joven_id === '' || joven_id === 'undefined' || joven_id === 'null') {
+        console.error('Error: joven_id está vacío o inválido:', joven_id)
+        alert('Por favor, seleccione un joven desde el buscador. El campo "Nombre y apellidos" es obligatorio.')
+        setSaving(false)
+        return
+      }
+
+      // Validar que el tipo de formulario esté definido
+      const tipoFormulario = TIPOS_FORMULARIOS.INFORME_PSICODIAGNOSTICO_CPI
+      if (!tipoFormulario) {
+        alert('Error: Tipo de formulario no definido')
+        setSaving(false)
+        return
+      }
+      
+      // Extraer joven_id del formData para no incluirlo en datos_json
+      const { joven_id: _, ...datosFormulario } = formData
+      
+      // Preparar los datos del formulario
+      const datosJson = {
+        ...datosFormulario
+      }
+
+      // Validar que haya datos para guardar
+      if (Object.keys(datosJson).length === 0) {
+        alert('Error: No hay datos para guardar')
+        setSaving(false)
+        return
+      }
+
+      console.log('Guardando formulario:', {
+        joven_id,
+        tipo_formulario: tipoFormulario,
+        datos_keys: Object.keys(datosJson),
+        joven_id_type: typeof joven_id,
+        joven_id_length: joven_id.length
+      })
+      
+      await saveOrUpdateFormulario(
+        joven_id,
+        tipoFormulario,
+        datosJson
+      )
+      
       alert('Formulario guardado exitosamente')
-      router.push(`/dashboard/jovenes/${jovenId}/expediente`)
-    } catch (error) {
+      router.push(`/dashboard/jovenes/${joven_id}/expediente`)
+    } catch (error: any) {
       console.error('Error saving form:', error)
-      alert('Error al guardar el formulario')
+      console.error('Error details:', {
+        message: error.message,
+        stack: error.stack,
+        formData: formData
+      })
+      alert(error.message || 'Error al guardar el formulario')
     } finally {
       setSaving(false)
     }
@@ -233,16 +321,32 @@ export default function InformePsicodiagnosticoCPIPage() {
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Nombre y apellidos *
-                  </label>
-                  <input
-                    type="text"
-                    name="nombre_apellidos"
+                  <JovenSearchInput
                     value={formData.nombre_apellidos}
-                    onChange={handleChange}
-                    className="input-field"
+                    onChange={(value) => setFormData(prev => ({ ...prev, nombre_apellidos: value }))}
+                    onJovenSelect={(joven) => {
+                      console.log('Joven seleccionado:', joven)
+                      if (joven && joven.id) {
+                        console.log('Estableciendo joven_id:', joven.id)
+                        setFormData(prev => ({
+                          ...prev,
+                          joven_id: joven.id,
+                          nombre_apellidos: `${joven.nombres} ${joven.apellidos}`,
+                          edad: joven.edad?.toString() || prev.edad,
+                          lugar_fecha_nacimiento: joven.fecha_nacimiento 
+                            ? `${joven.lugar_nacimiento || ''}, ${new Date(joven.fecha_nacimiento).toLocaleDateString('es-HN')}`
+                            : prev.lugar_fecha_nacimiento,
+                          fecha_ingreso_cpi: joven.fecha_ingreso || prev.fecha_ingreso_cpi,
+                          numero_expediente: joven.expediente_judicial || prev.numero_expediente
+                        }))
+                        console.log('joven_id establecido en formData')
+                      } else {
+                        console.warn('Joven seleccionado sin ID:', joven)
+                      }
+                    }}
+                    label="Nombre y apellidos"
                     required
+                    placeholder="Buscar joven por nombre..."
                   />
                 </div>
                 <div>

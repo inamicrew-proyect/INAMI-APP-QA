@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { ArrowLeft, Save, Shield, User, Calendar, AlertTriangle } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import type { Joven, Profile } from '@/lib/supabase'
+import JovenSearchInput from '@/components/JovenSearchInput'
 
 export default function FormularioSeguridadPage() {
   const router = useRouter()
@@ -259,27 +260,23 @@ export default function FormularioSeguridadPage() {
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Joven *
-              </label>
-              <select
-                value={formData.joven_id}
-                onChange={(e) => handleInputChange('joven_id', e.target.value)}
-                className={`input-field ${errors.joven_id ? 'border-red-500' : ''}`}
-              >
-                <option value="">Seleccionar joven</option>
-                {jovenes.map((joven) => (
-                  <option key={joven.id} value={joven.id}>
-                    {joven.nombres} {joven.apellidos}
-                  </option>
-                ))}
-              </select>
-              {errors.joven_id && (
-                <p className="text-red-500 text-sm mt-1 flex items-center gap-1">
-                  <AlertTriangle className="w-4 h-4" />
-                  {errors.joven_id}
-                </p>
-              )}
+              <JovenSearchInput
+                value={formData.nombre}
+                onChange={(value) => handleInputChange('nombre', value)}
+                onJovenSelect={(joven) => {
+                  if (joven && joven.id) {
+                    handleInputChange('joven_id', joven.id)
+                    handleInputChange('nombre', `${joven.nombres} ${joven.apellidos}`)
+                    if (joven.edad) handleInputChange('edad', joven.edad.toString())
+                    if (joven.fecha_nacimiento) handleInputChange('fecha_nacimiento', joven.fecha_nacimiento)
+                    if (joven.expediente_administrativo) handleInputChange('numero_expediente_administrativo', joven.expediente_administrativo)
+                  }
+                }}
+                label="Joven"
+                required
+                placeholder="Buscar joven por nombre..."
+                error={errors.joven_id}
+              />
             </div>
 
             <div>

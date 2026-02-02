@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { ArrowLeft, Save } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import JovenSearchInput from '@/components/JovenSearchInput'
 
 export default function SeguimientoTerapeuticoFamiliarPage() {
   const router = useRouter()
@@ -197,16 +198,21 @@ export default function SeguimientoTerapeuticoFamiliarPage() {
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Nombre y apellidos *
-                </label>
-                <input
-                  type="text"
-                  name="nombre_apellidos"
+                <JovenSearchInput
                   value={formData.nombre_apellidos}
-                  onChange={handleChange}
-                  className="input-field"
+                  onChange={(value) => setFormData(prev => ({ ...prev, nombre_apellidos: value }))}
+                  onJovenSelect={(joven) => {
+                    if (joven.id) {
+                      setFormData(prev => ({
+                        ...prev,
+                        nombre_apellidos: `${joven.nombres} ${joven.apellidos}`,
+                        edad: joven.edad?.toString() || prev.edad
+                      }))
+                    }
+                  }}
+                  label="Nombre y apellidos"
                   required
+                  placeholder="Buscar joven por nombre..."
                 />
               </div>
               <div>

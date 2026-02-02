@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { Save, ArrowLeft, User, Plus, Trash2, Users } from 'lucide-react'
 import Link from 'next/link'
+import JovenSearchInput from '@/components/JovenSearchInput'
 
 interface Joven {
   id: string
@@ -436,24 +437,31 @@ export default function PlanAtencionCautelarCPIPage() {
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Joven <span className="text-red-500">*</span>
               </label>
-              <select
-                value={formData.joven_id}
-                onChange={(e) => handleJovenChange(e.target.value)}
-                disabled={!centroSeleccionado || loading}
-                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white ${
-                  errors.joven_id ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                } ${!centroSeleccionado || loading ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                <option value="">
-                  {loading ? 'Cargando jóvenes...' : !centroSeleccionado ? 'Seleccione un centro primero' : 'Seleccione un joven'}
-                </option>
-                {jovenes.map((joven) => (
-                  <option key={joven.id} value={joven.id}>
-                    {joven.nombres} {joven.apellidos}
-                  </option>
-                ))}
-              </select>
-              {errors.joven_id && <p className="mt-1 text-sm text-red-600">{errors.joven_id}</p>}
+              {!centroSeleccionado ? (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Joven <span className="text-red-500">*</span>
+                  </label>
+                  <div className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400">
+                    Seleccione un centro primero
+                  </div>
+                </div>
+              ) : (
+                <JovenSearchInput
+                  value={formData.nombre_completo}
+                  onChange={(value) => setFormData(prev => ({ ...prev, nombre_completo: value }))}
+                  onJovenSelect={(joven) => {
+                    if (joven && joven.id) {
+                      handleJovenChange(joven.id)
+                    }
+                  }}
+                  label="Joven"
+                  required
+                  placeholder={loading ? 'Cargando jóvenes...' : 'Buscar joven por nombre...'}
+                  error={errors.joven_id}
+                  disabled={loading}
+                />
+              )}
               {centroSeleccionado && jovenes.length === 0 && !loading && (
                 <p className="mt-1 text-sm text-yellow-600">No hay jóvenes activos en este centro</p>
               )}

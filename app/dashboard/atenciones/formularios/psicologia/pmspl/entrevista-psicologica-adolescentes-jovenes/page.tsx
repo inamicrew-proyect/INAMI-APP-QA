@@ -4,6 +4,12 @@ import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { ArrowLeft, Save } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { 
+  getUltimoFormulario, 
+  saveOrUpdateFormulario,
+  TIPOS_FORMULARIOS 
+} from '@/lib/formularios-psicologicos'
+import JovenSearchInput from '@/components/JovenSearchInput'
 
 export default function EntrevistaPsicologicaAdolescentesJovenesPage() {
   const router = useRouter()
@@ -13,6 +19,7 @@ export default function EntrevistaPsicologicaAdolescentesJovenesPage() {
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [formularioId, setFormularioId] = useState<string | null>(null)
 
   const [formData, setFormData] = useState({
     // I. Información Administrativa
@@ -39,14 +46,16 @@ export default function EntrevistaPsicologicaAdolescentesJovenesPage() {
 
   useEffect(() => {
     if (jovenId) {
-      loadJovenData()
+      loadData()
     }
   }, [jovenId])
 
-  const loadJovenData = async () => {
+  const loadData = async () => {
     try {
       setLoading(true)
-      const { data: jovenData, error } = await supabase
+      
+      // Cargar datos del joven
+      const { data: jovenData, error: jovenError } = await supabase
         .from('jovenes')
         .select(`
           *,
@@ -55,21 +64,40 @@ export default function EntrevistaPsicologicaAdolescentesJovenesPage() {
         .eq('id', jovenId)
         .single()
 
-      if (error) throw error
+      if (jovenError) throw jovenError
+
+      // Cargar formulario existente si existe
+      const formularioExistente = await getUltimoFormulario(
+        jovenId,
+        TIPOS_FORMULARIOS.ENTREVISTA_PSICOLOGICA_ADOLESCENTES_JOVENES
+      )
 
       if (jovenData) {
-        setFormData(prev => ({
-          ...prev,
+        const datosIniciales: any = {
           nombre_apellidos: `${jovenData.nombres} ${jovenData.apellidos}`,
           fecha_entrevista: new Date().toISOString().slice(0, 10),
           edad: jovenData.edad?.toString() || '',
           lugar_fecha_nacimiento: jovenData.fecha_nacimiento 
             ? `${jovenData.lugar_nacimiento || ''}, ${new Date(jovenData.fecha_nacimiento).toLocaleDateString('es-HN')}`
             : ''
-        }))
+        }
+
+        // Si hay un formulario existente, cargar sus datos
+        if (formularioExistente && formularioExistente.datos_json) {
+          setFormularioId(formularioExistente.id || null)
+          setFormData({
+            ...datosIniciales,
+            ...formularioExistente.datos_json
+          })
+        } else {
+          setFormData(prev => ({
+            ...prev,
+            ...datosIniciales
+          }))
+        }
       }
     } catch (error) {
-      console.error('Error loading joven:', error)
+      console.error('Error loading data:', error)
     } finally {
       setLoading(false)
     }
@@ -87,20 +115,18 @@ export default function EntrevistaPsicologicaAdolescentesJovenesPage() {
     e.preventDefault()
     try {
       setSaving(true)
-      const { error } = await supabase
-        .from('formularios_psicologicos')
-        .insert([{
-          joven_id: jovenId,
-          tipo_formulario: 'entrevista_psicologica_adolescentes_jovenes',
-          datos_json: formData,
-          fecha_creacion: new Date().toISOString()
-        }])
-      if (error) throw error
+      
+      await saveOrUpdateFormulario(
+        jovenId,
+        TIPOS_FORMULARIOS.ENTREVISTA_PSICOLOGICA_ADOLESCENTES_JOVENES,
+        formData
+      )
+      
       alert('Formulario guardado exitosamente')
       router.push(`/dashboard/jovenes/${jovenId}/expediente`)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving form:', error)
-      alert('Error al guardar el formulario')
+      alert(error.message || 'Error al guardar el formulario')
     } finally {
       setSaving(false)
     }
@@ -201,16 +227,21 @@ export default function EntrevistaPsicologicaAdolescentesJovenesPage() {
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Nombre y apellidos *
-                </label>
-                <input
-                  type="text"
-                  name="nombre_apellidos"
+                <JovenSearchInput
                   value={formData.nombre_apellidos}
-                  onChange={handleChange}
-                  className="input-field"
+                  onChange={(value) => setFormData(prev => ({ ...prev, nombre_apellidos: value }))}
+                  onJovenSelect={(joven) => {
+                    if (joven.id) {
+                      setFormData(prev => ({
+                        ...prev,
+                        nombre_apellidos: `${joven.nombres} ${joven.apellidos}`,
+                        edad: joven.edad?.toString() || prev.edad
+                      }))
+                    }
+                  }}
+                  label="Nombre y apellidos"
                   required
+                  placeholder="Buscar joven por nombre..."
                 />
               </div>
               <div>
