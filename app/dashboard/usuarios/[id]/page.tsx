@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { ArrowLeft, Loader2, AlertCircle, User } from 'lucide-react'
 import { getSupabaseClient } from '@/lib/supabase-client'
-import { useAuth } from '@/lib/auth'
 
 type UserProfile = {
   id: string
@@ -31,7 +30,6 @@ export default function UsuarioDetallePage() {
   const params = useParams()
   const id = params?.id as string | undefined
   const supabase = getSupabaseClient()
-  const { profile: currentUserProfile } = useAuth()
 
   const [user, setUser] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
