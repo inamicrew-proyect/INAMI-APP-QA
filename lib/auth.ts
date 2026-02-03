@@ -25,6 +25,9 @@ async function getUserProfile(supabase: SupabaseClientType, userId: string) {
       .eq('id', userId)
       .single()
     
+    // Type assertion para que TypeScript reconozca el tipo correcto
+    const profileData = data as Profile | null
+    
     if (error) {
       console.error('❌ [getUserProfile] Error en consulta:', {
         code: error.code,
@@ -34,14 +37,14 @@ async function getUserProfile(supabase: SupabaseClientType, userId: string) {
       })
     } else {
       console.log('✅ [getUserProfile] Perfil obtenido:', {
-        hasData: !!data,
-        id: data?.id,
-        email: data?.email,
-        role: data?.role
+        hasData: !!profileData,
+        id: profileData?.id,
+        email: profileData?.email,
+        role: profileData?.role
       })
     }
     
-    return { data, error }
+    return { data: profileData, error }
   } catch (err) {
     console.error('❌ [getUserProfile] Excepción:', err)
     return { data: null, error: err as Error }
