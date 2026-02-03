@@ -4,13 +4,11 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Save, Users } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import type { Joven } from '@/lib/supabase'
 import JovenSearchInput from '@/components/JovenSearchInput'
 
 export default function InformeIncidenciasPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
-  const [jovenes, setJovenes] = useState<Joven[]>([])
   
   const [formData, setFormData] = useState({
     joven_id: '',
@@ -44,17 +42,6 @@ export default function InformeIncidenciasPage() {
 
   const loadData = async () => {
     try {
-      // Cargar jóvenes activos
-      const { data: jovenesData, error: jovenesError } = await supabase
-        .from('jovenes')
-        .select('*')
-        .eq('estado', 'activo')
-        .order('nombres')
-
-      if (jovenesError) throw jovenesError
-
-      setJovenes(jovenesData || [])
-
       // Obtener el usuario actual (trabajador social)
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
