@@ -5,6 +5,13 @@ import { useRouter, useParams } from 'next/navigation'
 import { ArrowLeft, Edit, FileText, User, MapPin, Phone, AlertCircle, Download, Printer, Eye } from 'lucide-react'
 import { getSupabaseClient } from '@/lib/supabase-client'
 import type { Joven, Profile, Atencion, TipoAtencion } from '@/lib/supabase'
+
+// Tipo para la respuesta de la query con relaciones
+type AtencionWithRelations = Atencion & {
+  jovenes: Joven | null
+  tipos_atencion: TipoAtencion | null
+  profesional: Profile | null
+}
 import { format } from 'date-fns'
 import { exportAtencionPDF, type PDFData } from '@/lib/pdf-generator'
 import { useAuth } from '@/lib/auth'
@@ -62,10 +69,13 @@ export default function DetallesAtencionPage() {
         throw new Error('No se encontró la atención')
       }
 
-      setAtencion(atencionData)
-      setJoven(atencionData.jovenes)
-      setProfesional(atencionData.profesional)
-      setTipoAtencion(atencionData.tipos_atencion)
+      // Type assertion para incluir las relaciones
+      const atencionWithRelations = atencionData as AtencionWithRelations
+
+      setAtencion(atencionWithRelations)
+      setJoven(atencionWithRelations.jovenes)
+      setProfesional(atencionWithRelations.profesional)
+      setTipoAtencion(atencionWithRelations.tipos_atencion)
 
       // Cargar formulario específico si existe
       const { data: formularioData, error: formularioError } = await supabase
