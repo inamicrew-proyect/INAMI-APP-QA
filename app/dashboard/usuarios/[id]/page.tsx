@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import Link from 'next/link'
 import { ArrowLeft, Loader2, AlertCircle, User } from 'lucide-react'
 import { getSupabaseClient } from '@/lib/supabase-client'
 import { useAuth } from '@/lib/auth'
