@@ -19,7 +19,6 @@ export default function EntrevistaPsicologicaAdolescentesJovenesPage() {
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const [formularioId, setFormularioId] = useState<string | null>(null)
 
   const [formData, setFormData] = useState({
     // I. Información Administrativa
@@ -84,7 +83,6 @@ export default function EntrevistaPsicologicaAdolescentesJovenesPage() {
 
         // Si hay un formulario existente, cargar sus datos
         if (formularioExistente && formularioExistente.datos_json) {
-          setFormularioId(formularioExistente.id || null)
           setFormData({
             ...datosIniciales,
             ...formularioExistente.datos_json
