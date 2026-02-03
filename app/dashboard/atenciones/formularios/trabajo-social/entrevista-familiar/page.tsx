@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import { Save, ArrowLeft, User, Search, Users } from 'lucide-react'
+import { Save, ArrowLeft, User, Users } from 'lucide-react'
 import Link from 'next/link'
 import JovenSearchInput from '@/components/JovenSearchInput'
 
