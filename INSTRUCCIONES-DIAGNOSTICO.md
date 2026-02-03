@@ -10,7 +10,7 @@ Tienes dos URLs funcionando:
 ### 1. Verificar procesos de PM2
 
 ```bash
-pm2 list
+pm2 list .
 ```
 
 Esto mostrará todos los procesos de PM2. Deberías ver solo `inami-qa` si es el único que está corriendo.
@@ -55,7 +55,7 @@ sudo cat /etc/nginx/sites-enabled/*.conf | grep -A 10 -B 5 "inami"
 
 # Dar permisos de ejecución
 chmod +x scripts/diagnostico-vps.sh
-
+####
 # Ejecutar
 ./scripts/diagnostico-vps.sh
 ```
