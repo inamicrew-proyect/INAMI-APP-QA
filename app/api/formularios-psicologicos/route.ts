@@ -17,24 +17,36 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
+    // Filtrar por ID específico
+    if (formularioId) {
+      const { data, error } = await supabase
+        .from('formularios_psicologicos')
+        .select('*')
+        .eq('id', formularioId)
+        .single()
+
+      if (error) {
+        console.error('Error fetching formulario:', error)
+        return NextResponse.json({ error: error.message }, { status: 500 })
+      }
+
+      return NextResponse.json({ data })
+    }
+
+    // Construir query para múltiples resultados
     let query = supabase
       .from('formularios_psicologicos')
       .select('*')
       .order('fecha_creacion', { ascending: false })
 
-    // Filtrar por ID específico
-    if (formularioId) {
-      query = query.eq('id', formularioId).single()
-    } else {
-      // Filtrar por joven_id
-      if (jovenId) {
-        query = query.eq('joven_id', jovenId)
-      }
+    // Filtrar por joven_id
+    if (jovenId) {
+      query = query.eq('joven_id', jovenId)
+    }
 
-      // Filtrar por tipo de formulario
-      if (tipoFormulario) {
-        query = query.eq('tipo_formulario', tipoFormulario)
-      }
+    // Filtrar por tipo de formulario
+    if (tipoFormulario) {
+      query = query.eq('tipo_formulario', tipoFormulario)
     }
 
     const { data, error } = await query
