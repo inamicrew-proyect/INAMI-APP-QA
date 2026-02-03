@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Save, Users, AlertTriangle } from 'lucide-react'
+import { ArrowLeft, Save, Users } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import type { Joven } from '@/lib/supabase'
 import JovenSearchInput from '@/components/JovenSearchInput'
