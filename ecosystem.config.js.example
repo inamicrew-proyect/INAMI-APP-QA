@@ -1,0 +1,25 @@
+module.exports = {
+  apps: [{
+    name: 'inami-qa',
+    script: '.next/standalone/server.js',
+    cwd: '/home/inami_admin/INAMI.APP_QA',
+    instances: 1,
+    exec_mode: 'fork',
+    env: {
+      NODE_ENV: 'production',
+      PORT: 3001
+    },
+    error_file: '/home/inami_admin/.pm2/logs/inami-qa-error.log',
+    out_file: '/home/inami_admin/.pm2/logs/inami-qa-out.log',
+    log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+    merge_logs: true,
+    autorestart: true,
+    max_memory_restart: '1G',
+    // Opciones adicionales
+    watch: false,
+    ignore_watch: ['node_modules', '.next', '.git'],
+    min_uptime: '10s',
+    max_restarts: 10,
+    restart_delay: 4000
+  }]
+}

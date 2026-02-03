@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
+    "start": "node .next/standalone/server.js",
+    "start:next": "next start",
     "lint": "next lint",
     "cleanup-users": "node scripts/cleanup-duplicate-users.js",
     "sync-user": "node scripts/sync-user-auth.js",
