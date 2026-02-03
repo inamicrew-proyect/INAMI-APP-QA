@@ -196,20 +196,6 @@ function Navbar() {
 
   // 7. Tu JSX original (menús, links, etc.)
   // Renderizado condicional dentro del JSX, no early return
-  // Agregar timeout para evitar que se quede bloqueado indefinidamente
-  const [showFallback, setShowFallback] = useState(false)
-  
-  useEffect(() => {
-    // Si la carga tarda más de 3 segundos, mostrar el navbar de todos modos (reducido de 5 a 3)
-    const timeout = setTimeout(() => {
-      if (loading || permissionsLoading) {
-        console.warn('Navbar: Timeout en carga de permisos, mostrando navbar sin permisos')
-        setShowFallback(true)
-      }
-    }, 3000)
-
-    return () => clearTimeout(timeout)
-  }, [loading, permissionsLoading])
 
   // Mostrar navbar incluso si está cargando, pero sin el panel admin hasta que se cargue
   // No renderizar hasta que el componente esté montado en el cliente
