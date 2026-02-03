@@ -2,16 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { Search, X, User } from 'lucide-react'
-
-interface Joven {
-  id: string
-  nombres: string
-  apellidos: string
-  edad?: number
-  identidad?: string
-  expediente_administrativo?: string
-  expediente_judicial?: string
-}
+import type { Joven } from '@/lib/supabase'
 
 interface JovenSearchInputProps {
   value: string
