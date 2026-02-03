@@ -37,7 +37,6 @@ export default function EntrevistaInicialAdolescentePage() {
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const [formularioId, setFormularioId] = useState<string | null>(null)
   const [nucleoConvivencia, setNucleoConvivencia] = useState<NucleoConvivencia[]>([
     { nombre: '', parentesco: '', fecha_nacimiento: '', edad: '', estado_civil: '', profesion_ocupacion: '' },
     { nombre: '', parentesco: '', fecha_nacimiento: '', edad: '', estado_civil: '', profesion_ocupacion: '' },
@@ -205,7 +204,6 @@ export default function EntrevistaInicialAdolescentePage() {
 
         // Si hay un formulario existente, cargar sus datos
         if (formularioExistente && formularioExistente.datos_json) {
-          setFormularioId(formularioExistente.id || null)
           const datosCargados = formularioExistente.datos_json as any
           setFormData({
             ...datosIniciales,
