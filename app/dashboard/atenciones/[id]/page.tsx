@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { ArrowLeft, Edit, FileText, User, MapPin, Phone, AlertCircle, Download, Printer, Eye } from 'lucide-react'
 import { getSupabaseClient } from '@/lib/supabase-client'
-import type { Joven, Profile, Atencion, TipoAtencion } from '@/lib/supabase'
+import type { Joven, Profile, Atencion, TipoAtencion, FormularioAtencion } from '@/lib/supabase'
 
 // Tipo para la respuesta de la query con relaciones
 type AtencionWithRelations = Atencion & {
@@ -85,7 +85,8 @@ export default function DetallesAtencionPage() {
         .single()
 
       if (!formularioError && formularioData) {
-        setFormularioEspecifico(formularioData.datos_json)
+        const formulario = formularioData as FormularioAtencion
+        setFormularioEspecifico(formulario.datos_json)
       }
     } catch (error: any) {
       console.error('Error loading data:', error)
