@@ -201,7 +201,9 @@ export default function IntervencionCrisisPage() {
                       setFormData(prev => ({
                         ...prev,
                         nombre_apellidos: `${joven.nombres} ${joven.apellidos}`,
-                        edad: joven.edad?.toString() || prev.edad
+                        fecha_nacimiento_edad: joven.fecha_nacimiento 
+                          ? `${new Date(joven.fecha_nacimiento).toLocaleDateString('es-HN')}, ${joven.edad || ''} años`
+                          : prev.fecha_nacimiento_edad
                       }))
                     }
                   }}
