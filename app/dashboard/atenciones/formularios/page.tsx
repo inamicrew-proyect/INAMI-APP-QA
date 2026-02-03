@@ -11,7 +11,6 @@ import {
   Scale,
   FileText,
   ArrowLeft,
-  Plus,
   BookOpen,
   Activity,
   UserCheck,
