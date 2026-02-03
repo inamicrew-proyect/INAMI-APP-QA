@@ -4,13 +4,12 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Save, Shield, User, Calendar, AlertTriangle } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import type { Joven, Profile } from '@/lib/supabase'
+import type { Profile } from '@/lib/supabase'
 import JovenSearchInput from '@/components/JovenSearchInput'
 
 export default function FormularioSeguridadPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
-  const [jovenes, setJovenes] = useState<Joven[]>([])
   const [profesionales, setProfesionales] = useState<Profile[]>([])
   
   const [formData, setFormData] = useState({
@@ -86,15 +85,6 @@ export default function FormularioSeguridadPage() {
 
   const loadData = async () => {
     try {
-      // Cargar jóvenes activos
-      const { data: jovenesData, error: jovenesError } = await supabase
-        .from('jovenes')
-        .select('*')
-        .eq('estado', 'activo')
-        .order('nombres')
-
-      if (jovenesError) throw jovenesError
-
       // Cargar profesionales de seguridad
       const { data: profesionalesData, error: profesionalesError } = await supabase
         .from('profiles')
@@ -104,7 +94,6 @@ export default function FormularioSeguridadPage() {
 
       if (profesionalesError) throw profesionalesError
 
-      setJovenes(jovenesData || [])
       setProfesionales(profesionalesData || [])
     } catch (error) {
       console.error('Error loading data:', error)
