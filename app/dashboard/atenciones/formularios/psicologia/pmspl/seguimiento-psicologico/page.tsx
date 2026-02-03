@@ -214,8 +214,7 @@ export default function SeguimientoPsicologicoPage() {
                     if (joven.id) {
                       setFormData(prev => ({
                         ...prev,
-                        nombre_nnaj: `${joven.nombres} ${joven.apellidos}`,
-                        edad: joven.edad?.toString() || prev.edad
+                        nombre_nnaj: `${joven.nombres} ${joven.apellidos}`
                       }))
                     }
                   }}
