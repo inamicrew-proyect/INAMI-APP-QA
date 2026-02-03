@@ -11,7 +11,7 @@ const ITEMS_PER_PAGE = 20
 
 export default function JovenesPage() {
   const { isAdmin, loading: authLoading } = useIsAdmin()
-  const { canCreate, loading: canCreateLoading } = useCanCreate()
+  const { loading: canCreateLoading } = useCanCreate()
 
   const [jovenes, setJovenes] = useState<(Joven & { centros?: Centro })[]>([])
   const [loading, setLoading] = useState(true)
