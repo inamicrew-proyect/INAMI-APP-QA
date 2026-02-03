@@ -100,7 +100,6 @@ export default function EntrevistaFamiliarPMSPLPage() {
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [searchTerm, setSearchTerm] = useState('')
-  const [showDropdown, setShowDropdown] = useState(false)
 
   const [formData, setFormData] = useState<FormData>({
     joven_id: '',
@@ -258,7 +257,6 @@ export default function EntrevistaFamiliarPMSPLPage() {
       exp_administrativo: joven.expediente_administrativo || ''
     }))
     setSearchTerm(`${joven.nombres} ${joven.apellidos}`)
-    setShowDropdown(false)
   }
 
   const handleCheckboxChange = (field: string, value: string, checked: boolean) => {
