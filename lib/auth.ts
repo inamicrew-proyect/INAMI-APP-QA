@@ -313,7 +313,7 @@ export function useAuth() {
               hasData: !!profileData,
               hasError: !!profileError,
               errorMessage: profileError?.message,
-              errorCode: profileError?.code,
+              errorCode: profileError && 'code' in profileError ? profileError.code : undefined,
               profileRole: profileData?.role
             })
             
