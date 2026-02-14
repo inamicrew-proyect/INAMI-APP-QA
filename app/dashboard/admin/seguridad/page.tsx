@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Shield, AlertTriangle, CheckCircle, Activity, Users, FileText, Bell, Clock, Filter } from 'lucide-react'
+import { Shield, AlertTriangle, CheckCircle, Activity, Users, FileText, Bell, Clock } from 'lucide-react'
 import { useAdminAccess } from '@/lib/hooks/useAdminAccess'
 
 interface Alerta {
