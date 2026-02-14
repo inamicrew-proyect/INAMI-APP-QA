@@ -251,7 +251,7 @@ export default function EditarUsuarioPage() {
     return (
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="card">
-          <p className="text-red-600">ID de usuario no proporcionado.</p>
+          <p className="text-red-600 dark:text-red-300">ID de usuario no proporcionado.</p>
         </div>
       </div>
     )
@@ -262,7 +262,7 @@ export default function EditarUsuarioPage() {
       <div className="flex items-center justify-between mb-8">
         <button
           onClick={() => router.back()}
-          className="inline-flex items-center gap-2 text-primary-600 hover:text-primary-700"
+          className="inline-flex items-center gap-2 text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300"
         >
           <ArrowLeft className="w-4 h-4" />
           Volver
@@ -270,17 +270,17 @@ export default function EditarUsuarioPage() {
       </div>
 
       <div className="card">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">Editar Usuario</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">Editar Usuario</h1>
 
         {loading && (
-          <div className="flex items-center gap-3 text-gray-600">
+          <div className="flex items-center gap-3 text-gray-600 dark:text-gray-400">
             <Loader2 className="w-5 h-5 animate-spin" />
             Cargando información...
           </div>
         )}
 
         {!loading && error && (
-          <div className="flex items-center gap-3 text-red-600 bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+          <div className="flex items-center gap-3 text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-6">
             <AlertCircle className="w-5 h-5" />
             <span>{error}</span>
           </div>
@@ -289,18 +289,18 @@ export default function EditarUsuarioPage() {
         {!loading && !error && user && (
           <form onSubmit={handleSubmit} className="space-y-6">
             {success && (
-              <div className="p-4 bg-green-50 border border-green-200 text-green-700 rounded-lg">
+              <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300 rounded-lg">
                 {success}
               </div>
             )}
 
             <div className="flex flex-col md:flex-row md:items-center gap-6">
-              <div className="relative h-24 w-24 rounded-full bg-primary-100 flex items-center justify-center overflow-hidden">
+              <div className="relative h-24 w-24 rounded-full bg-primary-100 dark:bg-primary-900/50 flex items-center justify-center overflow-hidden">
                 {photoPreview ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={photoPreview} alt="Foto del usuario" className="h-full w-full object-cover" />
                 ) : (
-                  <span className="text-xl font-semibold text-primary-600">
+                  <span className="text-xl font-semibold text-primary-600 dark:text-primary-400">
                     {(fullName || user.full_name || user.email)
                       .split(' ')
                       .map((n) => n[0])
@@ -310,7 +310,7 @@ export default function EditarUsuarioPage() {
                 )}
               </div>
               <div className="flex flex-col gap-2">
-                <label className="block text-sm font-medium text-gray-700">Foto de perfil</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Foto de perfil</label>
                 <div className="flex flex-col sm:flex-row gap-2">
                   <label className="btn-secondary cursor-pointer">
                     Seleccionar foto
@@ -322,43 +322,43 @@ export default function EditarUsuarioPage() {
                     </button>
                   )}
                 </div>
-                <p className="text-xs text-gray-500">Formatos aceptados: JPG, PNG. Tamaño recomendado 400x400 px.</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Formatos aceptados: JPG, PNG. Tamaño recomendado 400x400 px.</p>
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Correo electrónico</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Correo electrónico</label>
               <input
                 type="email"
                 value={user.email}
                 disabled
-                className="input-field bg-gray-100 cursor-not-allowed"
+                className="input-field bg-gray-100 dark:bg-gray-700 cursor-not-allowed"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Nombre completo</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Nombre completo</label>
               <input
                 type="text"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 disabled={!canEditNameAndRole}
-                className={`input-field ${!canEditNameAndRole ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                className={`input-field ${!canEditNameAndRole ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : ''}`}
                 placeholder="Nombre completo del usuario"
                 required
               />
               {!canEditNameAndRole && (
-                <p className="text-xs text-gray-500 mt-1">Solo los administradores pueden cambiar el nombre.</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Solo los administradores pueden cambiar el nombre.</p>
               )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Rol</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Rol</label>
               <select
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
                 disabled={!canEditNameAndRole}
-                className={`input-field ${!canEditNameAndRole ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                className={`input-field ${!canEditNameAndRole ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : ''}`}
                 required
               >
                 <option value="">Seleccionar rol</option>
@@ -369,11 +369,11 @@ export default function EditarUsuarioPage() {
                 ))}
               </select>
               {!canEditNameAndRole && (
-                <p className="text-xs text-gray-500 mt-1">Solo los administradores pueden cambiar el rol.</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Solo los administradores pueden cambiar el rol.</p>
               )}
             </div>
 
-            <div className="flex items-center gap-2 text-sm text-gray-500">
+            <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
               {uploadingPhoto && <Loader2 className="w-4 h-4 animate-spin" />}
               {uploadingPhoto ? 'Subiendo foto...' : null}
             </div>

@@ -293,6 +293,9 @@ export default function NuevoUsuarioPage() {
                 className="input-field"
                 placeholder="Nombre y apellidos"
                 required
+                minLength={3}
+                maxLength={120}
+                title="Entre 3 y 120 caracteres"
               />
             </div>
 

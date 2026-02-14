@@ -116,7 +116,7 @@ export default function UsuarioDetallePage() {
     return (
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="card">
-          <p className="text-red-600">ID de usuario no proporcionado.</p>
+          <p className="text-red-600 dark:text-red-300">ID de usuario no proporcionado.</p>
         </div>
       </div>
     )
@@ -127,7 +127,7 @@ export default function UsuarioDetallePage() {
       <div className="flex items-center justify-between mb-8">
         <button
           onClick={() => router.push('/dashboard/admin/usuarios')}
-          className="inline-flex items-center gap-2 text-primary-600 hover:text-primary-700"
+          className="inline-flex items-center gap-2 text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300"
         >
           <ArrowLeft className="w-4 h-4" />
           Volver
@@ -153,17 +153,17 @@ export default function UsuarioDetallePage() {
       </div>
 
       <div className="card">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">Detalle del Usuario</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">Detalle del Usuario</h1>
 
         {loading && (
-          <div className="flex items-center gap-3 text-gray-600">
+          <div className="flex items-center gap-3 text-gray-600 dark:text-gray-400">
             <Loader2 className="w-5 h-5 animate-spin" />
             Cargando información...
           </div>
         )}
 
         {!loading && error && (
-          <div className="flex items-center gap-3 text-red-600 bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-center gap-3 text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
             <AlertCircle className="w-5 h-5" />
             <span>{error}</span>
           </div>
@@ -172,7 +172,7 @@ export default function UsuarioDetallePage() {
         {!loading && !error && user && (
           <div className="space-y-6">
             <div className="flex flex-col items-center gap-4">
-              <div className="h-24 w-24 rounded-full bg-primary-100 flex items-center justify-center overflow-hidden">
+              <div className="h-24 w-24 rounded-full bg-primary-100 dark:bg-primary-900/50 flex items-center justify-center overflow-hidden">
                 {user.photo_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -181,7 +181,7 @@ export default function UsuarioDetallePage() {
                     className="h-full w-full object-cover"
                   />
                 ) : (
-                  <span className="text-xl font-semibold text-primary-600">
+                  <span className="text-xl font-semibold text-primary-600 dark:text-primary-400">
                     {(user.full_name || user.email)
                       .split(' ')
                       .map((n) => n[0])
@@ -191,32 +191,32 @@ export default function UsuarioDetallePage() {
                 )}
               </div>
               <div className="text-center">
-                <p className="text-lg font-semibold text-gray-900">{user.full_name || '-'}</p>
-                <p className="text-sm text-gray-500">{user.email}</p>
+                <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">{user.full_name || '-'}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{user.email}</p>
               </div>
             </div>
 
             <div className="space-y-4">
               <div>
-                <p className="text-sm text-gray-500">UID</p>
-                <p className="font-mono text-gray-900">{user.id}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">UID</p>
+                <p className="font-mono text-gray-900 dark:text-gray-100">{user.id}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Rol</p>
-                <span className="inline-flex px-3 py-1 rounded-full bg-gray-100 text-gray-700 text-sm font-medium">
+                <p className="text-sm text-gray-500 dark:text-gray-400">Rol</p>
+                <span className="inline-flex px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 text-sm font-medium">
                   {roleLabels[user.role] || user.role}
                 </span>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm text-gray-500">Creado</p>
-                  <p className="text-gray-900">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Creado</p>
+                  <p className="text-gray-900 dark:text-gray-100">
                     {new Date(user.created_at).toLocaleString()}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Actualizado</p>
-                  <p className="text-gray-900">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Actualizado</p>
+                  <p className="text-gray-900 dark:text-gray-100">
                     {new Date(user.updated_at).toLocaleString()}
                   </p>
                 </div>

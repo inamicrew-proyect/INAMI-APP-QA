@@ -57,6 +57,7 @@ const emailSchema = z
     }
   )
 
+// La contraseña no se recorta (.trim()); se permiten espacios.
 const passwordSchema = z
   .string()
   .min(1, { message: 'La contraseña temporal es obligatoria.' })
@@ -70,8 +71,8 @@ const passwordSchema = z
   .regex(/[A-Z]/, { message: 'La contraseña debe incluir al menos una letra mayúscula.' })
   .regex(/[a-z]/, { message: 'La contraseña debe incluir al menos una letra minúscula.' })
   .regex(/\d/, { message: 'La contraseña debe incluir al menos un número.' })
-  .regex(/[^A-Za-z0-9]/, {
-    message: 'La contraseña debe incluir al menos un caracter especial.',
+  .regex(/[^A-Za-z0-9\s]|\s/, {
+    message: 'La contraseña debe incluir al menos un caracter especial (símbolos y/o espacios permitidos).',
   })
 
 const photoUrlSchema = z

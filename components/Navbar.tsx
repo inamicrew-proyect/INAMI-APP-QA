@@ -13,8 +13,8 @@ import { usePermissions } from '@/lib/hooks/usePermissions'
 
 import NotificationCenter from './NotificationCenter'
 import NotificationSettings from './NotificationSettings'
-import ThemeToggle from './ThemeToggle'
 import UserProfileDropdown from './UserProfileDropdown'
+import { useTheme } from '@/lib/useTheme'
 
 function Navbar() {
   // TODOS LOS HOOKS DEBEN ESTAR AQUÍ AL INICIO, ANTES DE CUALQUIER LÓGICA
@@ -29,6 +29,8 @@ function Navbar() {
   //    con nuestro nuevo hook 'useAuth'.
   const { profile, loading, user } = useAuth()
   const { canView, loading: permissionsLoading, permissions } = usePermissions()
+  const { theme } = useTheme()
+  const isDark = theme === 'dark'
   
   // Estado adicional para verificar el rol directamente desde la sesión si el perfil no está disponible
   const [directRole, setDirectRole] = useState<string | null>(null)
@@ -185,13 +187,22 @@ function Navbar() {
     return pathname.startsWith(path)
   }
 
-        // Clase base para los botones de navegación - Mejorada
+        // Clase base para los botones de navegación - Mejorada (modo oscuro: tabs más integrados al header)
         const getNavButtonClass = (path: string) => {
           const baseClass = `px-5 py-2.5 rounded-xl font-semibold transition-all duration-300 text-base whitespace-nowrap border-2 relative overflow-hidden group`
           const activeClass = isActive(path)
             ? "bg-white text-sky-600 shadow-lg font-bold border-sky-600 scale-105"
-            : "bg-white/90 hover:bg-white text-sky-700 hover:text-sky-800 hover:shadow-lg border-white/60 hover:border-white hover:scale-105 hover:-translate-y-0.5"
+            : isDark
+              ? "bg-white/20 hover:bg-white/35 text-white hover:text-white border-white/30 hover:border-white/50 hover:shadow-lg hover:scale-105 hover:-translate-y-0.5"
+              : "bg-white/90 hover:bg-white text-sky-700 hover:text-sky-800 hover:shadow-lg border-white/60 hover:border-white hover:scale-105 hover:-translate-y-0.5"
           return `${baseClass} ${activeClass}`
+        }
+        const getMobileNavButtonClass = (path: string) => {
+          const active = isActive(path)
+          if (active) return "bg-white text-sky-600 shadow-md font-semibold border-sky-600"
+          return isDark
+            ? "bg-white/20 hover:bg-white/35 text-white border-white/30 hover:border-white/50"
+            : "bg-white/80 hover:bg-white text-sky-700 hover:text-sky-800 border-white/50 hover:border-white"
         }
 
   // 7. Tu JSX original (menús, links, etc.)
@@ -314,7 +325,6 @@ function Navbar() {
   			<div className="flex items-center gap-3 ml-4 pl-4 border-l border-white/30">
   			  <NotificationCenter />
   			  <NotificationSettings />
-  			  <ThemeToggle />
   			  <UserProfileDropdown />
   			</div>
   		  </div>
@@ -362,21 +372,21 @@ function Navbar() {
 			
 			<Link 
 			  href="/dashboard" 
-			  className={`block px-4 py-2.5 rounded-lg font-medium text-base transition-all border-2 ${isActive('/dashboard') ? 'bg-white text-sky-600 shadow-md font-semibold border-sky-600' : 'bg-white/80 hover:bg-white text-sky-700 hover:text-sky-800 border-white/50 hover:border-white'}`}
+			  className={`block px-4 py-2.5 rounded-lg font-medium text-base transition-all border-2 ${getMobileNavButtonClass('/dashboard')}`}
 			  onClick={() => setIsOpen(false)}
 			>
 			  Inicio
 			</Link>
 			<Link 
 			  href="/dashboard/jovenes" 
-			  className={`block px-4 py-2.5 rounded-lg font-medium text-base transition-all border-2 ${isActive('/dashboard/jovenes') ? 'bg-white text-sky-600 shadow-md font-semibold border-sky-600' : 'bg-white/80 hover:bg-white text-sky-700 hover:text-sky-800 border-white/50 hover:border-white'}`}
+			  className={`block px-4 py-2.5 rounded-lg font-medium text-base transition-all border-2 ${getMobileNavButtonClass('/dashboard/jovenes')}`}
 			  onClick={() => setIsOpen(false)}
 			>
 			  Jóvenes
 			</Link>
           <Link 
             href="/dashboard/atenciones" 
-            className={`block px-4 py-2.5 rounded-lg font-medium text-base transition-all border-2 ${isActive('/dashboard/atenciones') ? 'bg-white text-sky-600 shadow-md font-semibold border-sky-600' : 'bg-white/80 hover:bg-white text-sky-700 hover:text-sky-800 border-white/50 hover:border-white'}`}
+            className={`block px-4 py-2.5 rounded-lg font-medium text-base transition-all border-2 ${getMobileNavButtonClass('/dashboard/atenciones')}`}
             onClick={() => setIsOpen(false)}
           >
             Atenciones
@@ -404,18 +414,18 @@ function Navbar() {
                   router.push('/dashboard/admin')
                 }
               }}
-              className={`block w-full text-left px-4 py-2.5 rounded-lg font-medium text-base transition-all border-2 ${isActive('/dashboard/admin') ? 'bg-white text-sky-600 shadow-md font-semibold border-sky-600' : 'bg-white/80 hover:bg-white text-sky-700 hover:text-sky-800 border-white/50 hover:border-white'}`}
+              className={`block w-full text-left px-4 py-2.5 rounded-lg font-medium text-base transition-all border-2 ${getMobileNavButtonClass('/dashboard/admin')}`}
             >
               Panel Admin
             </button>
           )}
-          <Link 
-            href="/dashboard/notificaciones" 
-            className={`block px-4 py-2.5 rounded-lg font-medium text-base transition-all border-2 ${isActive('/dashboard/notificaciones') ? 'bg-white text-sky-600 shadow-md font-semibold border-sky-600' : 'bg-white/80 hover:bg-white text-sky-700 hover:text-sky-800 border-white/50 hover:border-white'}`}
-            onClick={() => setIsOpen(false)}
-          >
-            Notificaciones
-          </Link>
+<Link 
+			  href="/dashboard/notificaciones" 
+			  className={`block px-4 py-2.5 rounded-lg font-medium text-base transition-all border-2 ${getMobileNavButtonClass('/dashboard/notificaciones')}`}
+			onClick={() => setIsOpen(false)}
+		  >
+		    Notificaciones
+		  </Link>
 			<button
 			  onClick={handleSignOut}
 			  data-signout-button
