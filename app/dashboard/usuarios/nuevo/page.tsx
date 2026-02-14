@@ -248,7 +248,7 @@ export default function NuevoUsuarioPage() {
       <div className="flex items-center justify-between mb-8">
         <Link
           href="/dashboard/usuarios"
-          className="inline-flex items-center gap-2 text-primary-600 hover:text-primary-700"
+          className="inline-flex items-center gap-2 text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300"
         >
           <ArrowLeft className="w-4 h-4" />
           Volver
@@ -257,19 +257,19 @@ export default function NuevoUsuarioPage() {
 
       <div className="card space-y-8">
         <div className="flex items-start gap-3">
-          <div className="p-2 bg-primary-100 rounded-lg">
-            <UserPlus className="w-6 h-6 text-primary-600" />
+          <div className="p-2 bg-primary-100 dark:bg-primary-900/50 rounded-lg">
+            <UserPlus className="w-6 h-6 text-primary-600 dark:text-primary-400" />
           </div>
           <div className="space-y-1">
-            <h1 className="text-2xl font-bold text-gray-900">Crear usuario interno</h1>
-            <p className="text-sm text-gray-600">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Crear usuario interno</h1>
+            <p className="text-sm text-gray-600 dark:text-gray-300">
               Ingresa los datos del colaborador. La cuenta quedará activa al instante y se registrará a tu nombre.
             </p>
           </div>
         </div>
 
-        <div className="rounded-lg border border-primary-100 bg-primary-50 p-4 text-sm text-primary-700 flex gap-3">
-          <ShieldCheck className="w-5 h-5 flex-shrink-0 mt-0.5" />
+        <div className="rounded-lg border border-primary-100 dark:border-primary-800 bg-primary-50 dark:bg-primary-900/30 p-4 text-sm text-primary-700 dark:text-primary-200 flex gap-3">
+          <ShieldCheck className="w-5 h-5 flex-shrink-0 mt-0.5 text-primary-600 dark:text-primary-400" />
           <div>
             <p className="font-semibold">Buenas prácticas</p>
             <ul className="list-disc list-inside space-y-1 mt-1">
@@ -283,7 +283,7 @@ export default function NuevoUsuarioPage() {
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Nombre completo
               </label>
               <input
@@ -297,7 +297,7 @@ export default function NuevoUsuarioPage() {
             </div>
 
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Correo institucional
               </label>
               <input
@@ -313,12 +313,12 @@ export default function NuevoUsuarioPage() {
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-2">Foto de perfil (opcional)</label>
               <div className="flex flex-col md:flex-row md:items-center gap-4">
-                <div className="h-20 w-20 rounded-full bg-primary-100 flex items-center justify-center overflow-hidden">
+                <div className="h-20 w-20 rounded-full bg-primary-100 dark:bg-primary-900/50 flex items-center justify-center overflow-hidden">
                   {photoPreview ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={photoPreview} alt="Vista previa" className="h-full w-full object-cover" />
                   ) : (
-                    <span className="text-sm font-semibold text-primary-600">
+                    <span className="text-sm font-semibold text-primary-600 dark:text-primary-400">
                       {formData.fullName
                         ? formData.fullName
                             .split(' ')
@@ -341,11 +341,11 @@ export default function NuevoUsuarioPage() {
                   )}
                 </div>
               </div>
-              <p className="text-xs text-gray-500 mt-2">Se recomienda una imagen cuadrada (mínimo 300x300 px).</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Se recomienda una imagen cuadrada (mínimo 300x300 px).</p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Rol dentro del sistema
               </label>
               <select
@@ -376,7 +376,7 @@ export default function NuevoUsuarioPage() {
                   <button
                     type="button"
                     onClick={copyPassword}
-                    className="p-2 rounded-md text-primary-600 hover:bg-primary-100"
+                    className="p-2 rounded-md text-primary-600 dark:text-primary-400 hover:bg-primary-100 dark:hover:bg-primary-800/50"
                     title="Copiar contraseña"
                   >
                     <Copy className="w-4 h-4" />
@@ -384,21 +384,21 @@ export default function NuevoUsuarioPage() {
                   <button
                     type="button"
                     onClick={resetPasswordSuggestion}
-                    className="p-2 rounded-md text-primary-600 hover:bg-primary-100"
+                    className="p-2 rounded-md text-primary-600 dark:text-primary-400 hover:bg-primary-100 dark:hover:bg-primary-800/50"
                     title="Generar nueva contraseña segura"
                   >
                     <RefreshCcw className="w-4 h-4" />
                   </button>
                 </div>
               </div>
-              {copied && <p className="text-xs text-green-600">Contraseña copiada al portapapeles.</p>}
-              <p className="text-xs text-gray-500">
+              {copied && <p className="text-xs text-green-600 dark:text-green-400">Contraseña copiada al portapapeles.</p>}
+              <p className="text-xs text-gray-500 dark:text-gray-400">
                 Mínimo 10 caracteres, con mayúsculas, minúsculas, números y símbolos.
               </p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Confirmar contraseña
               </label>
               <input
@@ -413,19 +413,19 @@ export default function NuevoUsuarioPage() {
           </div>
 
           {error && (
-            <div className="p-4 rounded-lg border border-red-200 bg-red-50 text-sm text-red-700">
+            <div className="p-4 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 text-sm text-red-700 dark:text-red-300">
               {error}
             </div>
           )}
 
           {successMessage && (
-            <div className="p-4 rounded-lg border border-green-200 bg-green-50 text-sm text-green-700">
+            <div className="p-4 rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 text-sm text-green-700 dark:text-green-300">
               {successMessage}
             </div>
           )}
 
           {uploadingPhoto && (
-            <div className="flex items-center gap-2 text-sm text-gray-500">
+            <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
               <Loader2 className="w-4 h-4 animate-spin" />
               Subiendo foto...
             </div>

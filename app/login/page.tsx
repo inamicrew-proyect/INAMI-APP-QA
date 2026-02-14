@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 // PASO 1.1: Importar el "auth helper" en lugar de tu "lib/auth"
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import { AlertCircle, CheckCircle } from 'lucide-react'
+import { AlertCircle, CheckCircle, Eye, EyeOff } from 'lucide-react'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -19,6 +19,7 @@ export default function LoginPage() {
   const [resetMessage, setResetMessage] = useState('')
   const [mounted, setMounted] = useState(false)
   const [passwordChanged, setPasswordChanged] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
 
   useEffect(() => {
     // Verificar si viene de un cambio de contraseña exitoso
@@ -295,15 +296,30 @@ export default function LoginPage() {
               <label htmlFor="password" className="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">
                 Contraseña
               </label>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="input-field"
-                placeholder="••••••••"
-                required
-              />
+              <div className="relative">
+                <input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="input-field pr-11"
+                  placeholder="••••••••"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500/30"
+                  title={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-5 h-5" />
+                  ) : (
+                    <Eye className="w-5 h-5" />
+                  )}
+                </button>
+              </div>
             </div>
 
             <button
