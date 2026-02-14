@@ -181,7 +181,7 @@ export default function PermisosRolPage() {
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Permisos de Módulos</h1>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              Gestionar permisos de acceso para el rol: <strong>{rol.nombre}</strong>
+              Gestionar permisos de acceso para el rol: <strong>{rol.nombre.toUpperCase()}</strong>
             </p>
             {rol.descripcion && (
               <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">{rol.descripcion}</p>

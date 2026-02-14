@@ -211,7 +211,7 @@ export default function RolesPage() {
                 {filteredRoles.map((rol) => (
                   <tr key={rol.id} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                     <td>
-                      <div className="font-medium text-gray-900 dark:text-white">{rol.nombre}</div>
+                      <div className="font-medium text-gray-900 dark:text-white">{rol.nombre.toUpperCase()}</div>
                     </td>
                     <td className="text-gray-600 dark:text-gray-300">
                       {rol.descripcion || <span className="text-gray-400 italic">Sin descripción</span>}

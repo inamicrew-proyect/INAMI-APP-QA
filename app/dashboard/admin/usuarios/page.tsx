@@ -31,13 +31,13 @@ export default function UsuariosPage() {
   const [currentPage, setCurrentPage] = useState(1)
 
   const roleConfig = {
-    admin: { label: 'Administrador', color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' },
-    pedagogo: { label: 'Pedagogo', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' },
-    abogado: { label: 'Abogado', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300' },
-    medico: { label: 'Médico', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' },
-    psicologo: { label: 'Psicólogo', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' },
-    trabajador_social: { label: 'Trabajador Social', color: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300' },
-    seguridad: { label: 'Seguridad', color: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300' },
+    admin: { label: 'ADMINISTRADOR', color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' },
+    pedagogo: { label: 'PEDAGOGO', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' },
+    abogado: { label: 'ABOGADO', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300' },
+    medico: { label: 'MÉDICO', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' },
+    psicologo: { label: 'PSICÓLOGO', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' },
+    trabajador_social: { label: 'TRABAJADOR SOCIAL', color: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300' },
+    seguridad: { label: 'SEGURIDAD', color: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300' },
   } as const
 
   // Verificar que el usuario tiene acceso

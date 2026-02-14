@@ -63,7 +63,7 @@ export default function EditarUsuarioPage() {
             .filter((r: any) => r.activo !== false)
             .map((r: any) => ({
               value: r.nombre,
-              label: r.nombre.charAt(0).toUpperCase() + r.nombre.slice(1).replace(/_/g, ' '),
+              label: r.nombre.toUpperCase().replace(/_/g, ' '),
             }))
           setRoles(rolesList)
         }

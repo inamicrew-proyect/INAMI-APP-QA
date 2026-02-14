@@ -16,13 +16,13 @@ type UserProfile = {
 }
 
 const roleLabels: Record<string, string> = {
-  admin: 'Administrador',
-  pedagogo: 'Pedagogo',
-  abogado: 'Abogado',
-  medico: 'Médico',
-  psicologo: 'Psicólogo',
-  trabajador_social: 'Trabajador Social',
-  seguridad: 'Seguridad',
+  admin: 'ADMINISTRADOR',
+  pedagogo: 'PEDAGOGO',
+  abogado: 'ABOGADO',
+  medico: 'MÉDICO',
+  psicologo: 'PSICÓLOGO',
+  trabajador_social: 'TRABAJADOR SOCIAL',
+  seguridad: 'SEGURIDAD',
 }
 
 export default function UsuarioDetallePage() {

@@ -9,15 +9,15 @@ import { getSupabaseClient } from '@/lib/supabase-client'
 
 const getRoleLabel = (role: string) => {
   const labels: Record<string, string> = {
-    admin: 'Administrador',
-    pedagogo: 'Pedagogo',
-    abogado: 'Abogado',
-    medico: 'Médico',
-    psicologo: 'Psicólogo',
-    trabajador_social: 'Trabajador Social',
-    seguridad: 'Seguridad',
+    admin: 'ADMINISTRADOR',
+    pedagogo: 'PEDAGOGO',
+    abogado: 'ABOGADO',
+    medico: 'MÉDICO',
+    psicologo: 'PSICÓLOGO',
+    trabajador_social: 'TRABAJADOR SOCIAL',
+    seguridad: 'SEGURIDAD',
   }
-  return labels[role] || role
+  return labels[role] || role.toUpperCase()
 }
 
 export default function UserProfileDropdown() {

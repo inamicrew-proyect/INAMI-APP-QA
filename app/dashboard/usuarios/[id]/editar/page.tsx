@@ -18,13 +18,13 @@ type UserProfile = {
 }
 
 const ROLES = [
-  { value: 'admin', label: 'Administrador' },
-  { value: 'pedagogo', label: 'Pedagogo' },
-  { value: 'abogado', label: 'Abogado' },
-  { value: 'medico', label: 'Médico' },
-  { value: 'psicologo', label: 'Psicólogo' },
-  { value: 'trabajador_social', label: 'Trabajador Social' },
-  { value: 'seguridad', label: 'Seguridad' },
+  { value: 'admin', label: 'ADMINISTRADOR' },
+  { value: 'pedagogo', label: 'PEDAGOGO' },
+  { value: 'abogado', label: 'ABOGADO' },
+  { value: 'medico', label: 'MÉDICO' },
+  { value: 'psicologo', label: 'PSICÓLOGO' },
+  { value: 'trabajador_social', label: 'TRABAJADOR SOCIAL' },
+  { value: 'seguridad', label: 'SEGURIDAD' },
 ]
 
 export default function EditarUsuarioPage() {

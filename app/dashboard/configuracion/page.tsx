@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Settings, Palette, Bell, Shield, ShieldOff, Lock, Sun, Moon, CheckCircle } from 'lucide-react'
+import { ArrowLeft, Settings, Palette, Bell, Shield, ShieldOff, Lock, Sun, Moon, CheckCircle, Eye, EyeOff } from 'lucide-react'
 import { useTheme } from '@/lib/useTheme'
 import NotificationSettings from '@/components/NotificationSettings'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
@@ -33,6 +33,11 @@ export default function ConfiguracionPage() {
   const [passwordError, setPasswordError] = useState<string | null>(null)
   const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null)
   const [passwordLoading, setPasswordLoading] = useState(false)
+  const [showPasswords, setShowPasswords] = useState({
+    current: false,
+    new: false,
+    confirm: false
+  })
 
   // Verificar el estado de 2FA al cargar la página
   useEffect(() => {
@@ -153,16 +158,25 @@ export default function ConfiguracionPage() {
     setPasswordError(null)
     setPasswordSuccess(null)
 
+    // Validar que se ingrese la contraseña actual
+    if (!passwordData.currentPassword) {
+      setPasswordError('Debes ingresar tu contraseña actual')
+      return
+    }
+
+    // Validar que la nueva contraseña y confirmación coincidan
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       setPasswordError('Las contraseñas no coinciden')
       return
     }
 
+    // Validar longitud mínima
     if (passwordData.newPassword.length < 8) {
       setPasswordError('La contraseña debe tener al menos 8 caracteres')
       return
     }
 
+    // Validar que no contenga espacios
     if (/\s/.test(passwordData.newPassword)) {
       setPasswordError('La contraseña no puede contener espacios')
       return
@@ -171,7 +185,27 @@ export default function ConfiguracionPage() {
     setPasswordLoading(true)
 
     try {
-      // Actualizar contraseña
+      // Primero verificar que la contraseña actual sea correcta
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user?.email) {
+        setPasswordError('No se pudo obtener la información del usuario')
+        setPasswordLoading(false)
+        return
+      }
+
+      // Intentar iniciar sesión con la contraseña actual para validarla
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: passwordData.currentPassword
+      })
+
+      if (signInError) {
+        setPasswordError('La contraseña actual es incorrecta')
+        setPasswordLoading(false)
+        return
+      }
+
+      // Si la contraseña actual es correcta, actualizar a la nueva
       const { error } = await supabase.auth.updateUser({
         password: passwordData.newPassword
       })
@@ -356,29 +390,83 @@ export default function ConfiguracionPage() {
                         )}
                         <div>
                           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Contraseña Actual
+                          </label>
+                          <div className="relative">
+                            <input
+                              type={showPasswords.current ? "text" : "password"}
+                              value={passwordData.currentPassword}
+                              onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                              className="input-field w-full pr-10"
+                              required
+                              placeholder="Ingresa tu contraseña actual"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowPasswords({ ...showPasswords, current: !showPasswords.current })}
+                              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                            >
+                              {showPasswords.current ? (
+                                <EyeOff className="w-5 h-5" />
+                              ) : (
+                                <Eye className="w-5 h-5" />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                             Nueva Contraseña
                           </label>
-                          <input
-                            type="password"
-                            value={passwordData.newPassword}
-                            onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                            className="input-field w-full"
-                            required
-                            minLength={8}
-                          />
+                          <div className="relative">
+                            <input
+                              type={showPasswords.new ? "text" : "password"}
+                              value={passwordData.newPassword}
+                              onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                              className="input-field w-full pr-10"
+                              required
+                              minLength={8}
+                              placeholder="Mínimo 8 caracteres, sin espacios"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowPasswords({ ...showPasswords, new: !showPasswords.new })}
+                              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                            >
+                              {showPasswords.new ? (
+                                <EyeOff className="w-5 h-5" />
+                              ) : (
+                                <Eye className="w-5 h-5" />
+                              )}
+                            </button>
+                          </div>
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                             Confirmar Contraseña
                           </label>
-                          <input
-                            type="password"
-                            value={passwordData.confirmPassword}
-                            onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-                            className="input-field w-full"
-                            required
-                            minLength={8}
-                          />
+                          <div className="relative">
+                            <input
+                              type={showPasswords.confirm ? "text" : "password"}
+                              value={passwordData.confirmPassword}
+                              onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                              className="input-field w-full pr-10"
+                              required
+                              minLength={8}
+                              placeholder="Repite la nueva contraseña"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowPasswords({ ...showPasswords, confirm: !showPasswords.confirm })}
+                              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                            >
+                              {showPasswords.confirm ? (
+                                <EyeOff className="w-5 h-5" />
+                              ) : (
+                                <Eye className="w-5 h-5" />
+                              )}
+                            </button>
+                          </div>
                         </div>
                         <button
                           type="submit"
