@@ -507,10 +507,8 @@ export default function SeguridadPage() {
                                           displayValue = String(value)
                                         }
                                       } else {
-                                        displayValue = String(value)
-                                        if (displayValue.length > 50) {
-                                          displayValue = `${displayValue.substring(0, 50)}...`
-                                        }
+                                        const strValue = String(value)
+                                        displayValue = strValue.length > 50 ? `${strValue.substring(0, 50)}...` : strValue
                                       }
                                       
                                       // Determinar si es un UUID para mostrar tooltip
@@ -767,10 +765,8 @@ export default function SeguridadPage() {
                                           displayValue = String(value)
                                         }
                                       } else {
-                                        displayValue = String(value)
-                                        if (displayValue.length > 50) {
-                                          displayValue = `${displayValue.substring(0, 50)}...`
-                                        }
+                                        const strValue = String(value)
+                                        displayValue = strValue.length > 50 ? `${strValue.substring(0, 50)}...` : strValue
                                       }
                                       
                                       // Determinar si es un UUID para mostrar tooltip
