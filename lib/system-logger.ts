@@ -33,7 +33,7 @@ export async function logSystemAction(
       try {
         const supabase = createClientComponentClient()
         const { data: { user } } = await supabase.auth.getUser()
-        finalUserId = user?.id || null
+        finalUserId = user?.id
       } catch (error) {
         console.error('Error obteniendo usuario para log:', error)
       }
