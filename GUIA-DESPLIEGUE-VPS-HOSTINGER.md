@@ -132,7 +132,12 @@ ls -la .next/standalone
 ```bash
 # Verificar que el servidor standalone existe
 ls -la .next/standalone/server.js
+
+# Verificar que los archivos estáticos se copiaron (postbuild automático)
+ls -la .next/standalone/.next/static
 ```
+
+**Importante:** El script `postbuild` copia automáticamente `.next/static` y `public` al standalone. Sin esto, los chunks JS devuelven 404 y la app muestra pantalla negra. Si hiciste build antes de esta actualización, ejecuta manualmente: `node scripts/copy-standalone-files.js`
 
 ## 4. Configurar PM2
 
