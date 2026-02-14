@@ -172,6 +172,32 @@ export default function NuevaAtencionPage() {
 		}
 	  }
 
+	  // Registrar log de creación de atención
+	  if (atencionData && atencionData[0]) {
+		try {
+		  const { data: { user } } = await supabase.auth.getUser()
+		  if (user) {
+			await fetch('/api/admin/security/log-action', {
+			  method: 'POST',
+			  headers: { 'Content-Type': 'application/json' },
+			  body: JSON.stringify({
+				accion: 'create_atencion',
+				entidad: 'atenciones',
+				entidad_id: atencionData[0].id,
+				detalles: {
+				  joven_id: atencionData[0].joven_id,
+				  tipo_atencion_id: atencionData[0].tipo_atencion_id,
+				  profesional_id: atencionData[0].profesional_id,
+				  motivo: atencionData[0].motivo,
+				},
+			  }),
+			}).catch(err => console.error('Error registrando log de atención:', err))
+		  }
+		} catch (logError) {
+		  console.error('Error registrando log de creación de atención:', logError)
+		}
+	  }
+
 	  // Disparar evento para actualizar la lista
 	  if (typeof window !== 'undefined') {
 		window.dispatchEvent(new CustomEvent('atenciones:updated'))

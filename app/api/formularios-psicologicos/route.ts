@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
+import { getSupabaseAdmin } from '@/lib/supabase-admin'
 
 // GET - Obtener formularios psicológicos
 export async function GET(request: NextRequest) {
@@ -121,6 +122,37 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
+    // Registrar log de creación de formulario
+    try {
+      const adminClient = getSupabaseAdmin()
+      if (adminClient && data) {
+        // Obtener IP y User Agent
+        const ipAddress = request.headers.get('x-forwarded-for') || 
+                         request.headers.get('x-real-ip') || 
+                         'unknown'
+        const userAgent = request.headers.get('user-agent') || 'unknown'
+
+        await adminClient
+          .from('system_logs')
+          .insert({
+            usuario_id: session.user.id,
+            accion: 'create_formulario_psicologico',
+            entidad: 'formularios_psicologicos',
+            entidad_id: data.id,
+            detalles: {
+              joven_id: joven_id,
+              tipo_formulario: tipo_formulario,
+              created_by: session.user.id,
+            },
+            ip_address: ipAddress,
+            user_agent: userAgent,
+          })
+      }
+    } catch (logError) {
+      console.error('Error registrando log de creación de formulario:', logError)
+      // No fallar la operación si el log falla
+    }
+
     return NextResponse.json({ data }, { status: 201 })
   } catch (error) {
     console.error('Error in POST /api/formularios-psicologicos:', error)
@@ -168,6 +200,37 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
+    // Registrar log de actualización de formulario
+    try {
+      const adminClient = getSupabaseAdmin()
+      if (adminClient && data) {
+        // Obtener IP y User Agent
+        const ipAddress = request.headers.get('x-forwarded-for') || 
+                         request.headers.get('x-real-ip') || 
+                         'unknown'
+        const userAgent = request.headers.get('user-agent') || 'unknown'
+
+        await adminClient
+          .from('system_logs')
+          .insert({
+            usuario_id: session.user.id,
+            accion: 'update_formulario_psicologico',
+            entidad: 'formularios_psicologicos',
+            entidad_id: data.id,
+            detalles: {
+              joven_id: data.joven_id,
+              tipo_formulario: data.tipo_formulario,
+              updated_by: session.user.id,
+            },
+            ip_address: ipAddress,
+            user_agent: userAgent,
+          })
+      }
+    } catch (logError) {
+      console.error('Error registrando log de actualización de formulario:', logError)
+      // No fallar la operación si el log falla
+    }
+
     return NextResponse.json({ data })
   } catch (error) {
     console.error('Error in PUT /api/formularios-psicologicos:', error)
@@ -198,6 +261,13 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
+    // Obtener información del formulario antes de eliminarlo para el log
+    const { data: formularioData } = await supabase
+      .from('formularios_psicologicos')
+      .select('id, joven_id, tipo_formulario')
+      .eq('id', id)
+      .single()
+
     const { error } = await supabase
       .from('formularios_psicologicos')
       .delete()
@@ -206,6 +276,37 @@ export async function DELETE(request: NextRequest) {
     if (error) {
       console.error('Error deleting formulario:', error)
       return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    // Registrar log de eliminación de formulario
+    try {
+      const adminClient = getSupabaseAdmin()
+      if (adminClient && formularioData) {
+        // Obtener IP y User Agent
+        const ipAddress = request.headers.get('x-forwarded-for') || 
+                         request.headers.get('x-real-ip') || 
+                         'unknown'
+        const userAgent = request.headers.get('user-agent') || 'unknown'
+
+        await adminClient
+          .from('system_logs')
+          .insert({
+            usuario_id: session.user.id,
+            accion: 'delete_formulario_psicologico',
+            entidad: 'formularios_psicologicos',
+            entidad_id: id,
+            detalles: {
+              joven_id: formularioData.joven_id,
+              tipo_formulario: formularioData.tipo_formulario,
+              deleted_by: session.user.id,
+            },
+            ip_address: ipAddress,
+            user_agent: userAgent,
+          })
+      }
+    } catch (logError) {
+      console.error('Error registrando log de eliminación de formulario:', logError)
+      // No fallar la operación si el log falla
     }
 
     return NextResponse.json({ message: 'Formulario eliminado exitosamente' })

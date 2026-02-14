@@ -112,6 +112,22 @@ export default function LoginPage() {
       console.log('🔍 [Login] Sesión verificada:', { hasSession: !!session, userId: session?.user?.id })
       
       if (session) {
+        // Registrar log de login
+        try {
+          await fetch('/api/admin/security/log-action', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              accion: 'login',
+              entidad: 'usuarios',
+              entidad_id: session.user.id,
+              detalles: { email: session.user.email },
+            }),
+          })
+        } catch (logError) {
+          console.error('Error registrando log de login:', logError)
+        }
+
         // CARGAR EL PERFIL INMEDIATAMENTE después del login antes de redirigir
         console.log('🔄 [Login] Cargando perfil inmediatamente después del login...')
         try {

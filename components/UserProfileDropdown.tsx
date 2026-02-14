@@ -50,11 +50,29 @@ export default function UserProfileDropdown() {
     }
   }, [isOpen])
 
-  const handleSignOut = () => {
+  const handleSignOut = async () => {
     if (isSigningOut) return
     
     setIsSigningOut(true)
     setIsOpen(false)
+    
+    // Registrar log de logout antes de cerrar sesión
+    if (profile) {
+      try {
+        await fetch('/api/admin/security/log-action', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            accion: 'logout',
+            entidad: 'usuarios',
+            entidad_id: profile.id,
+            detalles: { email: profile.email },
+          }),
+        })
+      } catch (logError) {
+        console.error('Error registrando log de logout:', logError)
+      }
+    }
     
     // Redirigir INMEDIATAMENTE - no esperar a Supabase (evita que se cuelgue)
     const timestamp = new Date().getTime()

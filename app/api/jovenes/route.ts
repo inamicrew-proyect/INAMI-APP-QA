@@ -165,6 +165,34 @@ export async function POST(request: NextRequest) {
         }, { status: 500 })
       }
 
+      // Registrar log de creación
+      try {
+        const ipAddress = request.headers.get('x-forwarded-for') || 
+                         request.headers.get('x-real-ip') || 
+                         'unknown'
+        const userAgent = request.headers.get('user-agent') || 'unknown'
+
+        await adminClient
+          .from('system_logs')
+          .insert({
+            usuario_id: authCheck.userId,
+            accion: 'create_joven',
+            entidad: 'jovenes',
+            entidad_id: data.id,
+            detalles: {
+              nombres: data.nombres,
+              apellidos: data.apellidos,
+              identidad: data.identidad,
+              created_by: authCheck.userId,
+            },
+            ip_address: ipAddress,
+            user_agent: userAgent,
+          })
+      } catch (logError) {
+        console.error('Error registrando log de creación de joven:', logError)
+        // No fallar la operación si el log falla
+      }
+
       return NextResponse.json({ success: true, data })
     }
 
@@ -181,6 +209,37 @@ export async function POST(request: NextRequest) {
         error: 'No se pudo crear el joven.',
         details: error.message 
       }, { status: 500 })
+    }
+
+    // Registrar log de creación
+    try {
+      const adminClient = getSupabaseAdmin()
+      if (adminClient) {
+        const ipAddress = request.headers.get('x-forwarded-for') || 
+                         request.headers.get('x-real-ip') || 
+                         'unknown'
+        const userAgent = request.headers.get('user-agent') || 'unknown'
+
+        await adminClient
+          .from('system_logs')
+          .insert({
+            usuario_id: authCheck.userId,
+            accion: 'create_joven',
+            entidad: 'jovenes',
+            entidad_id: data.id,
+            detalles: {
+              nombres: data.nombres,
+              apellidos: data.apellidos,
+              identidad: data.identidad,
+              created_by: authCheck.userId,
+            },
+            ip_address: ipAddress,
+            user_agent: userAgent,
+          })
+      }
+    } catch (logError) {
+      console.error('Error registrando log de creación de joven:', logError)
+      // No fallar la operación si el log falla
     }
 
     return NextResponse.json({ success: true, data })

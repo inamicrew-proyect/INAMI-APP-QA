@@ -287,6 +287,33 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       }
 
       console.log('Joven actualizado exitosamente con admin client. Datos actualizados:', JSON.stringify(adminData, null, 2))
+      
+      // Registrar log de actualización
+      try {
+        const ipAddress = request.headers.get('x-forwarded-for') || 
+                         request.headers.get('x-real-ip') || 
+                         'unknown'
+        const userAgent = request.headers.get('user-agent') || 'unknown'
+
+        await adminClient
+          .from('system_logs')
+          .insert({
+            usuario_id: authCheck.userId,
+            accion: 'update_joven',
+            entidad: 'jovenes',
+            entidad_id: id,
+            detalles: {
+              changes: updateData,
+              updated_by: authCheck.userId,
+            },
+            ip_address: ipAddress,
+            user_agent: userAgent,
+          })
+      } catch (logError) {
+        console.error('Error registrando log de actualización de joven:', logError)
+        // No fallar la operación si el log falla
+      }
+
       return NextResponse.json({ success: true, data: adminData })
     }
 
@@ -326,6 +353,36 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     console.log('Joven actualizado exitosamente con cliente normal. Datos actualizados:', JSON.stringify(updatedData, null, 2))
+    
+    // Registrar log de actualización
+    try {
+      const adminClient = getSupabaseAdmin()
+      if (adminClient) {
+        const ipAddress = request.headers.get('x-forwarded-for') || 
+                         request.headers.get('x-real-ip') || 
+                         'unknown'
+        const userAgent = request.headers.get('user-agent') || 'unknown'
+
+        await adminClient
+          .from('system_logs')
+          .insert({
+            usuario_id: authCheck.userId,
+            accion: 'update_joven',
+            entidad: 'jovenes',
+            entidad_id: id,
+            detalles: {
+              changes: updateData,
+              updated_by: authCheck.userId,
+            },
+            ip_address: ipAddress,
+            user_agent: userAgent,
+          })
+      }
+    } catch (logError) {
+      console.error('Error registrando log de actualización de joven:', logError)
+      // No fallar la operación si el log falla
+    }
+
     return NextResponse.json({ success: true, data: updatedData })
   } catch (error) {
     console.error('Error updating joven:', error)
@@ -382,6 +439,35 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
         }, { status: 404 })
       }
 
+      // Registrar log de eliminación
+      try {
+        const jovenEliminado = adminData[0]
+        const ipAddress = request.headers.get('x-forwarded-for') || 
+                         request.headers.get('x-real-ip') || 
+                         'unknown'
+        const userAgent = request.headers.get('user-agent') || 'unknown'
+
+        await adminClient
+          .from('system_logs')
+          .insert({
+            usuario_id: authCheck.userId,
+            accion: 'delete_joven',
+            entidad: 'jovenes',
+            entidad_id: id,
+            detalles: {
+              nombres: jovenEliminado.nombres,
+              apellidos: jovenEliminado.apellidos,
+              identidad: jovenEliminado.identidad,
+              deleted_by: authCheck.userId,
+            },
+            ip_address: ipAddress,
+            user_agent: userAgent,
+          })
+      } catch (logError) {
+        console.error('Error registrando log de eliminación de joven:', logError)
+        // No fallar la operación si el log falla
+      }
+
       return NextResponse.json({ success: true, data: adminData })
     }
 
@@ -406,6 +492,38 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
         error: 'No se eliminó ningún joven.',
         details: 'El joven puede que ya no exista o no tengas permisos para eliminarlo.' 
       }, { status: 404 })
+    }
+
+    // Registrar log de eliminación
+    try {
+      const adminClient = getSupabaseAdmin()
+      if (adminClient) {
+        const jovenEliminado = deletedData[0]
+        const ipAddress = request.headers.get('x-forwarded-for') || 
+                         request.headers.get('x-real-ip') || 
+                         'unknown'
+        const userAgent = request.headers.get('user-agent') || 'unknown'
+
+        await adminClient
+          .from('system_logs')
+          .insert({
+            usuario_id: authCheck.userId,
+            accion: 'delete_joven',
+            entidad: 'jovenes',
+            entidad_id: id,
+            detalles: {
+              nombres: jovenEliminado.nombres,
+              apellidos: jovenEliminado.apellidos,
+              identidad: jovenEliminado.identidad,
+              deleted_by: authCheck.userId,
+            },
+            ip_address: ipAddress,
+            user_agent: userAgent,
+          })
+      }
+    } catch (logError) {
+      console.error('Error registrando log de eliminación de joven:', logError)
+      // No fallar la operación si el log falla
     }
 
     return NextResponse.json({ success: true, data: deletedData })

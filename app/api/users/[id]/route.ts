@@ -332,6 +332,15 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       }
 
       console.log('Rol actualizado en user_roles exitosamente')
+      
+      // Registrar log del cambio de rol
+      try {
+        const { SystemLogger } = await import('@/lib/system-logger')
+        await SystemLogger.changeRole(userId, id, existingProfile.role, role)
+      } catch (logError) {
+        console.error('Error registrando log de cambio de rol:', logError)
+        // No fallar la operación si el log falla
+      }
     } catch (roleError) {
       console.error('Error actualizando roles del usuario:', roleError)
       // Retornar error en lugar de solo loguear, para que el usuario sepa qué pasó

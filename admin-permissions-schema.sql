@@ -98,50 +98,61 @@ ALTER TABLE system_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE system_metrics ENABLE ROW LEVEL SECURITY;
 
 -- Políticas para modulos (todos los autenticados pueden ver)
+DROP POLICY IF EXISTS "Todos pueden ver módulos" ON modulos;
 CREATE POLICY "Todos pueden ver módulos" ON modulos
   FOR SELECT TO authenticated USING (true);
 
 -- Solo admins pueden modificar módulos
+DROP POLICY IF EXISTS "Admins pueden gestionar módulos" ON modulos;
 CREATE POLICY "Admins pueden gestionar módulos" ON modulos
   FOR ALL TO authenticated
   USING (EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'admin'))
   WITH CHECK (EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'admin'));
 
 -- Políticas para permisos de módulos
+DROP POLICY IF EXISTS "Usuarios pueden ver sus permisos" ON user_module_permissions;
 CREATE POLICY "Usuarios pueden ver sus permisos" ON user_module_permissions
   FOR SELECT TO authenticated USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Admins pueden gestionar todos los permisos" ON user_module_permissions;
 CREATE POLICY "Admins pueden gestionar todos los permisos" ON user_module_permissions
   FOR ALL TO authenticated
   USING (EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'admin'))
   WITH CHECK (EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'admin'));
 
 -- Políticas para alertas de seguridad (solo admins)
+DROP POLICY IF EXISTS "Admins pueden ver todas las alertas" ON security_alerts;
 CREATE POLICY "Admins pueden ver todas las alertas" ON security_alerts
   FOR SELECT TO authenticated
   USING (EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'admin'));
 
+DROP POLICY IF EXISTS "Sistema puede crear alertas" ON security_alerts;
 CREATE POLICY "Sistema puede crear alertas" ON security_alerts
   FOR INSERT TO authenticated WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Admins pueden actualizar alertas" ON security_alerts;
 CREATE POLICY "Admins pueden actualizar alertas" ON security_alerts
   FOR UPDATE TO authenticated
   USING (EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'admin'))
   WITH CHECK (EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'admin'));
 
 -- Políticas para logs del sistema (solo admins)
+DROP POLICY IF EXISTS "Admins pueden ver logs del sistema" ON system_logs;
 CREATE POLICY "Admins pueden ver logs del sistema" ON system_logs
   FOR SELECT TO authenticated
   USING (EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'admin'));
 
+DROP POLICY IF EXISTS "Sistema puede crear logs" ON system_logs;
 CREATE POLICY "Sistema puede crear logs" ON system_logs
   FOR INSERT TO authenticated WITH CHECK (true);
 
 -- Políticas para métricas del sistema (solo admins)
+DROP POLICY IF EXISTS "Admins pueden ver métricas" ON system_metrics;
 CREATE POLICY "Admins pueden ver métricas" ON system_metrics
   FOR SELECT TO authenticated
   USING (EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'admin'));
 
+DROP POLICY IF EXISTS "Sistema puede crear métricas" ON system_metrics;
 CREATE POLICY "Sistema puede crear métricas" ON system_metrics
   FOR INSERT TO authenticated WITH CHECK (true);
 
@@ -150,18 +161,29 @@ CREATE POLICY "Sistema puede crear métricas" ON system_metrics
 -- ============================================
 
 -- Trigger para updated_at en modulos
+DROP TRIGGER IF EXISTS update_modulos_updated_at ON modulos;
 CREATE TRIGGER update_modulos_updated_at BEFORE UPDATE ON modulos
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Trigger para updated_at en permisos
+DROP TRIGGER IF EXISTS update_user_module_permissions_updated_at ON user_module_permissions;
 CREATE TRIGGER update_user_module_permissions_updated_at BEFORE UPDATE ON user_module_permissions
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Trigger para crear alerta cuando se cambia un rol
 CREATE OR REPLACE FUNCTION crear_alerta_cambio_rol()
 RETURNS TRIGGER AS $$
+DECLARE
+  usuario_cambio_id UUID;
 BEGIN
   IF OLD.role != NEW.role THEN
+    -- Obtener el ID del usuario que hizo el cambio (si está disponible)
+    usuario_cambio_id := COALESCE(
+      (SELECT id FROM profiles WHERE id = auth.uid()),
+      NULL
+    );
+    
+    -- Crear alerta de seguridad
     INSERT INTO security_alerts (
       tipo_alerta,
       severidad,
@@ -177,7 +199,27 @@ BEGIN
         'usuario_email', NEW.email,
         'rol_anterior', OLD.role,
         'rol_nuevo', NEW.role,
-        'cambiado_por', auth.uid()
+        'cambiado_por', usuario_cambio_id
+      )
+    );
+    
+    -- Registrar en system_logs
+    INSERT INTO system_logs (
+      usuario_id,
+      accion,
+      entidad,
+      entidad_id,
+      detalles
+    ) VALUES (
+      usuario_cambio_id,
+      'change_role',
+      'usuarios',
+      NEW.id,
+      jsonb_build_object(
+        'usuario_email', NEW.email,
+        'rol_anterior', OLD.role,
+        'rol_nuevo', NEW.role,
+        'changed_by', usuario_cambio_id
       )
     );
   END IF;
@@ -185,6 +227,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+DROP TRIGGER IF EXISTS alerta_cambio_rol ON profiles;
 CREATE TRIGGER alerta_cambio_rol
   AFTER UPDATE ON profiles
   FOR EACH ROW
