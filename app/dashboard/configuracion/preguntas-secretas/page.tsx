@@ -24,7 +24,17 @@ export default function SecurityQuestionsPage() {
 
   useEffect(() => {
     loadExistingQuestions()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Reglas
+  const MIN_Q = 5
+  const MAX_Q = 150
+  const MIN_A = 3
+  const MAX_A = 30
+
+  // ✅ Solo letras (con tildes/ñ) y espacios
+  const SOLO_LETRAS_Y_ESPACIOS = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/
 
   const loadExistingQuestions = async () => {
     try {
@@ -34,27 +44,24 @@ export default function SecurityQuestionsPage() {
         return
       }
 
-      // Verificar si el usuario tiene preguntas configuradas
       const checkResponse = await fetch('/api/security-questions/check')
       const checkResult = await checkResponse.json()
-      
-      // Si no tiene preguntas, es obligatorio configurarlas
+
       setIsRequired(!checkResult.hasQuestions)
 
       const response = await fetch('/api/security-questions')
       const result = await response.json()
 
       if (response.ok && result.questions) {
-        // Cargar preguntas existentes (sin respuestas)
         const existingQuestions = result.questions
         const newQuestions = [...questions]
-        
+
         existingQuestions.forEach((q: any, index: number) => {
           if (newQuestions[index]) {
             newQuestions[index].question = q.question
           }
         })
-        
+
         setQuestions(newQuestions)
       }
     } catch (error) {
@@ -89,19 +96,46 @@ export default function SecurityQuestionsPage() {
     setError(null)
     setSuccess(null)
 
-    // Validar que al menos hay una pregunta completa
-    const validQuestions = questions.filter(q => q.question.trim() && q.answer.trim())
-    
-    if (validQuestions.length === 0) {
-      setError(isRequired 
-        ? 'Debe configurar al menos una pregunta secreta para continuar' 
-        : 'Debe configurar al menos una pregunta secreta')
+    // Normalizar y filtrar preguntas completas
+    const validQuestions = questions
+      .map(q => ({ question: q.question.trim(), answer: q.answer.trim() }))
+      .filter(q => q.question && q.answer)
+
+    // ✅ OBLIGATORIO: deben ser 3
+    if (validQuestions.length !== 3) {
+      setError('Debe configurar las 3 preguntas secretas para continuar')
       return
     }
 
-    // Validar respuestas
-    if (validQuestions.some(q => q.answer.trim().length < 3)) {
-      setError('Cada respuesta debe tener al menos 3 caracteres')
+    // Validar tamaños de preguntas
+    if (validQuestions.some(q => q.question.length < MIN_Q || q.question.length > MAX_Q)) {
+      setError(`Cada pregunta debe tener entre ${MIN_Q} y ${MAX_Q} caracteres`)
+      return
+    }
+
+    // Validar tamaños de respuestas
+    if (validQuestions.some(q => q.answer.length < MIN_A || q.answer.length > MAX_A)) {
+      setError(`Cada respuesta debe tener entre ${MIN_A} y ${MAX_A} caracteres`)
+      return
+    }
+
+    // ✅ Respuestas: solo letras y espacios (sin números ni símbolos)
+    if (validQuestions.some(q => !SOLO_LETRAS_Y_ESPACIOS.test(q.answer))) {
+      setError('Las respuestas solo pueden contener letras y espacios (sin números ni símbolos)')
+      return
+    }
+
+    // No permitir preguntas duplicadas
+    const normalizedQuestions = validQuestions.map(q => q.question.toLowerCase())
+    if (new Set(normalizedQuestions).size !== normalizedQuestions.length) {
+      setError('No puede repetir preguntas')
+      return
+    }
+
+    // No permitir respuestas duplicadas
+    const normalizedAnswers = validQuestions.map(q => q.answer.toLowerCase())
+    if (new Set(normalizedAnswers).size !== normalizedAnswers.length) {
+      setError('No puede repetir respuestas')
       return
     }
 
@@ -113,9 +147,9 @@ export default function SecurityQuestionsPage() {
         body: JSON.stringify({
           questions: validQuestions.map(q => ({
             question: q.question.trim(),
-            answer: q.answer.trim()
-          }))
-        })
+            answer: q.answer.trim(),
+          })),
+        }),
       })
 
       const result = await response.json()
@@ -126,7 +160,7 @@ export default function SecurityQuestionsPage() {
       }
 
       setSuccess('Preguntas secretas guardadas correctamente')
-      setIsRequired(false) // Ya no es obligatorio después de guardar
+      setIsRequired(false)
       setTimeout(() => {
         router.push('/dashboard')
       }, 1500)
@@ -166,17 +200,14 @@ export default function SecurityQuestionsPage() {
             <h1 className="text-2xl font-bold text-gray-900">Preguntas Secretas</h1>
             {isRequired ? (
               <div className="mt-2">
-                <p className="text-sm font-semibold text-red-600 mb-1">
-                  ⚠️ Configuración Obligatoria
-                </p>
+                <p className="text-sm font-semibold text-red-600 mb-1">⚠️ Configuración Obligatoria</p>
                 <p className="text-sm text-gray-600">
                   Debe configurar sus preguntas secretas antes de continuar. Estas preguntas le permitirán recuperar su contraseña de forma segura.
                 </p>
               </div>
             ) : (
               <p className="text-sm text-gray-600 mt-1">
-                Configure preguntas secretas para recuperar su contraseña de forma segura.
-                Puede configurar hasta 3 preguntas.
+                Configure preguntas secretas para recuperar su contraseña de forma segura. Puede configurar hasta 3 preguntas.
               </p>
             )}
           </div>
@@ -195,7 +226,9 @@ export default function SecurityQuestionsPage() {
                   onChange={(e) => handleQuestionChange(index, e.target.value)}
                   className="input-field"
                   placeholder="Escriba su pregunta o seleccione una predefinida"
-                  required={index === 0}
+                  required
+                  minLength={MIN_Q}
+                  maxLength={MAX_Q}
                 />
                 <div className="mt-2">
                   <select
@@ -216,6 +249,7 @@ export default function SecurityQuestionsPage() {
                   </select>
                 </div>
               </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Respuesta {index === 0 && '(Requerida)'}
@@ -226,12 +260,11 @@ export default function SecurityQuestionsPage() {
                   onChange={(e) => handleAnswerChange(index, e.target.value)}
                   className="input-field"
                   placeholder="Su respuesta"
-                  required={index === 0}
-                  minLength={3}
+                  required
+                  minLength={MIN_A}
+                  maxLength={MAX_A}
                 />
-                <p className="text-xs text-gray-500 mt-1">
-                  La respuesta se guardará de forma segura (hasheada)
-                </p>
+                <p className="text-xs text-gray-500 mt-1">La respuesta se guardará de forma segura (hasheada)</p>
               </div>
             </div>
           ))}
@@ -254,11 +287,7 @@ export default function SecurityQuestionsPage() {
                 Cancelar
               </Link>
             )}
-            <button
-              type="submit"
-              disabled={saving}
-              className="btn-primary disabled:opacity-60"
-            >
+            <button type="submit" disabled={saving} className="btn-primary disabled:opacity-60">
               {saving ? 'Guardando...' : isRequired ? 'Guardar y Continuar' : 'Guardar Preguntas'}
             </button>
           </div>
