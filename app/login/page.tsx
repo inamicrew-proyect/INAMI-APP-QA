@@ -66,7 +66,18 @@ export default function LoginPage() {
   }, [router])
 
   if (!mounted) {
-    return null
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center bg-gray-900"
+        role="status"
+        aria-label="Cargando"
+      >
+        <div className="flex flex-col items-center gap-4">
+          <div className="spinner w-12 h-12 border-4 border-white/30 border-t-white rounded-full animate-spin" />
+          <p className="text-white/80 text-sm">Cargando...</p>
+        </div>
+      </div>
+    )
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
