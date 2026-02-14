@@ -213,41 +213,10 @@ function ResetPasswordContent() {
 
       setSuccess('Contraseña cambiada correctamente. Serás redirigido al login para iniciar sesión con tu nueva contraseña...')
       
-      // IMPORTANTE: Cerrar sesión después de cambiar la contraseña para que el usuario
-      // pueda iniciar sesión con la nueva contraseña
-      try {
-        // Si tiene sesión, cerrarla usando Supabase directamente
-        if (hasSession) {
-          const supabase = createClientComponentClient()
-          await supabase.auth.signOut({ scope: 'global' }).catch(() => {
-            supabase.auth.signOut().catch(() => {})
-          })
-          // Limpiar storage local
-          if (typeof window !== 'undefined') {
-            try {
-              const authKeys = Object.keys(localStorage).filter(key =>
-                key.includes('supabase') || key.includes('auth') || key.includes('session')
-              )
-              authKeys.forEach(key => localStorage.removeItem(key))
-              const sessionKeys = Object.keys(sessionStorage).filter(key =>
-                key.includes('supabase') || key.includes('auth') || key.includes('session')
-              )
-              sessionKeys.forEach(key => sessionStorage.removeItem(key))
-            } catch (storageError) {
-              // Ignorar errores de storage
-            }
-          }
-          console.log('✅ Sesión cerrada después de cambiar contraseña')
-        }
-      } catch (logoutError) {
-        console.error('Error cerrando sesión:', logoutError)
-        // Continuar de todas formas
-      }
-      
-      // Redirigir al login después de un breve delay
+      // Usar logout=true para que el middleware haga signOut en el servidor (limpia las cookies correctamente)
+      const timestamp = Date.now()
       setTimeout(() => {
-        router.push('/login?passwordChanged=true')
-        router.refresh()
+        window.location.replace(`/login?logout=true&passwordChanged=true&t=${timestamp}`)
       }, 2000)
     } catch (error) {
       setError('Error inesperado')
