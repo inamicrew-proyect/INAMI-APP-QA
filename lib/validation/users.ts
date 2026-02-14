@@ -60,9 +60,12 @@ const emailSchema = z
 const passwordSchema = z
   .string()
   .min(1, { message: 'La contraseña temporal es obligatoria.' })
-  .min(10, { message: 'La contraseña debe tener al menos 10 caracteres.' })
+  .min(8, { message: 'La contraseña debe tener al menos 8 caracteres.' })
   .max(PASSWORD_MAX_LENGTH, {
     message: `La contraseña no puede exceder ${PASSWORD_MAX_LENGTH} caracteres.`,
+  })
+  .refine((value) => !/\s/.test(value), {
+    message: 'La contraseña no puede contener espacios.',
   })
   .regex(/[A-Z]/, { message: 'La contraseña debe incluir al menos una letra mayúscula.' })
   .regex(/[a-z]/, { message: 'La contraseña debe incluir al menos una letra minúscula.' })

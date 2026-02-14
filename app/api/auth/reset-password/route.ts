@@ -19,8 +19,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Nueva contraseña es requerida' }, { status: 400 })
     }
 
-    if (newPassword.length < 10) {
-      return NextResponse.json({ error: 'La contraseña debe tener al menos 10 caracteres' }, { status: 400 })
+    if (newPassword.length < 8) {
+      return NextResponse.json({ error: 'La contraseña debe tener al menos 8 caracteres' }, { status: 400 })
+    }
+
+    if (/\s/.test(newPassword)) {
+      return NextResponse.json({ error: 'La contraseña no puede contener espacios' }, { status: 400 })
     }
 
     const supabase = createRouteHandlerClient({ cookies: () => cookies() })
@@ -126,7 +130,7 @@ export async function POST(request: NextRequest) {
       } else if (updateError.message?.includes('Password is too weak')) {
         errorMessage = 'La contraseña es demasiado débil. Usa una contraseña más segura'
       } else if (updateError.message?.includes('Password should be at least')) {
-        errorMessage = 'La contraseña debe tener al menos 10 caracteres'
+        errorMessage = 'La contraseña debe tener al menos 8 caracteres'
       }
       
       return NextResponse.json({ 

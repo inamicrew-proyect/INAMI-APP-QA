@@ -137,8 +137,13 @@ function ResetPasswordContent() {
     setError(null)
     setSuccess(null)
 
-    if (newPassword.length < 10) {
-      setError('La contraseña debe tener al menos 10 caracteres')
+    if (newPassword.length < 8) {
+      setError('La contraseña debe tener al menos 8 caracteres')
+      return
+    }
+
+    if (/\s/.test(newPassword)) {
+      setError('La contraseña no puede contener espacios')
       return
     }
 
@@ -338,9 +343,9 @@ function ResetPasswordContent() {
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     className="input-field pl-10"
-                    placeholder="Mínimo 10 caracteres"
+                    placeholder="Mínimo 8 caracteres"
                     required
-                    minLength={10}
+                    minLength={8}
                   />
                 </div>
               </div>
@@ -358,7 +363,7 @@ function ResetPasswordContent() {
                     className="input-field pl-10"
                     placeholder="Repita la contraseña"
                     required
-                    minLength={10}
+                    minLength={8}
                   />
                 </div>
               </div>
@@ -366,7 +371,8 @@ function ResetPasswordContent() {
               <div className="text-xs text-gray-500 space-y-1">
                 <p>La contraseña debe tener:</p>
                 <ul className="list-disc list-inside space-y-1 ml-2">
-                  <li>Al menos 10 caracteres</li>
+                  <li>Al menos 8 caracteres</li>
+                  <li>Sin espacios</li>
                   <li>Una letra mayúscula</li>
                   <li>Una letra minúscula</li>
                   <li>Un número</li>
