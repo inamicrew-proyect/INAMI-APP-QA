@@ -25,6 +25,7 @@ export default function ConfiguracionPage() {
 
   // Estados para cambiar contraseña
   const [showChangePassword, setShowChangePassword] = useState(false)
+  const [showPasswordChangedDialog, setShowPasswordChangedDialog] = useState(false)
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
     newPassword: '',
@@ -231,22 +232,27 @@ export default function ConfiguracionPage() {
         return
       }
 
-      setPasswordSuccess('Contraseña actualizada exitosamente')
       setPasswordData({
         currentPassword: '',
         newPassword: '',
         confirmPassword: ''
       })
       setShowChangePassword(false)
-      
-      setTimeout(() => {
-        setPasswordSuccess(null)
-      }, 3000)
+      setPasswordSuccess(null)
+      setPasswordError(null)
+      setShowPasswordChangedDialog(true)
     } catch (err: any) {
       setPasswordError(err.message || 'Error al cambiar la contraseña')
     } finally {
       setPasswordLoading(false)
     }
+  }
+
+  // Cuando el usuario confirma en el diálogo, redirigir al login con logout=true
+  // para que el middleware haga signOut en el servidor (limpia las cookies correctamente)
+  const handleConfirmPasswordChanged = () => {
+    const timestamp = Date.now()
+    window.location.replace(`/login?logout=true&passwordChanged=true&t=${timestamp}`)
   }
 
   return (
@@ -618,6 +624,35 @@ export default function ConfiguracionPage() {
                 showModal={showNotificationSettings}
                 onClose={() => setShowNotificationSettings(false)}
               />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Diálogo de confirmación: Usted ha cambiado su contraseña */}
+      {showPasswordChangedDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full p-6 border border-stone-200 dark:border-gray-700">
+            <div className="text-center space-y-4">
+              <div className="flex justify-center">
+                <div className="p-3 bg-green-100 dark:bg-green-900/30 rounded-full">
+                  <CheckCircle className="w-12 h-12 text-green-600 dark:text-green-400" />
+                </div>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                  Usted ha cambiado su contraseña
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                  Por seguridad, deberá iniciar sesión nuevamente con su nueva contraseña.
+                </p>
+              </div>
+              <button
+                onClick={handleConfirmPasswordChanged}
+                className="w-full px-4 py-2.5 bg-gray-900 dark:bg-gray-700 hover:bg-gray-800 dark:hover:bg-gray-600 text-white font-medium rounded-lg transition-colors"
+              >
+                Aceptar
+              </button>
             </div>
           </div>
         </div>
