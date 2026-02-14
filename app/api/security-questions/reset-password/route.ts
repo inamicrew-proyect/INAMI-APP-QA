@@ -16,8 +16,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Email, respuestas y nueva contraseña son requeridos' }, { status: 400 })
     }
 
-    if (newPassword.length < 10) {
-      return NextResponse.json({ error: 'La contraseña debe tener al menos 10 caracteres' }, { status: 400 })
+    if (newPassword.length < 8) {
+      return NextResponse.json({ error: 'La contraseña debe tener al menos 8 caracteres' }, { status: 400 })
+    }
+
+    if (/\s/.test(newPassword)) {
+      return NextResponse.json({ error: 'La contraseña no puede contener espacios' }, { status: 400 })
     }
 
     const adminClient = getSupabaseAdmin()
@@ -69,7 +73,20 @@ export async function POST(request: NextRequest) {
 
     if (updateError) {
       console.error('Error updating password:', updateError)
-      return NextResponse.json({ error: 'Error al cambiar la contraseña' }, { status: 500 })
+      
+      // Traducir mensajes de error comunes al español
+      let errorMessage = 'Error al cambiar la contraseña'
+      if (updateError.message?.includes('New password should be different from the old password') ||
+          updateError.message?.includes('Password should be different from the old password') ||
+          updateError.message?.includes('same as the old password')) {
+        errorMessage = 'La nueva contraseña debe ser diferente a la contraseña actual'
+      } else if (updateError.message?.includes('Password is too weak')) {
+        errorMessage = 'La contraseña es demasiado débil. Usa una contraseña más segura'
+      } else if (updateError.message?.includes('Password should be at least')) {
+        errorMessage = 'La contraseña debe tener al menos 8 caracteres'
+      }
+      
+      return NextResponse.json({ error: errorMessage }, { status: 500 })
     }
 
     return NextResponse.json({ 

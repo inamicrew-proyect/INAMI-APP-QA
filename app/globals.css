@@ -286,7 +286,7 @@ img {
 }
 
 .btn-secondary {
-  @apply bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-6 py-3 rounded-xl font-semibold shadow-md hover:shadow-lg border-2 border-gray-200 dark:border-gray-700 hover:border-primary-300 dark:hover:border-primary-600 transform hover:-translate-y-0.5 transition-all duration-300 ease-out;
+  @apply bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 px-6 py-3 rounded-xl font-semibold shadow-md hover:shadow-lg border-2 border-gray-200 dark:border-gray-600 hover:border-primary-300 dark:hover:border-primary-500 hover:bg-gray-50 dark:hover:bg-gray-600 transform hover:-translate-y-0.5 transition-all duration-300 ease-out;
 }
 
 .btn-secondary:active {
@@ -323,7 +323,7 @@ img {
 }
 
 .input-field {
-  @apply w-full px-4 py-3 border-2 border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all duration-300 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-sm hover:shadow-md focus:shadow-lg;
+  @apply w-full px-4 py-3 border-2 border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all duration-300 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 shadow-sm hover:shadow-md focus:shadow-lg;
 }
 
 .input-field:focus {

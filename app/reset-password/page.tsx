@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Shield, Lock, CheckCircle } from 'lucide-react'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 
 function ResetPasswordContent() {
   const router = useRouter()
@@ -136,8 +137,13 @@ function ResetPasswordContent() {
     setError(null)
     setSuccess(null)
 
-    if (newPassword.length < 10) {
-      setError('La contraseña debe tener al menos 10 caracteres')
+    if (newPassword.length < 8) {
+      setError('La contraseña debe tener al menos 8 caracteres')
+      return
+    }
+
+    if (/\s/.test(newPassword)) {
+      setError('La contraseña no puede contener espacios')
       return
     }
 
@@ -205,13 +211,43 @@ function ResetPasswordContent() {
         return
       }
 
-      setSuccess('Contraseña cambiada correctamente. Redirigiendo al dashboard...')
+      setSuccess('Contraseña cambiada correctamente. Serás redirigido al login para iniciar sesión con tu nueva contraseña...')
       
-      // Redirigir al dashboard después de un breve delay
-      // No cerramos la sesión porque el usuario ya está autenticado
+      // IMPORTANTE: Cerrar sesión después de cambiar la contraseña para que el usuario
+      // pueda iniciar sesión con la nueva contraseña
+      try {
+        // Si tiene sesión, cerrarla usando Supabase directamente
+        if (hasSession) {
+          const supabase = createClientComponentClient()
+          await supabase.auth.signOut({ scope: 'global' }).catch(() => {
+            supabase.auth.signOut().catch(() => {})
+          })
+          // Limpiar storage local
+          if (typeof window !== 'undefined') {
+            try {
+              const authKeys = Object.keys(localStorage).filter(key =>
+                key.includes('supabase') || key.includes('auth') || key.includes('session')
+              )
+              authKeys.forEach(key => localStorage.removeItem(key))
+              const sessionKeys = Object.keys(sessionStorage).filter(key =>
+                key.includes('supabase') || key.includes('auth') || key.includes('session')
+              )
+              sessionKeys.forEach(key => sessionStorage.removeItem(key))
+            } catch (storageError) {
+              // Ignorar errores de storage
+            }
+          }
+          console.log('✅ Sesión cerrada después de cambiar contraseña')
+        }
+      } catch (logoutError) {
+        console.error('Error cerrando sesión:', logoutError)
+        // Continuar de todas formas
+      }
+      
+      // Redirigir al login después de un breve delay
       setTimeout(() => {
-        router.push('/dashboard')
-        router.refresh() // Forzar actualización para asegurar que todo esté actualizado
+        router.push('/login?passwordChanged=true')
+        router.refresh()
       }, 2000)
     } catch (error) {
       setError('Error inesperado')
@@ -307,9 +343,9 @@ function ResetPasswordContent() {
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     className="input-field pl-10"
-                    placeholder="Mínimo 10 caracteres"
+                    placeholder="Mínimo 8 caracteres"
                     required
-                    minLength={10}
+                    minLength={8}
                   />
                 </div>
               </div>
@@ -327,7 +363,7 @@ function ResetPasswordContent() {
                     className="input-field pl-10"
                     placeholder="Repita la contraseña"
                     required
-                    minLength={10}
+                    minLength={8}
                   />
                 </div>
               </div>
@@ -335,7 +371,8 @@ function ResetPasswordContent() {
               <div className="text-xs text-gray-500 space-y-1">
                 <p>La contraseña debe tener:</p>
                 <ul className="list-disc list-inside space-y-1 ml-2">
-                  <li>Al menos 10 caracteres</li>
+                  <li>Al menos 8 caracteres</li>
+                  <li>Sin espacios</li>
                   <li>Una letra mayúscula</li>
                   <li>Una letra minúscula</li>
                   <li>Un número</li>

@@ -293,6 +293,9 @@ export default function NuevoUsuarioPage() {
                 className="input-field"
                 placeholder="Nombre y apellidos"
                 required
+                minLength={3}
+                maxLength={120}
+                title="Entre 3 y 120 caracteres"
               />
             </div>
 
@@ -371,6 +374,8 @@ export default function NuevoUsuarioPage() {
                   className="input-field pr-24"
                   required
                   minLength={8}
+                  pattern="[^\s]+"
+                  title="La contraseña no puede contener espacios"
                 />
                 <div className="absolute inset-y-0 right-0 flex items-center gap-1 pr-2">
                   <button
@@ -393,7 +398,7 @@ export default function NuevoUsuarioPage() {
               </div>
               {copied && <p className="text-xs text-green-600">Contraseña copiada al portapapeles.</p>}
               <p className="text-xs text-gray-500">
-                Mínimo 10 caracteres, con mayúsculas, minúsculas, números y símbolos.
+                Mínimo 8 caracteres, con mayúsculas, minúsculas, números y símbolos. Sin espacios.
               </p>
             </div>
 
@@ -407,7 +412,9 @@ export default function NuevoUsuarioPage() {
                 onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
                 className="input-field"
                 required
-                minLength={10}
+                minLength={8}
+                pattern="[^\s]+"
+                title="La contraseña no puede contener espacios"
               />
             </div>
           </div>

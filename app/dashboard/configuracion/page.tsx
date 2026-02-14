@@ -158,8 +158,13 @@ export default function ConfiguracionPage() {
       return
     }
 
-    if (passwordData.newPassword.length < 6) {
-      setPasswordError('La contraseña debe tener al menos 6 caracteres')
+    if (passwordData.newPassword.length < 8) {
+      setPasswordError('La contraseña debe tener al menos 8 caracteres')
+      return
+    }
+
+    if (/\s/.test(passwordData.newPassword)) {
+      setPasswordError('La contraseña no puede contener espacios')
       return
     }
 
@@ -172,7 +177,22 @@ export default function ConfiguracionPage() {
       })
 
       if (error) {
-        setPasswordError(error.message)
+        // Traducir mensajes de error comunes al español
+        let errorMessage = error.message
+        
+        if (error.message.includes('New password should be different from the old password')) {
+          errorMessage = 'La nueva contraseña debe ser diferente a la contraseña actual'
+        } else if (error.message.includes('Password should be different from the old password')) {
+          errorMessage = 'La nueva contraseña debe ser diferente a la contraseña actual'
+        } else if (error.message.includes('same as the old password')) {
+          errorMessage = 'La nueva contraseña debe ser diferente a la contraseña actual'
+        } else if (error.message.includes('Password is too weak')) {
+          errorMessage = 'La contraseña es demasiado débil. Usa una contraseña más segura'
+        } else if (error.message.includes('Password should be at least')) {
+          errorMessage = 'La contraseña debe tener al menos 8 caracteres'
+        }
+        
+        setPasswordError(errorMessage)
         setPasswordLoading(false)
         return
       }
@@ -344,7 +364,7 @@ export default function ConfiguracionPage() {
                             onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
                             className="input-field w-full"
                             required
-                            minLength={6}
+                            minLength={8}
                           />
                         </div>
                         <div>
@@ -357,7 +377,7 @@ export default function ConfiguracionPage() {
                             onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
                             className="input-field w-full"
                             required
-                            minLength={6}
+                            minLength={8}
                           />
                         </div>
                         <button

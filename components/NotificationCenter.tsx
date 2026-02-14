@@ -102,15 +102,15 @@ export default function NotificationCenter() {
   const getColorPrioridad = (prioridad: string) => {
     switch (prioridad) {
       case 'urgente':
-        return 'bg-red-100 text-red-800 border-red-200'
+        return 'bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-200 border-red-200 dark:border-red-700'
       case 'alta':
-        return 'bg-orange-100 text-orange-800 border-orange-200'
+        return 'bg-orange-100 dark:bg-orange-900/40 text-orange-800 dark:text-orange-200 border-orange-200 dark:border-orange-700'
       case 'media':
-        return 'bg-blue-100 text-blue-800 border-blue-200'
+        return 'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-200 border-blue-200 dark:border-blue-700'
       case 'baja':
-        return 'bg-gray-100 text-gray-800 border-gray-200'
+        return 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-600'
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200'
+        return 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-600'
     }
   }
 
@@ -123,7 +123,7 @@ export default function NotificationCenter() {
       {/* Botón de notificaciones */}
       <button
         onClick={() => setShowConfig(!showConfig)}
-        className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+        className="relative p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
       >
         <Bell className="w-5 h-5" />
         {notificacionesNoLeidas > 0 && (
@@ -135,20 +135,20 @@ export default function NotificationCenter() {
 
       {/* Panel de notificaciones */}
       {showConfig && (
-        <div className="absolute right-0 top-12 w-96 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-          <div className="p-4 border-b border-gray-200">
+        <div className="absolute right-0 top-12 w-96 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
+          <div className="p-4 border-b border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">Notificaciones</h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Notificaciones</h3>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setShowAll(!showAll)}
-                  className="text-sm text-blue-600 hover:text-blue-800"
+                  className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
                 >
                   {showAll ? 'Ver menos' : 'Ver todas'}
                 </button>
                 <button
                   onClick={() => setShowConfig(false)}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-gray-400 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -158,17 +158,17 @@ export default function NotificationCenter() {
 
           <div className="max-h-96 overflow-y-auto">
             {loading ? (
-              <div className="p-4 text-center text-gray-500">Cargando...</div>
+              <div className="p-4 text-center text-gray-500 dark:text-gray-400">Cargando...</div>
             ) : notificaciones.length === 0 ? (
-              <div className="p-4 text-center text-gray-500">
+              <div className="p-4 text-center text-gray-500 dark:text-gray-400">
                 No hay notificaciones
               </div>
             ) : (
-              <div className="divide-y divide-gray-200">
+              <div className="divide-y divide-gray-200 dark:divide-gray-700">
                 {notificaciones.map((notificacion: Notificacion) => (
                   <div
                     key={notificacion.id}
-                    className={`p-4 hover:bg-gray-50 ${!notificacion.leida ? 'bg-blue-50' : ''}`}
+                    className={`p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 ${!notificacion.leida ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}
                   >
                     <div className="flex items-start gap-3">
                       <div className="flex-shrink-0 mt-1">
@@ -177,7 +177,7 @@ export default function NotificationCenter() {
                       
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <h4 className={`text-sm font-medium ${!notificacion.leida ? 'text-gray-900' : 'text-gray-700'}`}>
+                          <h4 className={`text-sm font-medium ${!notificacion.leida ? 'text-gray-900 dark:text-gray-100' : 'text-gray-700 dark:text-gray-300'}`}>
                             {notificacion.titulo}
                           </h4>
                           <span className={`px-2 py-1 text-xs rounded-full border ${getColorPrioridad(notificacion.prioridad)}`}>
@@ -185,12 +185,12 @@ export default function NotificationCenter() {
                           </span>
                         </div>
                         
-                        <p className="text-sm text-gray-600 mb-2">
+                        <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">
                           {notificacion.mensaje}
                         </p>
                         
                         <div className="flex items-center justify-between">
-                          <span className="text-xs text-gray-500">
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
                             {new Date(notificacion.fecha_creacion).toLocaleDateString('es-ES')}
                           </span>
                           
@@ -198,7 +198,7 @@ export default function NotificationCenter() {
                             {!notificacion.leida && (
                               <button
                                 onClick={() => marcarComoLeida(notificacion.id)}
-                                className="p-1 text-gray-400 hover:text-green-600 transition-colors"
+                                className="p-1 text-gray-400 dark:text-gray-500 hover:text-green-600 dark:hover:text-green-400 transition-colors"
                                 title="Marcar como leída"
                               >
                                 <Check className="w-3 h-3" />
@@ -206,7 +206,7 @@ export default function NotificationCenter() {
                             )}
                             <button
                               onClick={() => eliminarNotificacion(notificacion.id)}
-                              className="p-1 text-gray-400 hover:text-red-600 transition-colors"
+                              className="p-1 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 transition-colors"
                               title="Eliminar"
                             >
                               <Trash2 className="w-3 h-3" />
@@ -221,18 +221,18 @@ export default function NotificationCenter() {
             )}
           </div>
 
-          <div className="p-4 border-t border-gray-200">
+          <div className="p-4 border-t border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between">
               <button
                 onClick={marcarTodasComoLeidas}
                 disabled={notificacionesNoLeidas === 0}
-                className="text-sm text-blue-600 hover:text-blue-800 disabled:text-gray-400 disabled:cursor-not-allowed"
+                className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 disabled:text-gray-400 dark:disabled:text-gray-500 disabled:cursor-not-allowed"
               >
                 Marcar todas como leídas
               </button>
               <button
                 onClick={() => setShowConfig(false)}
-                className="text-sm text-gray-600 hover:text-gray-800"
+                className="text-sm text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100"
               >
                 Cerrar
               </button>
