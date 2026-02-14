@@ -475,7 +475,7 @@ export default function SeguridadPage() {
                                         .replace(/\b\w/g, l => l.toUpperCase())
                                       
                                       // Determinar el tipo de valor y formatearlo
-                                      let displayValue = value
+                                      let displayValue: string
                                       let valueClass = 'text-gray-700 dark:text-gray-300'
                                       
                                       if (value === null || value === undefined) {
@@ -733,7 +733,7 @@ export default function SeguridadPage() {
                                         .replace(/\b\w/g, l => l.toUpperCase())
                                       
                                       // Determinar el tipo de valor y formatearlo
-                                      let displayValue = value
+                                      let displayValue: string
                                       let valueClass = 'text-gray-700 dark:text-gray-300'
                                       
                                       if (value === null || value === undefined) {
