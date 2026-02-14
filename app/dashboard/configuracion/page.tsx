@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Settings, Palette, Bell, Shield, ShieldOff, Lock, Sun, Moon, CheckCircle } from 'lucide-react'
+import { ArrowLeft, Settings, Palette, Bell, Shield, ShieldOff, Lock, Sun, Moon, CheckCircle, Eye, EyeOff } from 'lucide-react'
 import { useTheme } from '@/lib/useTheme'
 import NotificationSettings from '@/components/NotificationSettings'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
@@ -33,6 +33,8 @@ export default function ConfiguracionPage() {
   const [passwordError, setPasswordError] = useState<string | null>(null)
   const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null)
   const [passwordLoading, setPasswordLoading] = useState(false)
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   // Verificar el estado de 2FA al cargar la página
   useEffect(() => {
@@ -358,27 +360,49 @@ export default function ConfiguracionPage() {
                           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                             Nueva Contraseña
                           </label>
-                          <input
-                            type="password"
-                            value={passwordData.newPassword}
-                            onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                            className="input-field w-full"
-                            required
-                            minLength={8}
-                          />
+                          <div className="relative">
+                            <input
+                              type={showNewPassword ? 'text' : 'password'}
+                              value={passwordData.newPassword}
+                              onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                              className="input-field w-full pr-11"
+                              required
+                              minLength={8}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowNewPassword((prev) => !prev)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500/30"
+                              title={showNewPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                              aria-label={showNewPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                            >
+                              {showNewPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                            </button>
+                          </div>
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                             Confirmar Contraseña
                           </label>
-                          <input
-                            type="password"
-                            value={passwordData.confirmPassword}
-                            onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-                            className="input-field w-full"
-                            required
-                            minLength={8}
-                          />
+                          <div className="relative">
+                            <input
+                              type={showConfirmPassword ? 'text' : 'password'}
+                              value={passwordData.confirmPassword}
+                              onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                              className="input-field w-full pr-11"
+                              required
+                              minLength={8}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowConfirmPassword((prev) => !prev)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500/30"
+                              title={showConfirmPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                              aria-label={showConfirmPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                            >
+                              {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                            </button>
+                          </div>
                         </div>
                         <button
                           type="submit"
