@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 // PASO 1.1: Importar el "auth helper" en lugar de tu "lib/auth"
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import { AlertCircle } from 'lucide-react'
+import { AlertCircle, CheckCircle } from 'lucide-react'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -18,6 +18,18 @@ export default function LoginPage() {
   const [showResetPassword, setShowResetPassword] = useState(false)
   const [resetMessage, setResetMessage] = useState('')
   const [mounted, setMounted] = useState(false)
+  const [passwordChanged, setPasswordChanged] = useState(false)
+
+  useEffect(() => {
+    // Verificar si viene de un cambio de contraseña exitoso
+    const urlParams = new URLSearchParams(window.location.search)
+    if (urlParams.get('passwordChanged') === 'true') {
+      setPasswordChanged(true)
+      setError('')
+      // Limpiar el parámetro de la URL
+      window.history.replaceState({}, '', '/login')
+    }
+  }, [])
 
   useEffect(() => {
     setMounted(true)
@@ -70,7 +82,24 @@ export default function LoginPage() {
     setLoading(false)
 
     if (error) {
-      setError('Credenciales incorrectas. Por favor, intenta de nuevo.')
+      // Mostrar mensajes de error más específicos
+      let errorMessage = 'Credenciales incorrectas. Por favor, intenta de nuevo.'
+      
+      if (error.message?.includes('Invalid login credentials') || 
+          error.message?.includes('invalid_credentials') ||
+          error.message?.includes('Invalid email or password')) {
+        errorMessage = 'Email o contraseña incorrectos. Verifica tus credenciales e intenta de nuevo.'
+      } else if (error.message?.includes('Email not confirmed')) {
+        errorMessage = 'Tu email no ha sido confirmado. Por favor, verifica tu correo electrónico.'
+      } else if (error.message?.includes('Too many requests')) {
+        errorMessage = 'Demasiados intentos. Por favor, espera unos minutos antes de intentar de nuevo.'
+      } else {
+        // Mostrar el mensaje de error original para debugging
+        console.error('Error de login:', error.message)
+        errorMessage = `Error al iniciar sesión: ${error.message}`
+      }
+      
+      setError(errorMessage)
     } else if (data?.user) {
       console.log('✅ [Login] Login exitoso, esperando sesión...', { userId: data.user.id })
       
@@ -231,6 +260,13 @@ export default function LoginPage() {
           <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">
             Iniciar Sesión
           </h2>
+
+          {passwordChanged && (
+            <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg flex items-start gap-3">
+              <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-green-800">Contraseña cambiada exitosamente. Por favor, inicia sesión con tu nueva contraseña.</p>
+            </div>
+          )}
 
           {error && (
             <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">

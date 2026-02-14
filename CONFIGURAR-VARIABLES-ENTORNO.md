@@ -2,11 +2,19 @@
 
 ## Variables Necesarias
 
-Tu aplicación necesita las siguientes variables de entorno para conectarse a Supabase:
+Tu aplicación necesita las siguientes variables de entorno:
 
+### Variables de Supabase:
 1. **NEXT_PUBLIC_SUPABASE_URL** - URL de tu proyecto Supabase
 2. **NEXT_PUBLIC_SUPABASE_ANON_KEY** - Clave pública (anon) de Supabase
 3. **SUPABASE_SERVICE_ROLE_KEY** - Clave de servicio (service_role) de Supabase (para funciones administrativas)
+
+### Variables de Producción:
+4. **NEXT_PUBLIC_SITE_URL** - URL completa de tu aplicación en producción (⚠️ CRÍTICO)
+   - **IMPORTANTE:** Debe ser la URL completa con HTTPS
+   - Ejemplo correcto: `https://qa.inamiunah.online`
+   - ❌ NO uses: `http://31.220.20.232:3000` o `localhost`
+   - Esta variable se usa para redirecciones y callbacks de autenticación
 
 ## Cómo Obtener las Claves de Supabase
 
@@ -31,10 +39,26 @@ nano .env.local
 Pega el siguiente contenido (reemplaza con tus valores reales):
 
 ```env
+# Supabase
 NEXT_PUBLIC_SUPABASE_URL=https://tu-proyecto.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=tu-anon-key-aqui
 SUPABASE_SERVICE_ROLE_KEY=tu-service-role-key-aqui
+
+# Producción - URL completa con HTTPS (IMPORTANTE)
+NEXT_PUBLIC_SITE_URL=https://qa.inamiunah.online
+
+# Entorno
+NODE_ENV=production
 ```
+
+**⚠️ IMPORTANTE sobre NEXT_PUBLIC_SITE_URL:**
+- Debe ser la URL completa con HTTPS de tu dominio
+- NO uses IPs ni localhost
+- Esta variable es crítica para que funcionen correctamente:
+  - Redirecciones después de login
+  - Callbacks de autenticación
+  - Enlaces en correos electrónicos
+  - Funcionalidad de logout
 
 Guarda el archivo (Ctrl+O, Enter, Ctrl+X en nano)
 

@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Shield, Lock, CheckCircle } from 'lucide-react'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 
 function ResetPasswordContent() {
   const router = useRouter()
@@ -205,13 +206,43 @@ function ResetPasswordContent() {
         return
       }
 
-      setSuccess('Contraseña cambiada correctamente. Redirigiendo al dashboard...')
+      setSuccess('Contraseña cambiada correctamente. Serás redirigido al login para iniciar sesión con tu nueva contraseña...')
       
-      // Redirigir al dashboard después de un breve delay
-      // No cerramos la sesión porque el usuario ya está autenticado
+      // IMPORTANTE: Cerrar sesión después de cambiar la contraseña para que el usuario
+      // pueda iniciar sesión con la nueva contraseña
+      try {
+        // Si tiene sesión, cerrarla usando Supabase directamente
+        if (hasSession) {
+          const supabase = createClientComponentClient()
+          await supabase.auth.signOut({ scope: 'global' }).catch(() => {
+            supabase.auth.signOut().catch(() => {})
+          })
+          // Limpiar storage local
+          if (typeof window !== 'undefined') {
+            try {
+              const authKeys = Object.keys(localStorage).filter(key =>
+                key.includes('supabase') || key.includes('auth') || key.includes('session')
+              )
+              authKeys.forEach(key => localStorage.removeItem(key))
+              const sessionKeys = Object.keys(sessionStorage).filter(key =>
+                key.includes('supabase') || key.includes('auth') || key.includes('session')
+              )
+              sessionKeys.forEach(key => sessionStorage.removeItem(key))
+            } catch (storageError) {
+              // Ignorar errores de storage
+            }
+          }
+          console.log('✅ Sesión cerrada después de cambiar contraseña')
+        }
+      } catch (logoutError) {
+        console.error('Error cerrando sesión:', logoutError)
+        // Continuar de todas formas
+      }
+      
+      // Redirigir al login después de un breve delay
       setTimeout(() => {
-        router.push('/dashboard')
-        router.refresh() // Forzar actualización para asegurar que todo esté actualizado
+        router.push('/login?passwordChanged=true')
+        router.refresh()
       }, 2000)
     } catch (error) {
       setError('Error inesperado')

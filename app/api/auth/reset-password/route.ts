@@ -84,9 +84,21 @@ export async function POST(request: NextRequest) {
           message: adminError.message,
           status: adminError.status
         })
+        
+        // Traducir mensajes de error comunes al español
+        let errorMessage = 'Error al cambiar la contraseña'
+        if (adminError.message?.includes('New password should be different from the old password') ||
+            adminError.message?.includes('Password should be different from the old password') ||
+            adminError.message?.includes('same as the old password')) {
+          errorMessage = 'La nueva contraseña debe ser diferente a la contraseña actual'
+        } else if (adminError.message?.includes('Password is too weak')) {
+          errorMessage = 'La contraseña es demasiado débil. Usa una contraseña más segura'
+        } else if (adminError.message?.includes('Password should be at least')) {
+          errorMessage = 'La contraseña debe tener al menos 10 caracteres'
+        }
+        
         return NextResponse.json({ 
-          error: 'Error al cambiar la contraseña',
-          details: adminError.message 
+          error: errorMessage
         }, { status: 500 })
       }
 
@@ -104,9 +116,21 @@ export async function POST(request: NextRequest) {
         message: updateError.message,
         status: updateError.status
       })
+      
+      // Traducir mensajes de error comunes al español
+      let errorMessage = 'Error al cambiar la contraseña'
+      if (updateError.message?.includes('New password should be different from the old password') ||
+          updateError.message?.includes('Password should be different from the old password') ||
+          updateError.message?.includes('same as the old password')) {
+        errorMessage = 'La nueva contraseña debe ser diferente a la contraseña actual'
+      } else if (updateError.message?.includes('Password is too weak')) {
+        errorMessage = 'La contraseña es demasiado débil. Usa una contraseña más segura'
+      } else if (updateError.message?.includes('Password should be at least')) {
+        errorMessage = 'La contraseña debe tener al menos 10 caracteres'
+      }
+      
       return NextResponse.json({ 
-        error: 'Error al cambiar la contraseña',
-        details: updateError.message 
+        error: errorMessage
       }, { status: 500 })
     }
 

@@ -69,7 +69,20 @@ export async function POST(request: NextRequest) {
 
     if (updateError) {
       console.error('Error updating password:', updateError)
-      return NextResponse.json({ error: 'Error al cambiar la contraseña' }, { status: 500 })
+      
+      // Traducir mensajes de error comunes al español
+      let errorMessage = 'Error al cambiar la contraseña'
+      if (updateError.message?.includes('New password should be different from the old password') ||
+          updateError.message?.includes('Password should be different from the old password') ||
+          updateError.message?.includes('same as the old password')) {
+        errorMessage = 'La nueva contraseña debe ser diferente a la contraseña actual'
+      } else if (updateError.message?.includes('Password is too weak')) {
+        errorMessage = 'La contraseña es demasiado débil. Usa una contraseña más segura'
+      } else if (updateError.message?.includes('Password should be at least')) {
+        errorMessage = 'La contraseña debe tener al menos 10 caracteres'
+      }
+      
+      return NextResponse.json({ error: errorMessage }, { status: 500 })
     }
 
     return NextResponse.json({ 

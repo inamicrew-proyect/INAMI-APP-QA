@@ -172,7 +172,22 @@ export default function ConfiguracionPage() {
       })
 
       if (error) {
-        setPasswordError(error.message)
+        // Traducir mensajes de error comunes al español
+        let errorMessage = error.message
+        
+        if (error.message.includes('New password should be different from the old password')) {
+          errorMessage = 'La nueva contraseña debe ser diferente a la contraseña actual'
+        } else if (error.message.includes('Password should be different from the old password')) {
+          errorMessage = 'La nueva contraseña debe ser diferente a la contraseña actual'
+        } else if (error.message.includes('same as the old password')) {
+          errorMessage = 'La nueva contraseña debe ser diferente a la contraseña actual'
+        } else if (error.message.includes('Password is too weak')) {
+          errorMessage = 'La contraseña es demasiado débil. Usa una contraseña más segura'
+        } else if (error.message.includes('Password should be at least')) {
+          errorMessage = 'La contraseña debe tener al menos 6 caracteres'
+        }
+        
+        setPasswordError(errorMessage)
         setPasswordLoading(false)
         return
       }
