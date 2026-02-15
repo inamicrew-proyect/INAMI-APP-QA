@@ -50,36 +50,24 @@ export async function middleware(req: NextRequest) {
           .eq('id', session.user.id)
           .single()
 
-        console.log('Middleware: Verificando acceso admin', { userId: session.user.id, role: profile?.role })
-
-        // Si es admin, permitir acceso
         if (profile?.role === 'admin') {
-          console.log('Middleware: Usuario es admin, acceso permitido')
           // Continuar
         } else {
-          // Verificar si tiene permisos de ver el módulo admin
-          const { data: userRoles, error: userRolesError } = await supabase
+          const { data: userRoles } = await supabase
             .from('user_roles')
             .select('role_id')
             .eq('user_id', session.user.id)
 
-          console.log('Middleware: Roles del usuario', { userRoles, error: userRolesError })
-
           if (userRoles && userRoles.length > 0) {
             const roleIds = userRoles.map(ur => ur.role_id)
-            
-            // Obtener el módulo admin
-            const { data: adminModule, error: adminModuleError } = await supabase
+            const { data: adminModule } = await supabase
               .from('modulos')
               .select('id')
               .eq('ruta', '/dashboard/admin')
               .single()
 
-            console.log('Middleware: Módulo admin', { adminModule, error: adminModuleError })
-
             if (adminModule) {
-              // Verificar si algún rol tiene permiso de ver el módulo admin
-              const { data: permissions, error: permissionsError } = await supabase
+              const { data: permissions } = await supabase
                 .from('role_module_permissions')
                 .select('puede_ver')
                 .eq('modulo_id', adminModule.id)
@@ -87,17 +75,10 @@ export async function middleware(req: NextRequest) {
                 .eq('puede_ver', true)
                 .limit(1)
 
-              console.log('Middleware: Permisos encontrados', { permissions, error: permissionsError, roleIds, moduloId: adminModule.id })
-
               if (!permissions || permissions.length === 0) {
-                console.warn('Middleware: No se encontraron permisos, redirigiendo')
                 return NextResponse.redirect(new URL('/dashboard', req.url))
-              } else {
-                console.log('Middleware: Permisos encontrados, acceso permitido')
               }
             } else {
-              // Si no existe el módulo admin, solo permitir a admins
-              console.warn('Middleware: Módulo admin no encontrado, redirigiendo')
               return NextResponse.redirect(new URL('/dashboard', req.url))
             }
           } else {

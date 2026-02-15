@@ -43,10 +43,7 @@ function Navbar() {
           const response = await fetch('/api/auth/profile', { cache: 'no-store' })
           if (response.ok) {
             const result = await response.json()
-            if (result.profile?.role) {
-              console.log('✅ [Navbar] Rol obtenido directamente desde API:', result.profile.role)
-              setDirectRole(result.profile.role)
-            }
+            if (result.profile?.role) setDirectRole(result.profile.role)
           }
         } catch (error) {
           console.error('Error obteniendo rol directamente:', error)
@@ -57,61 +54,6 @@ function Navbar() {
       setDirectRole(null) // Limpiar si el perfil se carga
     }
   }, [profile, user, loading])
-
-  // Log inmediato cuando el perfil se carga
-  useEffect(() => {
-    if (profile) {
-      console.log('✅ PERFIL CARGADO:', {
-        id: profile.id,
-        email: profile.email,
-        role: profile.role,
-        isAdmin: profile.role === 'admin',
-        shouldShowAdmin: profile.role === 'admin'
-      })
-    } else if (!loading) {
-      console.warn('⚠️ PERFIL NO CARGADO después de que loading es false')
-    }
-  }, [profile, loading])
-
-  // Debug: Log para verificar por qué no aparece el panel admin
-  useEffect(() => {
-    if (mounted) {
-      const isAdmin = profile?.role === 'admin'
-      const canViewAdmin = !permissionsLoading && canView('/dashboard/admin')
-      const shouldShow = isAdmin || canViewAdmin
-      
-      console.log('🔍 Navbar Debug - Panel Admin:', {
-        mounted,
-        loading,
-        permissionsLoading,
-        profile: profile ? { id: profile.id, email: profile.email, role: profile.role } : null,
-        profileRole: profile?.role,
-        isAdmin,
-        canViewAdmin,
-        permissionsCount: permissions.length,
-        hasAdminPermission: permissions.some(p => p.modulo.ruta === '/dashboard/admin'),
-        shouldShow,
-        condition1: profile?.role === 'admin',
-        condition2: !permissionsLoading && canView('/dashboard/admin'),
-        willShow: shouldShow
-      })
-      
-      // Log adicional si el perfil existe pero no es admin
-      if (profile && profile.role !== 'admin') {
-        console.warn('⚠️ Usuario NO es admin:', { role: profile.role, email: profile.email })
-      }
-      
-      // Log adicional si es admin pero no se muestra
-      if (isAdmin && !shouldShow) {
-        console.error('❌ ERROR: Usuario ES admin pero el panel NO se mostrará!', {
-          isAdmin,
-          shouldShow,
-          permissionsLoading,
-          mounted
-        })
-      }
-    }
-  }, [mounted, loading, permissionsLoading, profile, canView, permissions])
 
   // Evitar error de hidratación
   useEffect(() => {
@@ -233,18 +175,6 @@ function Navbar() {
   const isAdminUser = effectiveRole === 'admin'
   const hasAdminPermission = !permissionsLoading && canView('/dashboard/admin')
   const shouldShowAdminPanel = isAdminUser || hasAdminPermission
-  
-  console.log('🔍 Navbar Render - Estado del Panel Admin:', {
-    profile: profile ? { id: profile.id, email: profile.email, role: profile.role } : 'NO CARGADO',
-    directRole,
-    effectiveRole,
-    isAdminUser,
-    hasAdminPermission,
-    shouldShowAdminPanel,
-    loading,
-    permissionsLoading,
-    mounted
-  })
 
   return (
 	<nav className="bg-gradient-to-r from-sky-500 via-sky-400 to-blue-500 shadow-lg w-full sticky top-0 z-50 backdrop-blur-sm border-b border-white/20">
@@ -287,21 +217,6 @@ function Navbar() {
             // Usar effectiveRole (profile.role o directRole) para verificar admin
             const effectiveRole = profile?.role || directRole
             const showAdmin = effectiveRole === 'admin' || (!permissionsLoading && canView('/dashboard/admin'))
-            
-            // Log siempre (no solo en desarrollo) para debug
-            console.log('🔍 [NAVBAR] Evaluando Panel Admin (Desktop):', {
-              profile: profile ? { id: profile.id, email: profile.email, role: profile.role } : 'NULL',
-              directRole,
-              effectiveRole,
-              profileRole: profile?.role,
-              profileExists: !!profile,
-              showAdmin,
-              condition1: effectiveRole === 'admin',
-              condition2: !permissionsLoading && canView('/dashboard/admin'),
-              loading,
-              permissionsLoading
-            })
-            
             return showAdmin
           })() && (
             <button
@@ -400,17 +315,7 @@ function Navbar() {
               onClick={() => {
                 setIsOpen(false)
                 const effectiveRole = profile?.role || directRole
-                const isAdmin = effectiveRole === 'admin'
-                const hasPermission = canView('/dashboard/admin')
-                console.log('Panel Admin clicked (mobile):', { 
-                  profileRole: profile?.role,
-                  directRole,
-                  effectiveRole,
-                  isAdmin, 
-                  hasPermission,
-                  profileExists: !!profile
-                })
-                if (isAdmin || hasPermission) {
+                if (effectiveRole === 'admin' || canView('/dashboard/admin')) {
                   router.push('/dashboard/admin')
                 }
               }}
