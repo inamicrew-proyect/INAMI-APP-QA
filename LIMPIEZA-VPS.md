@@ -13,6 +13,7 @@ Resumen de lo revisado y lo que se limpió para que el proyecto no suba código 
 ### 2. **app/login/page.tsx**
 - Eliminados `console.log` y `console.warn` de login exitoso, sesión, perfil y redirección.
 - Errores (perfil, log de login) solo en desarrollo donde aplica.
+- **Estado de carga al ingresar:** el botón y un recuadro muestran "Iniciando sesión..." hasta que se redirige al dashboard o se muestra error; compatible con VPS (solo React, rutas relativas `/api/`, sin lógica por entorno).
 
 ### 3. **middleware.ts**
 - Eliminados todos los `console.log` y `console.warn` de la verificación de acceso admin (se ejecuta en cada request; en producción llenaba los logs).

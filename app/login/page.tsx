@@ -104,70 +104,67 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
 
-    // PASO 1.3: Usar el nuevo cliente de Supabase para iniciar sesión
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
 
-    setLoading(false)
-
-    if (error) {
-      // Mostrar mensajes de error más específicos
-      let errorMessage = 'Credenciales incorrectas. Por favor, intenta de nuevo.'
-      
-      if (error.message?.includes('Invalid login credentials') || 
-          error.message?.includes('invalid_credentials') ||
-          error.message?.includes('Invalid email or password')) {
-        errorMessage = 'Email o contraseña incorrectos. Verifica tus credenciales e intenta de nuevo.'
-      } else if (error.message?.includes('Email not confirmed')) {
-        errorMessage = 'Tu email no ha sido confirmado. Por favor, verifica tu correo electrónico.'
-      } else if (error.message?.includes('Too many requests')) {
-        errorMessage = 'Demasiados intentos. Por favor, espera unos minutos antes de intentar de nuevo.'
-      } else {
-        // Mostrar el mensaje de error original para debugging
-        console.error('Error de login:', error.message)
-        errorMessage = `Error al iniciar sesión: ${error.message}`
+      if (error) {
+        setLoading(false)
+        let errorMessage = 'Credenciales incorrectas. Por favor, intenta de nuevo.'
+        if (error.message?.includes('Invalid login credentials') || 
+            error.message?.includes('invalid_credentials') ||
+            error.message?.includes('Invalid email or password')) {
+          errorMessage = 'Email o contraseña incorrectos. Verifica tus credenciales e intenta de nuevo.'
+        } else if (error.message?.includes('Email not confirmed')) {
+          errorMessage = 'Tu email no ha sido confirmado. Por favor, verifica tu correo electrónico.'
+        } else if (error.message?.includes('Too many requests')) {
+          errorMessage = 'Demasiados intentos. Por favor, espera unos minutos antes de intentar de nuevo.'
+        } else {
+          errorMessage = `Error al iniciar sesión: ${error.message}`
+        }
+        setError(errorMessage)
+        return
       }
-      
-      setError(errorMessage)
-    } else if (data?.user) {
-      await new Promise(resolve => setTimeout(resolve, 500))
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session) {
-        // Registrar log de login
-        try {
-          await fetch('/api/admin/security/log-action', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              accion: 'login',
-              entidad: 'usuarios',
-              entidad_id: session.user.id,
-              detalles: { email: session.user.email },
-            }),
-          })
-        } catch (logError) {
-          console.error('Error registrando log de login:', logError)
-        }
 
-        try {
-          const profileResponse = await fetch('/api/auth/profile', { cache: 'no-store', credentials: 'include' })
-          if (profileResponse.ok) {
-            const profileResult = await profileResponse.json()
-            if (profileResult.profile) {
-              const { cacheProfile } = await import('@/lib/profile-cache')
-              cacheProfile(profileResult.profile)
+      if (data?.user) {
+        await new Promise(resolve => setTimeout(resolve, 500))
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session) {
+          try {
+            await fetch('/api/admin/security/log-action', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                accion: 'login',
+                entidad: 'usuarios',
+                entidad_id: session.user.id,
+                detalles: { email: session.user.email },
+              }),
+            })
+          } catch (_) {}
+
+          try {
+            const profileResponse = await fetch('/api/auth/profile', { cache: 'no-store', credentials: 'include' })
+            if (profileResponse.ok) {
+              const profileResult = await profileResponse.json()
+              if (profileResult.profile) {
+                const { cacheProfile } = await import('@/lib/profile-cache')
+                cacheProfile(profileResult.profile)
+              }
             }
-          }
-        } catch (profileError) {
-          if (process.env.NODE_ENV === 'development') console.error('Error cargando perfil:', profileError)
+          } catch (_) {}
+          await new Promise(resolve => setTimeout(resolve, 200))
+          window.location.href = '/dashboard'
+          return
         }
-        await new Promise(resolve => setTimeout(resolve, 200))
-        window.location.href = '/dashboard'
-      } else {
+        setLoading(false)
         setError('Error al establecer la sesión. Por favor, intenta de nuevo.')
       }
+    } catch (_) {
+      setLoading(false)
+      setError('Error inesperado. Por favor, intenta de nuevo.')
     }
   }
 
@@ -302,7 +299,14 @@ export default function LoginPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          {loading && (
+            <div className="mb-4 p-4 bg-primary-50 border border-primary-200 rounded-lg flex items-center justify-center gap-3" role="status" aria-live="polite">
+              <div className="spinner w-5 h-5 border-2 border-primary-600 border-t-transparent rounded-full" aria-hidden />
+              <p className="text-sm font-medium text-primary-800">Iniciando sesión...</p>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className={`space-y-4 ${loading ? 'pointer-events-none opacity-75' : ''}`}>
             <div>
               <label htmlFor="email" className="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">
                 Correo Electrónico
