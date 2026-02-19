@@ -15,40 +15,34 @@ function HomeContent() {
       const code = searchParams.get('code')
       const type = searchParams.get('type')
       
-      // URL de producción
-      const productionUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://31.220.20.232:3000'
       const currentUrl = typeof window !== 'undefined' ? window.location.origin : ''
-      const currentHost = typeof window !== 'undefined' ? window.location.host : ''
-      
-      // PRIORIDAD 1: Si hay código y estamos en localhost, redirigir INMEDIATAMENTE
-      if (code && (currentHost.includes('localhost') || currentUrl.includes('localhost'))) {
-        // Redirigir a la URL de producción con el código - usar replace para no dejar rastro
-        if (type === 'recovery') {
-          window.location.replace(`${productionUrl}/auth/callback?code=${code}&type=recovery&next=/reset-password`)
-        } else {
-          window.location.replace(`${productionUrl}/auth/callback?code=${code}`)
+
+      // PRIORIDAD 0: Hash (Supabase puede enviar tokens, code o error en el fragmento)
+      if (typeof window !== 'undefined' && window.location.hash) {
+        const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+        const access_token = hashParams.get('access_token')
+        const refresh_token = hashParams.get('refresh_token')
+        const codeInHash = hashParams.get('code')
+        const errorCode = hashParams.get('error_code')
+        const errorDesc = hashParams.get('error_description') || ''
+        // Enlace expirado o inválido -> login con mensaje
+        if (errorCode === 'otp_expired' || (hashParams.get('error') === 'access_denied' && (errorDesc.includes('expired') || errorDesc.includes('invalid')))) {
+          window.location.replace(currentUrl + '/login?recovery_expired=1')
+          return
         }
-        return
-      }
-      
-      // PRIORIDAD 2: Si hay código pero la URL no coincide con producción
-      if (code && currentUrl && currentUrl !== productionUrl && !currentUrl.includes('localhost')) {
-        if (type === 'recovery') {
-          window.location.replace(`${productionUrl}/auth/callback?code=${code}&type=recovery&next=/reset-password`)
-        } else {
-          window.location.replace(`${productionUrl}/auth/callback?code=${code}`)
+        if (access_token && refresh_token) {
+          window.location.replace(currentUrl + '/auth/callback' + window.location.hash)
+          return
         }
-        return
+        if (codeInHash) {
+          window.location.replace(currentUrl + '/auth/callback?code=' + encodeURIComponent(codeInHash) + '&type=recovery&next=/reset-password')
+          return
+        }
       }
-      
-      // PRIORIDAD 3: Si hay código y ya estamos en la URL correcta, manejar normalmente
+
+      // PRIORIDAD 1: Código en la URL (solo llega aquí desde el enlace del correo) -> callback en el mismo origen (full load para que las cookies se guarden)
       if (code) {
-        // Redirigir al callback para procesar el código
-        if (type === 'recovery') {
-          router.push(`/auth/callback?code=${code}&type=recovery&next=/reset-password`)
-        } else {
-          router.push(`/auth/callback?code=${code}`)
-        }
+        window.location.replace(currentUrl + '/auth/callback?code=' + encodeURIComponent(code) + '&type=recovery&next=/reset-password')
         return
       }
       

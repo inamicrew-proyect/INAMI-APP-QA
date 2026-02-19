@@ -27,7 +27,16 @@ export default function LoginPage() {
     if (urlParams.get('passwordChanged') === 'true') {
       setPasswordChanged(true)
       setError('')
-      // Limpiar el parámetro de la URL
+      window.history.replaceState({}, '', '/login')
+    }
+    // Enlace de recuperación expirado o ya usado
+    if (urlParams.get('recovery_expired') === '1') {
+      setError('El enlace ha expirado o ya fue usado. Algunos correos abren el enlace en segundo plano y lo invalidan. Solicita uno nuevo y ábrelo directamente en el navegador (o copia la URL y pégala en una pestaña nueva).')
+      setShowResetPassword(true)
+      window.history.replaceState({}, '', '/login')
+    }
+    if (urlParams.get('recovery') === '1') {
+      setShowResetPassword(true)
       window.history.replaceState({}, '', '/login')
     }
   }, [])
@@ -35,14 +44,24 @@ export default function LoginPage() {
   useEffect(() => {
     setMounted(true)
 
-    // Manejar el callback de Supabase cuando llega con código
+    // Manejar el callback de Supabase cuando llega con código o con token en el hash
     const handleAuthCallback = async () => {
+      const currentOrigin = window.location.origin
+      const productionUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://qa.inamiunah.online'
+
+      // Si el token viene en el hash (enlace de recuperación), ir al callback para procesarlo
+      if (window.location.hash) {
+        const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+        if (hashParams.get('access_token') && hashParams.get('refresh_token')) {
+          window.location.replace(currentOrigin + '/auth/callback' + window.location.hash)
+          return
+        }
+      }
+
       const urlParams = new URLSearchParams(window.location.search)
       const code = urlParams.get('code')
       const type = urlParams.get('type')
       const currentHost = window.location.host
-      const currentOrigin = window.location.origin
-      const productionUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://31.220.20.232:3000'
 
       // Si hay código y estamos en localhost, redirigir INMEDIATAMENTE a producción
       if (code && (currentHost.includes('localhost') || currentOrigin.includes('localhost'))) {
@@ -66,7 +85,18 @@ export default function LoginPage() {
   }, [router])
 
   if (!mounted) {
-    return null
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center bg-gray-900"
+        role="status"
+        aria-label="Cargando"
+      >
+        <div className="flex flex-col items-center gap-4">
+          <div className="spinner w-12 h-12 border-4 border-white/30 border-t-white rounded-full animate-spin" />
+          <p className="text-white/80 text-sm">Cargando...</p>
+        </div>
+      </div>
+    )
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -74,97 +104,67 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
 
-    // PASO 1.3: Usar el nuevo cliente de Supabase para iniciar sesión
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
 
-    setLoading(false)
-
-    if (error) {
-      // Mostrar mensajes de error más específicos
-      let errorMessage = 'Credenciales incorrectas. Por favor, intenta de nuevo.'
-      
-      if (error.message?.includes('Invalid login credentials') || 
-          error.message?.includes('invalid_credentials') ||
-          error.message?.includes('Invalid email or password')) {
-        errorMessage = 'Email o contraseña incorrectos. Verifica tus credenciales e intenta de nuevo.'
-      } else if (error.message?.includes('Email not confirmed')) {
-        errorMessage = 'Tu email no ha sido confirmado. Por favor, verifica tu correo electrónico.'
-      } else if (error.message?.includes('Too many requests')) {
-        errorMessage = 'Demasiados intentos. Por favor, espera unos minutos antes de intentar de nuevo.'
-      } else {
-        // Mostrar el mensaje de error original para debugging
-        console.error('Error de login:', error.message)
-        errorMessage = `Error al iniciar sesión: ${error.message}`
+      if (error) {
+        setLoading(false)
+        let errorMessage = 'Credenciales incorrectas. Por favor, intenta de nuevo.'
+        if (error.message?.includes('Invalid login credentials') || 
+            error.message?.includes('invalid_credentials') ||
+            error.message?.includes('Invalid email or password')) {
+          errorMessage = 'Email o contraseña incorrectos. Verifica tus credenciales e intenta de nuevo.'
+        } else if (error.message?.includes('Email not confirmed')) {
+          errorMessage = 'Tu email no ha sido confirmado. Por favor, verifica tu correo electrónico.'
+        } else if (error.message?.includes('Too many requests')) {
+          errorMessage = 'Demasiados intentos. Por favor, espera unos minutos antes de intentar de nuevo.'
+        } else {
+          errorMessage = `Error al iniciar sesión: ${error.message}`
+        }
+        setError(errorMessage)
+        return
       }
-      
-      setError(errorMessage)
-    } else if (data?.user) {
-      console.log('✅ [Login] Login exitoso, esperando sesión...', { userId: data.user.id })
-      
-      // Esperar un momento para que la sesión se establezca correctamente
-      await new Promise(resolve => setTimeout(resolve, 500))
 
-      // Verificar que la sesión esté activa antes de redirigir
-      const { data: { session } } = await supabase.auth.getSession()
-      console.log('🔍 [Login] Sesión verificada:', { hasSession: !!session, userId: session?.user?.id })
-      
-      if (session) {
-        // Registrar log de login
-        try {
-          await fetch('/api/admin/security/log-action', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              accion: 'login',
-              entidad: 'usuarios',
-              entidad_id: session.user.id,
-              detalles: { email: session.user.email },
-            }),
-          })
-        } catch (logError) {
-          console.error('Error registrando log de login:', logError)
-        }
+      if (data?.user) {
+        await new Promise(resolve => setTimeout(resolve, 500))
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session) {
+          try {
+            await fetch('/api/admin/security/log-action', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                accion: 'login',
+                entidad: 'usuarios',
+                entidad_id: session.user.id,
+                detalles: { email: session.user.email },
+              }),
+            })
+          } catch (_) {}
 
-        // CARGAR EL PERFIL INMEDIATAMENTE después del login antes de redirigir
-        console.log('🔄 [Login] Cargando perfil inmediatamente después del login...')
-        try {
-          const profileResponse = await fetch('/api/auth/profile', { 
-            cache: 'no-store',
-            credentials: 'include'
-          })
-          
-          if (profileResponse.ok) {
-            const profileResult = await profileResponse.json()
-            if (profileResult.profile) {
-              console.log('✅ [Login] Perfil cargado exitosamente:', {
-                id: profileResult.profile.id,
-                role: profileResult.profile.role
-              })
-              // Guardar en caché inmediatamente después del login
-              const { cacheProfile } = await import('@/lib/profile-cache')
-              cacheProfile(profileResult.profile)
-            } else {
-              console.warn('⚠️ [Login] Perfil no encontrado en respuesta')
+          try {
+            const profileResponse = await fetch('/api/auth/profile', { cache: 'no-store', credentials: 'include' })
+            if (profileResponse.ok) {
+              const profileResult = await profileResponse.json()
+              if (profileResult.profile) {
+                const { cacheProfile } = await import('@/lib/profile-cache')
+                cacheProfile(profileResult.profile)
+              }
             }
-          } else {
-            console.warn('⚠️ [Login] Error cargando perfil:', profileResponse.status)
-          }
-        } catch (profileError) {
-          console.error('❌ [Login] Error cargando perfil:', profileError)
+          } catch (_) {}
+          await new Promise(resolve => setTimeout(resolve, 200))
+          window.location.href = '/dashboard'
+          return
         }
-        
-        // Esperar un poco más para asegurar que todo esté listo
-        await new Promise(resolve => setTimeout(resolve, 200))
-        
-        // Usar window.location para forzar una recarga completa y asegurar que el middleware funcione correctamente
-        console.log('🔄 [Login] Redirigiendo a dashboard...')
-        window.location.href = '/dashboard'
-      } else {
+        setLoading(false)
         setError('Error al establecer la sesión. Por favor, intenta de nuevo.')
       }
+    } catch (_) {
+      setLoading(false)
+      setError('Error inesperado. Por favor, intenta de nuevo.')
     }
   }
 
@@ -195,12 +195,20 @@ export default function LoginPage() {
     }
 
     // Si no tiene preguntas secretas, usar el método tradicional por email
-    // Usar la URL de producción (configurada en variable de entorno o hardcodeada como fallback)
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://31.220.20.232:3000'
+    // redirectTo debe ser la URL pública: si estás en localhost, el enlace del correo debe apuntar a producción
+    // para que al hacer clic funcione (en localhost el enlace suele dar otp_expired por prefetch o entorno).
+    const origin = typeof window !== 'undefined' ? window.location.origin : ''
+    const isLocalhost = /localhost|127\.0\.0\.1/.test(origin)
+    const siteUrl =
+      isLocalhost
+        ? (process.env.NEXT_PUBLIC_SITE_URL && !/localhost|127\.0\.0\.1/.test(process.env.NEXT_PUBLIC_SITE_URL)
+            ? process.env.NEXT_PUBLIC_SITE_URL
+            : 'https://qa.inamiunah.online')
+        : (process.env.NEXT_PUBLIC_SITE_URL || origin || 'https://qa.inamiunah.online')
 
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${siteUrl}/auth/callback?type=recovery&next=/reset-password`,
+        redirectTo: `${siteUrl.replace(/\/$/, '')}/auth/callback?type=recovery&next=/reset-password`,
       })
 
       if (error) {
@@ -215,7 +223,6 @@ export default function LoginPage() {
         console.error('Error al enviar correo de recuperación:', error)
       } else {
         setResetMessage('Se ha enviado un correo de recuperación a su email. Por favor, revise su bandeja de entrada.')
-        setShowResetPassword(false)
       }
     } catch (error: any) {
       console.error('Error inesperado al solicitar recuperación:', error)
@@ -292,7 +299,14 @@ export default function LoginPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          {loading && (
+            <div className="mb-4 p-4 bg-primary-50 border border-primary-200 rounded-lg flex items-center justify-center gap-3" role="status" aria-live="polite">
+              <div className="spinner w-5 h-5 border-2 border-primary-600 border-t-transparent rounded-full" aria-hidden />
+              <p className="text-sm font-medium text-primary-800">Iniciando sesión...</p>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className={`space-y-4 ${loading ? 'pointer-events-none opacity-75' : ''}`}>
             <div>
               <label htmlFor="email" className="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">
                 Correo Electrónico
@@ -384,50 +398,76 @@ export default function LoginPage() {
             <div className="bg-white rounded-lg p-6 max-w-md w-full">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Recuperar Contraseña</h3>
 
-              {resetMessage && (
-                <div
-                  className={`mb-4 p-3 rounded-lg ${
-                    resetMessage.includes('Error')
-                      ? 'bg-red-50 text-red-800 border border-red-200'
-                      : 'bg-green-50 text-green-800 border border-green-200'
-                  }`}
-                >
-                  {resetMessage}
-                </div>
-              )}
-
-              <form onSubmit={handleResetPassword} className="space-y-4">
-                <div>
-                  <label htmlFor="resetEmail" className="block text-sm font-medium text-gray-700 mb-2">
-                    Correo Electrónico
-                  </label>
-                  <input
-                    id="resetEmail"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="input-field"
-                    placeholder="tu@correo.com"
-                    required
-                  />
-                </div>
-
-                <div className="flex gap-3">
-                  <button type="submit" className="flex-1 btn-primary">
-                    Enviar Correo
-                  </button>
+              {resetMessage && !resetMessage.includes('Error') && !resetMessage.includes('Demasiadas') && !resetMessage.includes('espera') ? (
+                <>
+                  <div className="mb-4 p-4 rounded-lg bg-green-50 text-green-800 border border-green-200">
+                    {resetMessage}
+                  </div>
+                  <p className="text-xs text-gray-500 mb-4">
+                    El enlace es válido 1 hora y solo puede usarse una vez. Al recibir el correo, haz clic en el botón o copia la URL y ábrela en el navegador (evita que el correo abra el enlace en segundo plano).
+                  </p>
                   <button
                     type="button"
                     onClick={() => {
                       setShowResetPassword(false)
                       setResetMessage('')
                     }}
-                    className="flex-1 btn-secondary"
+                    className="w-full btn-primary"
                   >
-                    Cancelar
+                    Cerrar
                   </button>
-                </div>
-              </form>
+                </>
+              ) : (
+                <>
+                  {resetMessage && (
+                    <div
+                      className={`mb-4 p-3 rounded-lg ${
+                        resetMessage.includes('Error') || resetMessage.includes('Demasiadas') || resetMessage.includes('espera')
+                          ? 'bg-red-50 text-red-800 border border-red-200'
+                          : 'bg-green-50 text-green-800 border border-green-200'
+                      }`}
+                    >
+                      {resetMessage}
+                    </div>
+                  )}
+
+                  <form onSubmit={handleResetPassword} className="space-y-4">
+                    <div>
+                      <label htmlFor="resetEmail" className="block text-sm font-medium text-gray-700 mb-2">
+                        Correo Electrónico
+                      </label>
+                      <input
+                        id="resetEmail"
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="input-field"
+                        placeholder="tu@correo.com"
+                        required
+                      />
+                    </div>
+
+                    <div className="flex gap-3">
+                      <button type="submit" className="flex-1 btn-primary" disabled={loading}>
+                        {loading ? 'Enviando...' : 'Enviar Correo'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowResetPassword(false)
+                          setResetMessage('')
+                        }}
+                        className="flex-1 btn-secondary"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2">
+                      El enlace es válido 1 hora y solo puede usarse una vez. Al recibir el correo, haz clic en el botón o copia la URL y ábrela en el navegador (evita que el correo abra el enlace en segundo plano).
+                    </p>
+                  </form>
+                </>
+              )}
             </div>
           </div>
         )}

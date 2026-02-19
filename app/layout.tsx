@@ -25,11 +25,11 @@ export const metadata: Metadata = {
     address: false,
     telephone: false,
   },
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://31.220.20.232:3000'),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://qa.inamiunah.online'),
   openGraph: {
     type: 'website',
     locale: 'es_ES',
-    url: process.env.NEXT_PUBLIC_SITE_URL || 'http://31.220.20.232:3000',
+    url: process.env.NEXT_PUBLIC_SITE_URL || 'https://qa.inamiunah.online',
     siteName: 'INAMI',
     title: 'INAMI - Sistema de Gestión de Atenciones',
     description: 'Instituto Nacional para la Atención de Menores Infractores - Sistema de gestión de atenciones',
@@ -66,7 +66,7 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
-  const productionUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://31.220.20.232:3000'
+  const productionUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://qa.inamiunah.online'
   
   return (
     <html lang="es" suppressHydrationWarning>

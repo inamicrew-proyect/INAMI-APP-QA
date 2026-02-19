@@ -26,7 +26,7 @@ async function requireAuth(_request: NextRequest) {
 
   const isAdmin = profile?.role === 'admin'
 
-  return { supabase, session, isAdmin } as const
+  return { supabase, session, isAdmin, userId: session.user.id } as const
 }
 
 export async function GET(request: NextRequest) {

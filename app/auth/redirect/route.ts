@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
   const code = requestUrl.searchParams.get('code')
   const type = requestUrl.searchParams.get('type')
   
-  const productionUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://31.220.20.232:3000'
+  const productionUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://qa.inamiunah.online'
   
   // Si hay código, redirigir al callback de producción
   if (code) {

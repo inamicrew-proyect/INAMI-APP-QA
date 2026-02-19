@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Shield, Lock, CheckCircle } from 'lucide-react'
+
 function ResetPasswordContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -10,6 +11,7 @@ function ResetPasswordContent() {
 
   const [step, setStep] = useState<'questions' | 'reset'>('questions')
   const [loading, setLoading] = useState(false)
+  const [checkingSession, setCheckingSession] = useState(!email)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [hasSession, setHasSession] = useState(false)
@@ -22,6 +24,8 @@ function ResetPasswordContent() {
   // Estado para nueva contraseña
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   useEffect(() => {
     // Si hay email en la URL, usarlo
@@ -37,35 +41,33 @@ function ResetPasswordContent() {
   }, [email, step])
 
   const checkSessionAndGetEmail = async () => {
+    setCheckingSession(true)
     try {
-      // Verificar si hay sesión activa (viene del callback)
-      const response = await fetch('/api/auth/session')
+      const response = await fetch('/api/auth/session', { credentials: 'same-origin' })
       const result = await response.json()
       
       if (response.ok && result.email) {
         setHasSession(true)
         setUserEmail(result.email)
         
-        // Si tiene sesión, verificar si tiene preguntas secretas
-        const questionsResponse = await fetch(`/api/security-questions/by-email?email=${encodeURIComponent(result.email)}`)
+        const questionsResponse = await fetch(`/api/security-questions/by-email?email=${encodeURIComponent(result.email)}`, { credentials: 'same-origin' })
         const questionsResult = await questionsResponse.json()
 
         if (questionsResponse.ok && questionsResult.questions && questionsResult.questions.length > 0) {
-          // Tiene preguntas secretas, mostrar formulario de preguntas
           setUserQuestions(questionsResult.questions)
           setAnswers(new Array(questionsResult.questions.length).fill(''))
           setStep('questions')
         } else {
-          // No tiene preguntas secretas, ir directo a cambiar contraseña (ya tiene sesión)
           setStep('reset')
         }
       } else {
-        // No hay sesión, mostrar error
         setError('Sesión no válida. Por favor, solicite un nuevo enlace de recuperación.')
       }
-    } catch (error) {
-      console.error('Error checking session:', error)
+    } catch (err) {
+      console.error('Error checking session:', err)
       setError('Error al verificar sesión')
+    } finally {
+      setCheckingSession(false)
     }
   }
 
@@ -224,15 +226,33 @@ function ResetPasswordContent() {
     }
   }
 
-  // Si no hay email ni sesión, mostrar error
-  if (!userEmail && !hasSession && error && error.includes('Sesión no válida')) {
+  // Cargando mientras se verifica la sesión (viene del enlace del correo)
+  if (checkingSession && !email) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="card max-w-md w-full text-center">
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary-200 border-t-primary-600 mx-auto mb-4" />
+          <p className="text-gray-600">Verificando sesión...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Si no hay email ni sesión, mostrar error con opción de solicitar nuevo enlace
+  if (!userEmail && !hasSession && error && (error.includes('Sesión no válida') || error.includes('verificar sesión'))) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50">
+        <div className="card max-w-md w-full text-center space-y-4">
           <p className="text-red-600">{error}</p>
-          <button onClick={() => router.push('/login')} className="btn-primary mt-4">
-            Volver al Login
-          </button>
+          <p className="text-sm text-gray-600">Si acabas de hacer clic en el enlace del correo, intenta de nuevo o solicita un nuevo enlace.</p>
+          <div className="flex flex-col gap-2">
+            <button onClick={() => router.push('/login?recovery=1')} className="btn-primary">
+              Ir al login y solicitar nuevo enlace
+            </button>
+            <button onClick={() => router.push('/login')} className="btn-secondary">
+              Volver al Login
+            </button>
+          </div>
         </div>
       </div>
     )
@@ -304,16 +324,30 @@ function ResetPasswordContent() {
                   Nueva Contraseña
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 z-10 pointer-events-none" />
                   <input
-                    type="password"
+                    type={showNewPassword ? 'text' : 'password'}
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    className="input-field pl-10"
+                    className="input-field"
+                    style={{ paddingLeft: '2.75rem', paddingRight: '3rem' }}
                     placeholder="Mínimo 8 caracteres"
                     required
                     minLength={8}
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword((prev) => !prev)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500/30 z-10"
+                    title={showNewPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                    aria-label={showNewPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  >
+                    {showNewPassword ? (
+                      <EyeOff className="w-5 h-5" />
+                    ) : (
+                      <Eye className="w-5 h-5" />
+                    )}
+                  </button>
                 </div>
               </div>
 
@@ -322,16 +356,30 @@ function ResetPasswordContent() {
                   Confirmar Contraseña
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 z-10 pointer-events-none" />
                   <input
-                    type="password"
+                    type={showConfirmPassword ? 'text' : 'password'}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="input-field pl-10"
+                    className="input-field"
+                    style={{ paddingLeft: '2.75rem', paddingRight: '3rem' }}
                     placeholder="Repita la contraseña"
                     required
                     minLength={8}
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword((prev) => !prev)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500/30 z-10"
+                    title={showConfirmPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                    aria-label={showConfirmPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  >
+                    {showConfirmPassword ? (
+                      <EyeOff className="w-5 h-5" />
+                    ) : (
+                      <Eye className="w-5 h-5" />
+                    )}
+                  </button>
                 </div>
               </div>
 

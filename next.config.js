@@ -2,7 +2,6 @@
 const nextConfig = {
   // Optimizaciones de compilación
   reactStrictMode: true,
-  swcMinify: true,
   
   // Optimización de imágenes
   images: {
@@ -55,7 +54,7 @@ const nextConfig = {
           },
           {
             key: 'Referrer-Policy',
-            value: 'origin-when-cross-origin'
+            value: 'origin-when-cross-origin '
           },
         ],
       },
