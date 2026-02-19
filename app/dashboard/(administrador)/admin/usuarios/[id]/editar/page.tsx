@@ -91,7 +91,7 @@ export default function EditarUsuarioPage() {
         } = await supabase.auth.getSession()
 
         if (!session) {
-          setError('No autenticado. Vuelve a iniciar sesión.')
+          setError('No autenticado. Vuelve a iniciar sesi?n.')
           setLoading(false)
           return
         }
@@ -104,7 +104,7 @@ export default function EditarUsuarioPage() {
         const result = await response.json()
 
         if (!response.ok) {
-          setError(result.error || result.message || 'No se pudo cargar la información.')
+          setError(result.error || result.message || 'No se pudo cargar la informaci?n.')
           setUser(null)
           return
         }
@@ -117,7 +117,7 @@ export default function EditarUsuarioPage() {
         setPhotoPreview(existingPhoto)
       } catch (err: any) {
         console.error('Error fetching user:', err)
-        setError(`Ocurrió un error al cargar la información: ${err?.message || 'Error desconocido'}`)
+        setError(`Ocurri? un error al cargar la informaci?n: ${err?.message || 'Error desconocido'}`)
       } finally {
         setLoading(false)
       }
@@ -145,7 +145,7 @@ export default function EditarUsuarioPage() {
 
       if (!parsed.success) {
         const errors = formatZodErrors(parsed.error)
-        const firstError = errors && errors.length > 0 ? errors[0] : 'Los datos del usuario no son válidos.'
+        const firstError = errors && errors.length > 0 ? errors[0] : 'Los datos del usuario no son v?lidos.'
         setError(firstError)
         setSaving(false)
         return
@@ -188,7 +188,7 @@ export default function EditarUsuarioPage() {
       } = await supabase.auth.getSession()
 
       if (!session?.access_token) {
-        setError('No autenticado. Vuelve a iniciar sesión.')
+        setError('No autenticado. Vuelve a iniciar sesi?n.')
         setSaving(false)
         setUploadingPhoto(false)
         return
@@ -211,10 +211,10 @@ export default function EditarUsuarioPage() {
 
       if (!response.ok) {
         if (response.status === 401) {
-          throw new Error('No estás autenticado. Por favor, inicia sesión nuevamente.')
+          throw new Error('No est?s autenticado. Por favor, inicia sesi?n nuevamente.')
         }
         if (response.status === 403) {
-          throw new Error('No tienes permisos para editar usuarios. Solo los administradores pueden realizar esta acción.')
+          throw new Error('No tienes permisos para editar usuarios. Solo los administradores pueden realizar esta acci?n.')
         }
         if (response.status === 404) {
           throw new Error('Usuario no encontrado.')
@@ -236,7 +236,7 @@ export default function EditarUsuarioPage() {
       }, 1000)
     } catch (err) {
       console.error('Error updating user:', err)
-      setError(err instanceof Error ? err.message : 'Ocurrió un error al actualizar.')
+      setError(err instanceof Error ? err.message : 'Ocurri? un error al actualizar.')
     } finally {
       setSaving(false)
       setUploadingPhoto(false)
@@ -304,12 +304,12 @@ export default function EditarUsuarioPage() {
       </div>
 
       <div className="card">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">Editar Usuario</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Editar Usuario</h1>
 
         {loading && (
           <div className="flex items-center gap-3 text-gray-600 dark:text-gray-400">
             <Loader2 className="w-5 h-5 animate-spin" />
-            Cargando información...
+            Cargando informaci?n...
           </div>
         )}
 
@@ -344,7 +344,7 @@ export default function EditarUsuarioPage() {
                 )}
               </div>
               <div className="flex flex-col gap-2">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Foto de perfil</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">Foto de perfil</label>
                 <div className="flex flex-col sm:flex-row gap-2">
                   <label className="btn-secondary cursor-pointer">
                     Seleccionar foto
@@ -356,12 +356,12 @@ export default function EditarUsuarioPage() {
                     </button>
                   )}
                 </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Formatos aceptados: JPG, PNG. Tamaño recomendado 400x400 px.</p>
+                <p className="text-xs text-gray-500 dark:text-gray-300">Formatos aceptados: JPG, PNG. Tama?o recomendado 400x400 px.</p>
               </div>
             </div>
 
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Correo electrónico</label>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Correo electr?nico</label>
               <input
                 type="email"
                 id="email"
@@ -373,7 +373,7 @@ export default function EditarUsuarioPage() {
             </div>
 
             <div>
-              <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Nombre completo</label>
+              <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Nombre completo</label>
               <input
                 type="text"
                 id="fullName"
@@ -387,7 +387,7 @@ export default function EditarUsuarioPage() {
             </div>
 
             <div>
-              <label htmlFor="role" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Rol</label>
+              <label htmlFor="role" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Rol</label>
               {loadingRoles ? (
                 <div className="input-field bg-gray-100 dark:bg-gray-700">
                   <Loader2 className="w-4 h-4 animate-spin inline mr-2" />

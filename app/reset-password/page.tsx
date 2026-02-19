@@ -3,8 +3,6 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Shield, Lock, CheckCircle } from 'lucide-react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-
 function ResetPasswordContent() {
   const router = useRouter()
   const searchParams = useSearchParams()

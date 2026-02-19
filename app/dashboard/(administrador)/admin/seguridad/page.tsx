@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Shield, AlertTriangle, CheckCircle, Activity, Users, FileText, Bell, Clock, Search, Filter } from 'lucide-react'
+import { Shield, AlertTriangle, CheckCircle, Activity, Users, FileText, Bell, Clock } from 'lucide-react'
 import { useAdminAccess } from '@/lib/hooks/useAdminAccess'
 
 interface Alerta {
@@ -475,7 +475,7 @@ export default function SeguridadPage() {
                                         .replace(/\b\w/g, l => l.toUpperCase())
                                       
                                       // Determinar el tipo de valor y formatearlo
-                                      let displayValue = value
+                                      let displayValue: string | object = value as string | object
                                       let valueClass = 'text-gray-700 dark:text-gray-300'
                                       
                                       if (value === null || value === undefined) {
@@ -507,10 +507,8 @@ export default function SeguridadPage() {
                                           displayValue = String(value)
                                         }
                                       } else {
-                                        displayValue = String(value)
-                                        if (displayValue.length > 50) {
-                                          displayValue = `${displayValue.substring(0, 50)}...`
-                                        }
+                                        const strValue = String(value)
+                                        displayValue = strValue.length > 50 ? `${strValue.substring(0, 50)}...` : strValue
                                       }
                                       
                                       // Determinar si es un UUID para mostrar tooltip
@@ -735,7 +733,7 @@ export default function SeguridadPage() {
                                         .replace(/\b\w/g, l => l.toUpperCase())
                                       
                                       // Determinar el tipo de valor y formatearlo
-                                      let displayValue = value
+                                      let displayValue: string | object = value as string | object
                                       let valueClass = 'text-gray-700 dark:text-gray-300'
                                       
                                       if (value === null || value === undefined) {
@@ -767,10 +765,8 @@ export default function SeguridadPage() {
                                           displayValue = String(value)
                                         }
                                       } else {
-                                        displayValue = String(value)
-                                        if (displayValue.length > 50) {
-                                          displayValue = `${displayValue.substring(0, 50)}...`
-                                        }
+                                        const strValue = String(value)
+                                        displayValue = strValue.length > 50 ? `${strValue.substring(0, 50)}...` : strValue
                                       }
                                       
                                       // Determinar si es un UUID para mostrar tooltip

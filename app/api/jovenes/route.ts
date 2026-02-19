@@ -175,7 +175,7 @@ export async function POST(request: NextRequest) {
         await adminClient
           .from('system_logs')
           .insert({
-            usuario_id: authCheck.userId,
+            usuario_id: authCheck.session.user.id,
             accion: 'create_joven',
             entidad: 'jovenes',
             entidad_id: data.id,
@@ -183,7 +183,7 @@ export async function POST(request: NextRequest) {
               nombres: data.nombres,
               apellidos: data.apellidos,
               identidad: data.identidad,
-              created_by: authCheck.userId,
+              created_by: authCheck.session.user.id,
             },
             ip_address: ipAddress,
             user_agent: userAgent,
@@ -223,7 +223,7 @@ export async function POST(request: NextRequest) {
         await adminClient
           .from('system_logs')
           .insert({
-            usuario_id: authCheck.userId,
+            usuario_id: authCheck.session.user.id,
             accion: 'create_joven',
             entidad: 'jovenes',
             entidad_id: data.id,
@@ -231,7 +231,7 @@ export async function POST(request: NextRequest) {
               nombres: data.nombres,
               apellidos: data.apellidos,
               identidad: data.identidad,
-              created_by: authCheck.userId,
+              created_by: authCheck.session.user.id,
             },
             ip_address: ipAddress,
             user_agent: userAgent,

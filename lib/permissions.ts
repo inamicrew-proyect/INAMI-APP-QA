@@ -32,8 +32,8 @@ export async function getUserPermissions(userId?: string, retries = 1): Promise<
   
   // Verificar caché primero
   const cacheKey = `client_permissions_${userId || 'current'}`
-  const cached = supabaseCache.get(cacheKey)
-  if (cached) {
+  const cached = supabaseCache.get(cacheKey) as ModulePermission[] | null | undefined
+  if (cached && Array.isArray(cached)) {
     return cached
   }
   

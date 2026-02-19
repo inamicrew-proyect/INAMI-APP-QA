@@ -15,16 +15,22 @@ interface Modulo {
 
 interface Permiso {
   id: string
-  user_id: string
+  role_id: string
   modulo_id: string
   puede_ver: boolean
   puede_crear: boolean
   puede_editar: boolean
   puede_eliminar: boolean
-  modulos: Modulo
+  modulos?: Modulo
 }
 
-export default function PermisosUsuarioPage() {
+interface Rol {
+  id: string
+  nombre: string
+  descripcion: string | null
+}
+
+export default function PermisosRolPage() {
   const router = useRouter()
   const params = useParams()
   const id = params.id as string
@@ -33,7 +39,7 @@ export default function PermisosUsuarioPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
-  const [usuario, setUsuario] = useState<any>(null)
+  const [rol, setRol] = useState<Rol | null>(null)
   const [modulos, setModulos] = useState<Modulo[]>([])
   const [permisos, setPermisos] = useState<Record<string, Permiso>>({})
 
@@ -45,13 +51,17 @@ export default function PermisosUsuarioPage() {
     try {
       setLoading(true)
 
-      // Cargar usuario
-      const userResponse = await fetch(`/api/users/${id}`)
-      if (!userResponse.ok) {
-        throw new Error('Usuario no encontrado')
+      // Cargar rol
+      const rolesResponse = await fetch('/api/admin/roles')
+      if (!rolesResponse.ok) {
+        throw new Error('Error al cargar roles')
       }
-      const userData = await userResponse.json()
-      setUsuario(userData.user)
+      const rolesData = await rolesResponse.json()
+      const foundRol = rolesData.roles?.find((r: Rol) => r.id === id)
+      if (!foundRol) {
+        throw new Error('Rol no encontrado')
+      }
+      setRol(foundRol)
 
       // Cargar módulos
       const modulesResponse = await fetch('/api/admin/modules')
@@ -62,7 +72,7 @@ export default function PermisosUsuarioPage() {
       setModulos(modulesData.modulos || [])
 
       // Cargar permisos existentes
-      const permissionsResponse = await fetch(`/api/admin/permissions?userId=${id}`)
+      const permissionsResponse = await fetch(`/api/admin/roles/${id}/permissions`)
       if (permissionsResponse.ok) {
         const permissionsData = await permissionsResponse.json()
         const permisosMap: Record<string, Permiso> = {}
@@ -79,7 +89,7 @@ export default function PermisosUsuarioPage() {
   }
 
   const togglePermiso = (moduloId: string, tipo: 'puede_ver' | 'puede_crear' | 'puede_editar' | 'puede_eliminar') => {
-    setPermisos(prev => {
+    setPermisos((prev) => {
       const current = prev[moduloId]
       const newPermisos = { ...prev }
 
@@ -91,7 +101,7 @@ export default function PermisosUsuarioPage() {
       } else {
         newPermisos[moduloId] = {
           id: '',
-          user_id: id,
+          role_id: id,
           modulo_id: moduloId,
           puede_ver: tipo === 'puede_ver',
           puede_crear: tipo === 'puede_crear',
@@ -111,12 +121,11 @@ export default function PermisosUsuarioPage() {
       setSuccess(null)
 
       // Guardar permisos para cada módulo
-      const promises = Object.values(permisos).map(permiso =>
-        fetch('/api/admin/permissions', {
+      const promises = Object.values(permisos).map((permiso) =>
+        fetch(`/api/admin/roles/${id}/permissions`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            userId: id,
             moduloId: permiso.modulo_id,
             puedeVer: permiso.puede_ver,
             puedeCrear: permiso.puede_crear,
@@ -129,7 +138,7 @@ export default function PermisosUsuarioPage() {
       await Promise.all(promises)
       setSuccess('Permisos guardados correctamente')
       setTimeout(() => {
-        router.push(`/dashboard/admin/usuarios/${id}`)
+        router.push(`/dashboard/admin/roles`)
       }, 1500)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al guardar permisos')
@@ -146,47 +155,48 @@ export default function PermisosUsuarioPage() {
     )
   }
 
-  if (!usuario) {
+  if (!rol) {
     return (
       <div className="max-w-5xl mx-auto px-4 py-12">
-        <div className="card text-center text-red-600">Usuario no encontrado</div>
+        <div className="card text-center text-red-600 dark:text-red-400">Rol no encontrado</div>
       </div>
     )
   }
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-12">
-      <div className="flex items-center justify-between mb-8">
-        <Link
-          href={`/dashboard/admin/usuarios/${id}`}
-          className="inline-flex items-center gap-2 text-primary-600 hover:text-primary-700"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Volver
-        </Link>
-      </div>
+      <Link
+        href="/dashboard/admin/roles"
+        className="inline-flex items-center gap-2 text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 mb-6"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        Volver a Roles
+      </Link>
 
       <div className="card space-y-6">
         <div className="flex items-start gap-3">
-          <div className="p-2 bg-primary-100 rounded-lg">
-            <Shield className="w-6 h-6 text-primary-600" />
+          <div className="p-2 bg-primary-100 dark:bg-primary-900/50 rounded-lg">
+            <Shield className="w-6 h-6 text-primary-600 dark:text-primary-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Permisos de Módulos</h1>
-            <p className="text-sm text-gray-600 mt-1">
-              Gestionar permisos de acceso para: <strong>{usuario.full_name}</strong> ({usuario.email})
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Permisos de Módulos</h1>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              Gestionar permisos de acceso para el rol: <strong>{rol.nombre.toUpperCase()}</strong>
             </p>
+            {rol.descripcion && (
+              <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">{rol.descripcion}</p>
+            )}
           </div>
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded-lg">
             {error}
           </div>
         )}
 
         {success && (
-          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
+          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300 px-4 py-3 rounded-lg">
             {success}
           </div>
         )}
@@ -194,24 +204,24 @@ export default function PermisosUsuarioPage() {
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-gray-200">
-                <th className="text-left py-3 px-4 font-semibold text-gray-700">Módulo</th>
-                <th className="text-center py-3 px-4 font-semibold text-gray-700">Ver</th>
-                <th className="text-center py-3 px-4 font-semibold text-gray-700">Crear</th>
-                <th className="text-center py-3 px-4 font-semibold text-gray-700">Editar</th>
-                <th className="text-center py-3 px-4 font-semibold text-gray-700">Eliminar</th>
+              <tr className="border-b border-gray-200 dark:border-gray-600">
+                <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Módulo</th>
+                <th className="text-center py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Ver</th>
+                <th className="text-center py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Crear</th>
+                <th className="text-center py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Editar</th>
+                <th className="text-center py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Eliminar</th>
               </tr>
             </thead>
             <tbody>
-              {modulos.map(modulo => {
+              {modulos.map((modulo) => {
                 const permiso = permisos[modulo.id]
                 return (
-                  <tr key={modulo.id} className="border-b border-gray-100 hover:bg-gray-50">
+                  <tr key={modulo.id} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                     <td className="py-4 px-4">
                       <div>
-                        <div className="font-medium text-gray-900">{modulo.nombre}</div>
+                        <div className="font-medium text-gray-900 dark:text-white">{modulo.nombre}</div>
                         {modulo.descripcion && (
-                          <div className="text-sm text-gray-500">{modulo.descripcion}</div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">{modulo.descripcion}</div>
                         )}
                       </div>
                     </td>
@@ -220,8 +230,8 @@ export default function PermisosUsuarioPage() {
                         onClick={() => togglePermiso(modulo.id, 'puede_ver')}
                         className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
                           permiso?.puede_ver
-                            ? 'bg-green-100 text-green-600'
-                            : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                            ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
+                            : 'bg-gray-100 text-gray-400 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600'
                         }`}
                       >
                         {permiso?.puede_ver ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
@@ -232,8 +242,8 @@ export default function PermisosUsuarioPage() {
                         onClick={() => togglePermiso(modulo.id, 'puede_crear')}
                         className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
                           permiso?.puede_crear
-                            ? 'bg-green-100 text-green-600'
-                            : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                            ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
+                            : 'bg-gray-100 text-gray-400 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600'
                         }`}
                       >
                         {permiso?.puede_crear ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
@@ -244,8 +254,8 @@ export default function PermisosUsuarioPage() {
                         onClick={() => togglePermiso(modulo.id, 'puede_editar')}
                         className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
                           permiso?.puede_editar
-                            ? 'bg-green-100 text-green-600'
-                            : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                            ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
+                            : 'bg-gray-100 text-gray-400 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600'
                         }`}
                       >
                         {permiso?.puede_editar ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
@@ -256,8 +266,8 @@ export default function PermisosUsuarioPage() {
                         onClick={() => togglePermiso(modulo.id, 'puede_eliminar')}
                         className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
                           permiso?.puede_eliminar
-                            ? 'bg-green-100 text-green-600'
-                            : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                            ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
+                            : 'bg-gray-100 text-gray-400 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600'
                         }`}
                       >
                         {permiso?.puede_eliminar ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
@@ -270,8 +280,8 @@ export default function PermisosUsuarioPage() {
           </table>
         </div>
 
-        <div className="flex justify-end gap-3 pt-4 border-t">
-          <Link href={`/dashboard/admin/usuarios/${id}`} className="btn-secondary">
+        <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-600">
+          <Link href="/dashboard/admin/roles" className="btn-secondary">
             Cancelar
           </Link>
           <button

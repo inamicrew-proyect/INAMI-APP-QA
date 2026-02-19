@@ -8,20 +8,7 @@
     "build": "next build",
     "start": "node .next/standalone/server.js",
     "start:next": "next start",
-    "lint": "next lint",
-    "cleanup-users": "node scripts/cleanup-duplicate-users.js",
-    "sync-user": "node scripts/sync-user-auth.js",
-    "create-user": "node scripts/create-user-auth.js",
-    "verify-user": "node scripts/verify-user.js",
-    "verify-user-env": "node scripts/verify-user-with-env.js",
-    "create-formularios-table": "node scripts/create-formularios-table.js",
-    "fix-database-issues": "node scripts/fix-database-issues.js",
-    "optimize-rls": "node scripts/optimize-rls-policies.js",
-    "diagnose": "node scripts/diagnose-issues.js",
-    "create-test-user": "node scripts/create-test-user.js",
-    "emergency-fix": "node scripts/emergency-fix.js",
-    "verificar-config": "node scripts/verificar-configuracion.js",
-    "verificar-instalacion": "node scripts/verificar-instalacion.js"
+    "lint": "next lint"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

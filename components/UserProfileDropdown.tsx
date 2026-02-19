@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { User, Settings, Home, LogOut, ChevronDown } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 import { getSupabaseClient } from '@/lib/supabase-client'
+import { Routes } from '@/lib/routes'
 
 const getRoleLabel = (role: string) => {
   const labels: Record<string, string> = {
@@ -155,10 +156,10 @@ export default function UserProfileDropdown() {
           {/* Opciones del menú */}
           <div className="py-2">
             <Link
-              href="/dashboard"
+              href={Routes.DASHBOARD}
               onClick={() => setIsOpen(false)}
               className={`flex items-center gap-3 px-4 py-2 text-sm transition-colors ${
-                isActive('/dashboard')
+                isActive(Routes.DASHBOARD)
                   ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white'
                   : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
               }`}
@@ -167,10 +168,10 @@ export default function UserProfileDropdown() {
               Dashboard
             </Link>
             <Link
-              href={`/dashboard/usuarios/${profile.id}`}
+              href={Routes.usuarioId(profile.id)}
               onClick={() => setIsOpen(false)}
               className={`flex items-center gap-3 px-4 py-2 text-sm transition-colors ${
-                isActive(`/dashboard/usuarios/${profile.id}`)
+                isActive(Routes.usuarioId(profile.id))
                   ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white'
                   : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
               }`}
@@ -179,10 +180,10 @@ export default function UserProfileDropdown() {
               Ver Perfil
             </Link>
             <Link
-              href="/dashboard/configuracion"
+              href={Routes.CONFIGURACION}
               onClick={() => setIsOpen(false)}
               className={`flex items-center gap-3 px-4 py-2 text-sm transition-colors ${
-                isActive('/dashboard/configuracion')
+                isActive(Routes.CONFIGURACION)
                   ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white'
                   : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
               }`}

@@ -15,6 +15,7 @@ import NotificationCenter from './NotificationCenter'
 import NotificationSettings from './NotificationSettings'
 import UserProfileDropdown from './UserProfileDropdown'
 import { useTheme } from '@/lib/useTheme'
+import { Routes } from '@/lib/routes'
 
 function Navbar() {
   // TODOS LOS HOOKS DEBEN ESTAR AQUÍ AL INICIO, ANTES DE CUALQUIER LÓGICA
@@ -77,7 +78,7 @@ function Navbar() {
   useEffect(() => {
     if (mounted) {
       const isAdmin = profile?.role === 'admin'
-      const canViewAdmin = !permissionsLoading && canView('/dashboard/admin')
+      const canViewAdmin = !permissionsLoading && canView(Routes.ADMIN)
       const shouldShow = isAdmin || canViewAdmin
       
       console.log('🔍 Navbar Debug - Panel Admin:', {
@@ -89,10 +90,10 @@ function Navbar() {
         isAdmin,
         canViewAdmin,
         permissionsCount: permissions.length,
-        hasAdminPermission: permissions.some(p => p.modulo.ruta === '/dashboard/admin'),
+        hasAdminPermission: permissions.some(p => p.modulo.ruta === Routes.ADMIN),
         shouldShow,
         condition1: profile?.role === 'admin',
-        condition2: !permissionsLoading && canView('/dashboard/admin'),
+        condition2: !permissionsLoading && canView(Routes.ADMIN),
         willShow: shouldShow
       })
       
@@ -131,7 +132,7 @@ function Navbar() {
 	// Redirigir inmediatamente sin esperar - la limpieza se hará en segundo plano
 	// Esto hace que la experiencia sea mucho más rápida
 	const timestamp = new Date().getTime()
-	window.location.href = `/login?logout=true&t=${timestamp}`
+	window.location.href = `${Routes.LOGIN}?logout=true&t=${timestamp}`
 	
 	// Limpiar en segundo plano (no bloquea la redirección)
 	setTimeout(async () => {
@@ -181,8 +182,8 @@ function Navbar() {
 
   // Función para verificar si una ruta está activa
   const isActive = (path: string) => {
-    if (path === '/dashboard') {
-      return pathname === '/dashboard'
+    if (path === Routes.DASHBOARD) {
+      return pathname === Routes.DASHBOARD
     }
     return pathname.startsWith(path)
   }
@@ -231,7 +232,7 @@ function Navbar() {
   // Usar directRole como respaldo si el perfil no está disponible
   const effectiveRole = profile?.role || directRole
   const isAdminUser = effectiveRole === 'admin'
-  const hasAdminPermission = !permissionsLoading && canView('/dashboard/admin')
+  const hasAdminPermission = !permissionsLoading && canView(Routes.ADMIN)
   const shouldShowAdminPanel = isAdminUser || hasAdminPermission
   
   console.log('🔍 Navbar Render - Estado del Panel Admin:', {
@@ -251,7 +252,7 @@ function Navbar() {
 	  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
 		<div className="flex justify-between items-center h-16">
   		  <div className="flex items-center">
-  			<Link href="/dashboard" className="flex items-center gap-3 group hover:scale-105 transition-transform duration-300">
+  			<Link href={Routes.DASHBOARD} className="flex items-center gap-3 group hover:scale-105 transition-transform duration-300">
   			  <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-lg overflow-hidden group-hover:shadow-xl group-hover:rotate-6 transition-all duration-300 ring-2 ring-white/50 group-hover:ring-white">
 				<img
 					src="/inami.png"
@@ -272,13 +273,13 @@ function Navbar() {
 
 		  {/* Desktop menu */}
 		  <div className="hidden md:flex items-center gap-2">
-			<Link href="/dashboard" className={getNavButtonClass('/dashboard')}>
+			<Link href={Routes.DASHBOARD} className={getNavButtonClass(Routes.DASHBOARD)}>
 			  Inicio
 			</Link>
-			<Link href="/dashboard/jovenes" className={getNavButtonClass('/dashboard/jovenes')}>
+			<Link href={Routes.JOVENES} className={getNavButtonClass(Routes.JOVENES)}>
 			  Jóvenes
 			</Link>
-          <Link href="/dashboard/atenciones" className={getNavButtonClass('/dashboard/atenciones')}>
+          <Link href={Routes.ATENCIONES} className={getNavButtonClass(Routes.ATENCIONES)}>
             Atenciones
           </Link>
           {/* Panel Admin - Mostrar si es admin (inmediato, sin esperar permisos) */}
@@ -286,7 +287,7 @@ function Navbar() {
           {(() => {
             // Usar effectiveRole (profile.role o directRole) para verificar admin
             const effectiveRole = profile?.role || directRole
-            const showAdmin = effectiveRole === 'admin' || (!permissionsLoading && canView('/dashboard/admin'))
+            const showAdmin = effectiveRole === 'admin' || (!permissionsLoading && canView(Routes.ADMIN))
             
             // Log siempre (no solo en desarrollo) para debug
             console.log('🔍 [NAVBAR] Evaluando Panel Admin (Desktop):', {
@@ -297,7 +298,7 @@ function Navbar() {
               profileExists: !!profile,
               showAdmin,
               condition1: effectiveRole === 'admin',
-              condition2: !permissionsLoading && canView('/dashboard/admin'),
+              condition2: !permissionsLoading && canView(Routes.ADMIN),
               loading,
               permissionsLoading
             })
@@ -311,14 +312,14 @@ function Navbar() {
                   isAdmin: profile?.role === 'admin',
                   profileExists: !!profile
                 })
-                router.push('/dashboard/admin')
+                router.push(Routes.ADMIN)
               }}
-              className={getNavButtonClass('/dashboard/admin')}
+              className={getNavButtonClass(Routes.ADMIN)}
             >
               Panel Admin
             </button>
           )}
-          <Link href="/dashboard/notificaciones" className={getNavButtonClass('/dashboard/notificaciones')}>
+          <Link href={Routes.NOTIFICACIONES} className={getNavButtonClass(Routes.NOTIFICACIONES)}>
             Notificaciones
           </Link>
   			
@@ -346,8 +347,8 @@ function Navbar() {
 		<div className="md:hidden border-t border-white/30 bg-sky-500">
 		  <div className="px-4 py-3 space-y-2">
 			{profile && (
-			  <Link 
-				href={`/dashboard/usuarios/${profile.id}`}
+			<Link 
+				href={Routes.usuarioId(profile.id)}
 				onClick={() => setIsOpen(false)}
 				className="flex items-center gap-3 pb-3 border-b border-white/30 hover:opacity-80 transition-opacity cursor-pointer"
 				title="Ver mi perfil"
@@ -371,22 +372,22 @@ function Navbar() {
 			)}
 			
 			<Link 
-			  href="/dashboard" 
-			  className={`block px-4 py-2.5 rounded-lg font-medium text-base transition-all border-2 ${getMobileNavButtonClass('/dashboard')}`}
+			  href={Routes.DASHBOARD} 
+			  className={`block px-4 py-2.5 rounded-lg font-medium text-base transition-all border-2 ${getMobileNavButtonClass(Routes.DASHBOARD)}`}
 			  onClick={() => setIsOpen(false)}
 			>
 			  Inicio
 			</Link>
 			<Link 
-			  href="/dashboard/jovenes" 
-			  className={`block px-4 py-2.5 rounded-lg font-medium text-base transition-all border-2 ${getMobileNavButtonClass('/dashboard/jovenes')}`}
+			  href={Routes.JOVENES} 
+			  className={`block px-4 py-2.5 rounded-lg font-medium text-base transition-all border-2 ${getMobileNavButtonClass(Routes.JOVENES)}`}
 			  onClick={() => setIsOpen(false)}
 			>
 			  Jóvenes
 			</Link>
           <Link 
-            href="/dashboard/atenciones" 
-            className={`block px-4 py-2.5 rounded-lg font-medium text-base transition-all border-2 ${getMobileNavButtonClass('/dashboard/atenciones')}`}
+            href={Routes.ATENCIONES} 
+            className={`block px-4 py-2.5 rounded-lg font-medium text-base transition-all border-2 ${getMobileNavButtonClass(Routes.ATENCIONES)}`}
             onClick={() => setIsOpen(false)}
           >
             Atenciones
@@ -394,14 +395,14 @@ function Navbar() {
           {/* Panel Admin - Mostrar si es admin (inmediato, sin esperar permisos) */}
           {(() => {
             const effectiveRole = profile?.role || directRole
-            return effectiveRole === 'admin' || (!permissionsLoading && canView('/dashboard/admin'))
+            return effectiveRole === 'admin' || (!permissionsLoading && canView(Routes.ADMIN))
           })() && (
             <button
               onClick={() => {
                 setIsOpen(false)
                 const effectiveRole = profile?.role || directRole
                 const isAdmin = effectiveRole === 'admin'
-                const hasPermission = canView('/dashboard/admin')
+                const hasPermission = canView(Routes.ADMIN)
                 console.log('Panel Admin clicked (mobile):', { 
                   profileRole: profile?.role,
                   directRole,
@@ -411,17 +412,17 @@ function Navbar() {
                   profileExists: !!profile
                 })
                 if (isAdmin || hasPermission) {
-                  router.push('/dashboard/admin')
+                  router.push(Routes.ADMIN)
                 }
               }}
-              className={`block w-full text-left px-4 py-2.5 rounded-lg font-medium text-base transition-all border-2 ${getMobileNavButtonClass('/dashboard/admin')}`}
+              className={`block w-full text-left px-4 py-2.5 rounded-lg font-medium text-base transition-all border-2 ${getMobileNavButtonClass(Routes.ADMIN)}`}
             >
               Panel Admin
             </button>
           )}
 <Link 
-			  href="/dashboard/notificaciones" 
-			  className={`block px-4 py-2.5 rounded-lg font-medium text-base transition-all border-2 ${getMobileNavButtonClass('/dashboard/notificaciones')}`}
+			  href={Routes.NOTIFICACIONES} 
+			  className={`block px-4 py-2.5 rounded-lg font-medium text-base transition-all border-2 ${getMobileNavButtonClass(Routes.NOTIFICACIONES)}`}
 			onClick={() => setIsOpen(false)}
 		  >
 		    Notificaciones

@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/lib/auth'
 import { usePermissions } from './usePermissions'
+import { Routes } from '@/lib/routes'
 
 export function useAdminAccess() {
   const { profile, loading: authLoading } = useAuth()
@@ -47,7 +48,7 @@ export function useAdminAccess() {
     }
 
     // Si no es admin, verificar permisos directamente
-    const canAccessAdmin = canView('/dashboard/admin')
+    const canAccessAdmin = canView(Routes.ADMIN)
     
     console.log('useAdminAccess: Verificando permisos basados en roles', {
       canAccessAdmin,

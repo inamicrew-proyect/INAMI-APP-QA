@@ -14,6 +14,7 @@ import {
   Shield
 } from 'lucide-react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { Routes } from '@/lib/routes'
 
 interface Stats {
   totalJovenes: number
@@ -261,28 +262,28 @@ export default function DashboardPage() {
       title: 'Registrar Joven',
       description: 'Agregar un nuevo menor al sistema',
       icon: Users,
-      href: '/dashboard/jovenes/nuevo',
+      href: Routes.JOVENES_NUEVO,
       color: 'bg-blue-500 hover:bg-blue-600',
     },
     {
       title: 'Nueva Atención',
       description: 'Registrar una atención a un joven',
       icon: FileText,
-      href: '/dashboard/atenciones/nueva',
+      href: Routes.ATENCIONES_NUEVA,
       color: 'bg-green-500 hover:bg-green-600',
     },
     {
       title: 'Ver Jóvenes',
       description: 'Lista completa de jóvenes registrados',
       icon: UserCheck,
-      href: '/dashboard/jovenes',
+      href: Routes.JOVENES,
       color: 'bg-purple-500 hover:bg-purple-600',
     },
     {
       title: 'Ver Atenciones',
       description: 'Historial de atenciones realizadas',
       icon: Calendar,
-      href: '/dashboard/atenciones',
+      href: Routes.ATENCIONES,
       color: 'bg-orange-500 hover:bg-orange-600',
     },
   ], [])
@@ -335,7 +336,7 @@ export default function DashboardPage() {
                 Por favor, configura tus preguntas secretas para mayor seguridad de tu cuenta.
               </p>
               <Link 
-                href="/dashboard/configuracion/preguntas-secretas"
+                href={Routes.CONFIGURACION_PREGUNTAS_SECRETAS}
                 className="text-sm font-medium text-yellow-800 dark:text-yellow-200 hover:underline"
               >
                 Configurar ahora →
