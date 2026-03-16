@@ -34,9 +34,22 @@ export async function logSystemAction(
         const supabase = createClientComponentClient()
         const { data: { user } } = await supabase.auth.getUser()
         finalUserId = user?.id ?? undefined
+        // Si sigue sin haber usuario, intentar con getSession (a veces más rápido)
+        if (!finalUserId) {
+          const { data: { session } } = await supabase.auth.getSession()
+          finalUserId = session?.user?.id ?? undefined
+        }
       } catch (error) {
         console.error('Error obteniendo usuario para log:', error)
       }
+    }
+
+    // No insertar log si no hay usuario identificado (evitar registros como "Sistema")
+    if (!finalUserId) {
+      if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+        console.warn('[logSystemAction] No se pudo obtener userId; no se registra la acción para evitar usuario "Sistema". Pasa userId explícitamente si es posible.')
+      }
+      return
     }
 
     // Obtener IP y User Agent si están disponibles
@@ -53,7 +66,7 @@ export async function logSystemAction(
     const { error } = await adminClient
       .from('system_logs')
       .insert({
-        usuario_id: finalUserId || null,
+        usuario_id: finalUserId,
         accion: action.accion,
         entidad: action.entidad || null,
         entidad_id: action.entidad_id || null,

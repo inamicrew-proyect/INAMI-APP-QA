@@ -190,6 +190,7 @@ export default function NuevaAtencionPage() {
 				  profesional_id: atencionData[0].profesional_id,
 				  motivo: atencionData[0].motivo,
 				},
+				usuario_id: user.id,
 			  }),
 			}).catch(err => console.error('Error registrando log de atención:', err))
 		  }

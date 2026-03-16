@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Shield, AlertTriangle, CheckCircle, Activity, Users, FileText, Bell, Clock } from 'lucide-react'
+import { Shield, AlertTriangle, CheckCircle, Activity, Users, FileText, Bell, Clock, FileDown } from 'lucide-react'
 import { useAdminAccess } from '@/lib/hooks/useAdminAccess'
 
 interface Alerta {
@@ -87,7 +87,8 @@ export default function SeguridadPage() {
   const [filtroUsuario, setFiltroUsuario] = useState<string>('')
   const [totalLogs, setTotalLogs] = useState(0)
   const [currentPage, setCurrentPage] = useState(1)
-  const logsPerPage = 50
+  const [logsPerPage, setLogsPerPage] = useState(50)
+  const [exportingPdf, setExportingPdf] = useState(false)
 
   useEffect(() => {
     if (!authLoading && !hasAccess) {
@@ -174,11 +175,146 @@ export default function SeguridadPage() {
     }
   }
 
+  const exportBitacoraPDF = async () => {
+    if (logs.length === 0) return
+    setExportingPdf(true)
+    try {
+      const JsPDF = (await import('jspdf')).default
+      const doc = new JsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
+      const pageW = doc.internal.pageSize.getWidth()
+      const pageH = doc.internal.pageSize.getHeight()
+      const margin = 12
+      const lineHeight = 3.8
+      const tableTop = 32
+      const bottomLimit = pageH - 15
+
+      const cols = [
+        { label: 'Fecha/Hora', w: 30 },
+        { label: 'Usuario', w: 42 },
+        { label: 'Acción', w: 28 },
+        { label: 'Entidad', w: 26 },
+        { label: 'Detalles', w: 72 },
+        { label: 'IP', w: 24 },
+      ]
+      const totalColW = cols.reduce((s, c) => s + c.w, 0)
+
+      const formatDetalles = (det: any): string => {
+        if (det == null) return '-'
+        if (typeof det !== 'object') return String(det)
+        const parts: string[] = []
+        for (const [k, v] of Object.entries(det)) {
+          const val = v === null || v === undefined ? 'N/A' : typeof v === 'object' ? JSON.stringify(v) : String(v)
+          parts.push(`${k}: ${val}`)
+        }
+        return parts.length ? parts.join(' | ') : '-'
+      }
+
+      const drawLogo = async () => {
+        try {
+          const url = typeof window !== 'undefined' ? `${window.location.origin}/inami.png` : ''
+          if (!url) return
+          const resp = await fetch(url)
+          if (!resp.ok) return
+          const blob = await resp.blob()
+          const dataUrl = await new Promise<string>((res, rej) => {
+            const r = new FileReader()
+            r.onload = () => res(r.result as string)
+            r.onerror = rej
+            r.readAsDataURL(blob)
+          })
+          doc.addImage(dataUrl, 'PNG', pageW - margin - 22, 6, 22, 22)
+        } catch {
+          // Si no hay logo, continuar sin él
+        }
+      }
+
+      await drawLogo()
+
+      doc.setFontSize(16)
+      doc.setFont('helvetica', 'bold')
+      doc.text('Bitácora del Sistema', margin, 14)
+      doc.setFontSize(9)
+      doc.setFont('helvetica', 'normal')
+      doc.text(`Exportado: ${new Date().toLocaleString('es-ES')} — ${logs.length} registros`, margin, 21)
+
+      const drawTableHeader = (startY: number) => {
+        let x = margin
+        doc.setFontSize(9)
+        doc.setFont('helvetica', 'bold')
+        cols.forEach((col) => {
+          doc.text(col.label, x, startY)
+          x += col.w
+        })
+        const lineY = startY + 4
+        doc.setDrawColor(180, 180, 180)
+        doc.line(margin, lineY, margin + totalColW, lineY)
+        return lineY + 3
+      }
+
+      let y = drawTableHeader(tableTop)
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(7)
+
+      for (const log of logs) {
+        const fecha = new Date(log.created_at).toLocaleString('es-ES')
+        const usuario = log.usuario ? `${log.usuario.full_name} (${log.usuario.email})` : 'Sistema'
+        const detalles = formatDetalles(log.detalles)
+        const cellTexts = [
+          fecha,
+          usuario,
+          log.accion,
+          log.entidad || '-',
+          detalles,
+          log.ip_address || '-',
+        ]
+
+        const cellLines = cols.map((col, i) => {
+          const text = String(cellTexts[i] ?? '')
+          return doc.splitTextToSize(text || '-', col.w - 1.5)
+        })
+        const rowLines = Math.max(1, ...cellLines.map((arr) => arr.length))
+        const rowHeight = rowLines * lineHeight
+
+        if (y + rowHeight > bottomLimit) {
+          doc.addPage('l')
+          y = margin + 8
+          drawTableHeader(y)
+          y += 6
+          doc.setFont('helvetica', 'normal')
+          doc.setFontSize(7)
+        }
+
+        const rowYStart = y
+        cols.forEach((_, i) => {
+          const lines = cellLines[i]
+          let lineY = rowYStart + lineHeight * 0.7
+          const x = margin + cols.slice(0, i).reduce((s, c) => s + c.w, 0)
+          lines.forEach((line: string) => {
+            doc.text(line, x, lineY)
+            lineY += lineHeight
+          })
+        })
+        y = rowYStart + rowHeight
+
+        doc.setDrawColor(240, 240, 240)
+        doc.line(margin, y, margin + totalColW, y)
+        y += 2
+      }
+
+      const filename = `Bitacora-Sistema-${new Date().toISOString().slice(0, 10)}.pdf`
+      doc.save(filename)
+    } catch (err) {
+      console.error('Error exportando PDF:', err)
+    } finally {
+      setExportingPdf(false)
+    }
+  }
+
   useEffect(() => {
     if (hasAccess) {
       loadLogs()
     }
-  }, [hasAccess, currentPage, filtroAccion, filtroEntidad, filtroUsuario])
+  }, [hasAccess, currentPage, filtroAccion, filtroEntidad, filtroUsuario, logsPerPage])
 
   const handleResolverAlerta = async (alertaId: string, resuelta: boolean) => {
     try {
@@ -330,17 +466,28 @@ export default function SeguridadPage() {
             <Clock className="w-6 h-6 text-primary-600" />
             <h2 className="text-xl font-bold text-gray-900 dark:text-white">Bitácora del Sistema</h2>
           </div>
-          <button
-            onClick={() => {
-              setShowLogs(!showLogs)
-              if (!showLogs) {
-                loadLogs()
-              }
-            }}
-            className="btn-secondary text-sm"
-          >
-            {showLogs ? 'Ocultar' : 'Mostrar'} Bitácora
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={exportBitacoraPDF}
+              disabled={exportingPdf || logs.length === 0}
+              className="btn-secondary text-sm flex items-center gap-2 disabled:opacity-50"
+              title="Exportar la bitácora visible en PDF"
+            >
+              <FileDown className="w-4 h-4" />
+              {exportingPdf ? 'Exportando...' : 'Exportar PDF'}
+            </button>
+            <button
+              onClick={() => {
+                setShowLogs(!showLogs)
+                if (!showLogs) {
+                  loadLogs()
+                }
+              }}
+              className="btn-secondary text-sm"
+            >
+              {showLogs ? 'Ocultar' : 'Mostrar'} Bitácora
+            </button>
+          </div>
         </div>
 
         {showLogs && (
@@ -562,9 +709,29 @@ export default function SeguridadPage() {
                 </div>
 
                 {/* Paginación */}
-                <div className="mt-4 flex items-center justify-between">
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
-                    Mostrando {((currentPage - 1) * logsPerPage) + 1} - {Math.min(currentPage * logsPerPage, totalLogs)} de {totalLogs} registros
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
+                  <div className="flex flex-wrap items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <label htmlFor="logs-per-page" className="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                        Registros por página:
+                      </label>
+                      <select
+                        id="logs-per-page"
+                        value={logsPerPage}
+                        onChange={(e) => {
+                          setLogsPerPage(Number(e.target.value))
+                          setCurrentPage(1)
+                        }}
+                        className="input-field py-1.5 px-2 text-sm w-20"
+                      >
+                        <option value={25}>25</option>
+                        <option value={50}>50</option>
+                        <option value={100}>100</option>
+                      </select>
+                    </div>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                      Mostrando {((currentPage - 1) * logsPerPage) + 1} - {Math.min(currentPage * logsPerPage, totalLogs)} de {totalLogs} registros
+                    </span>
                   </div>
                   <div className="flex gap-2">
                     <button

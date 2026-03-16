@@ -68,6 +68,7 @@ export default function UserProfileDropdown() {
             entidad: 'usuarios',
             entidad_id: profile.id,
             detalles: { email: profile.email },
+            usuario_id: profile.id,
           }),
         })
       } catch (logError) {

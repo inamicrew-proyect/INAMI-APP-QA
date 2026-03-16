@@ -20,15 +20,26 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { accion, entidad, entidad_id, detalles } = body
+    const { accion, entidad, entidad_id, detalles, usuario_id: bodyUsuarioId } = body
 
     if (!accion) {
       return NextResponse.json({ error: 'Acción es requerida' }, { status: 400 })
     }
 
+    // Usar siempre el usuario de la sesión; si no está disponible (p. ej. cookie aún no actualizada),
+    // aceptar usuario_id del body solo si coincide con la sesión o la sesión no trae user.id
+    const sessionUserId = session?.user?.id ?? null
+    let userId = sessionUserId ?? bodyUsuarioId ?? null
+    if (bodyUsuarioId && sessionUserId && bodyUsuarioId !== sessionUserId) {
+      return NextResponse.json({ error: 'usuario_id no coincide con la sesión' }, { status: 403 })
+    }
+    if (!userId) {
+      return NextResponse.json({ error: 'No se pudo identificar al usuario. Vuelve a iniciar sesión si el problema continúa.' }, { status: 400 })
+    }
+
     // Obtener IP y User Agent de los headers
-    const ipAddress = request.headers.get('x-forwarded-for') || 
-                     request.headers.get('x-real-ip') || 
+    const ipAddress = request.headers.get('x-forwarded-for') ||
+                     request.headers.get('x-real-ip') ||
                      'unknown'
     const userAgent = request.headers.get('user-agent') || 'unknown'
 
@@ -36,7 +47,7 @@ export async function POST(request: NextRequest) {
     const { error } = await adminClient
       .from('system_logs')
       .insert({
-        usuario_id: session.user.id,
+        usuario_id: userId,
         accion,
         entidad: entidad || null,
         entidad_id: entidad_id || null,
