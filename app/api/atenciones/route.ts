@@ -53,10 +53,13 @@ export async function GET(request: NextRequest) {
     // Cargar atenciones con el cliente admin para evitar problemas de RLS
     // Especificar explícitamente la relación profesional_id para evitar ambigüedad
     const { searchParams } = new URL(request.url)
-    const limit = parseInt(searchParams.get('limit') || '50') // Límite por defecto
-    const offset = parseInt(searchParams.get('offset') || '0')
-    
-    const { data, error, count } = await adminClient
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '25', 10)))
+    const offset = Math.max(0, parseInt(searchParams.get('offset') || '0', 10))
+    const estado = searchParams.get('estado')
+    const fechaDesde = searchParams.get('fecha_desde')
+    const fechaHasta = searchParams.get('fecha_hasta')
+
+    let query = adminClient
       .from('atenciones')
       .select(`
         *,
@@ -65,7 +68,18 @@ export async function GET(request: NextRequest) {
         profesional:profiles!atenciones_profesional_id_fkey (full_name, role)
       `, { count: 'exact' })
       .order('fecha_atencion', { ascending: false })
-      .range(offset, offset + limit - 1)
+
+    if (estado && estado !== 'todos') {
+      query = query.eq('estado', estado)
+    }
+    if (fechaDesde) {
+      query = query.gte('fecha_atencion', `${fechaDesde}T00:00:00.000Z`)
+    }
+    if (fechaHasta) {
+      query = query.lte('fecha_atencion', `${fechaHasta}T23:59:59.999Z`)
+    }
+
+    const { data, error, count } = await query.range(offset, offset + limit - 1)
 
     // Debug: verificar datos cargados
     if (data && data.length > 0) {

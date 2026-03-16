@@ -8,7 +8,7 @@ import type { Atencion } from '@/lib/supabase'
 import { format } from 'date-fns'
 import { useIsAdmin, useCanCreate } from '@/lib/auth'
 
-const ITEMS_PER_PAGE = 20
+const PAGE_SIZE_OPTIONS = [25, 50, 100] as const
 
 type AtencionExtendida = Atencion & {
   jovenes?: { nombres: string; apellidos: string }
@@ -20,20 +20,25 @@ type AtencionExtendida = Atencion & {
 export default function AtencionesPage() {
   const supabase = createClientComponentClient()
   const { isAdmin, loading: authLoading } = useIsAdmin()
-  const { canCreate, loading: canCreateLoading } = useCanCreate()
+  const { loading: canCreateLoading } = useCanCreate()
   
   const [atenciones, setAtenciones] = useState<AtencionExtendida[]>([])
   const [loading, setLoading] = useState(true)
   
-  // No bloquear la UI si los hooks de auth aún están cargando
   const isAuthReady = !authLoading && !canCreateLoading
   const [searchTerm, setSearchTerm] = useState('')
   const [filterEstado, setFilterEstado] = useState<string>('todos')
+  const [fechaDesde, setFechaDesde] = useState('')
+  const [fechaHasta, setFechaHasta] = useState('')
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState<25 | 50 | 100>(25)
+  const [totalFromApi, setTotalFromApi] = useState(0)
   const [debugInfo, setDebugInfo] = useState<string>('')
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
 
   // Memoizar el cliente de Supabase para evitar recreaciones
   const supabaseClient = useMemo(() => supabase, [])
@@ -78,7 +83,15 @@ export default function AtencionesPage() {
         const controller = new AbortController()
         const fetchTimeout = setTimeout(() => controller.abort(), 10000) // 10 segundos para la petición
 
-        const response = await fetch('/api/atenciones', {
+        const params = new URLSearchParams()
+        params.set('limit', String(itemsPerPage))
+        params.set('offset', String((currentPage - 1) * itemsPerPage))
+        if (filterEstado && filterEstado !== 'todos') {
+          params.set('estado', filterEstado)
+        }
+        if (fechaDesde) params.set('fecha_desde', fechaDesde)
+        if (fechaHasta) params.set('fecha_hasta', fechaHasta)
+        const response = await fetch(`/api/atenciones?${params.toString()}`, {
           method: 'GET',
           credentials: 'include',
           headers: {
@@ -128,6 +141,7 @@ export default function AtencionesPage() {
         console.log(`Cargadas ${atencionesData.length} atenciones exitosamente`)
         
         setAtenciones(atencionesData)
+        setTotalFromApi(typeof result.total === 'number' ? result.total : 0)
         
         if (process.env.NODE_ENV === 'development') {
           setDebugInfo(`Cargadas ${atencionesData.length} atenciones exitosamente`)
@@ -164,9 +178,9 @@ export default function AtencionesPage() {
         }
       }
     }
-  }, [supabaseClient])
+  }, [supabaseClient, currentPage, itemsPerPage, filterEstado, fechaDesde, fechaHasta])
 
-  // Cargar datos solo una vez al montar el componente
+  // Cargar datos al montar y cuando cambian página, tamaño de página o filtro de estado
   useEffect(() => {
     loadAtenciones(true)
   }, [loadAtenciones])
@@ -272,40 +286,36 @@ export default function AtencionesPage() {
     setConfirmDeleteId(null)
   }, [])
 
-  // Memoizar filtrado
+  // Filtrado solo por búsqueda (estado se aplica en la API)
   const filteredAtenciones = useMemo(() => {
+    if (!searchTerm.trim()) return atenciones
+    const term = searchTerm.toLowerCase().trim()
     return atenciones.filter(atencion => {
-      const jovenNombre = atencion.jovenes 
+      const jovenNombre = atencion.jovenes
         ? `${atencion.jovenes.nombres} ${atencion.jovenes.apellidos}`.toLowerCase()
         : ''
       const tipoAtencion = atencion.tipos_atencion?.nombre.toLowerCase() || ''
       const profesional = atencion.profesional?.full_name.toLowerCase() || ''
 
-      const matchesSearch = 
-        jovenNombre.includes(searchTerm.toLowerCase()) ||
-        tipoAtencion.includes(searchTerm.toLowerCase()) ||
-        profesional.includes(searchTerm.toLowerCase()) ||
-        atencion.motivo.toLowerCase().includes(searchTerm.toLowerCase())
-      
-      const matchesEstado = filterEstado === 'todos' || atencion.estado === filterEstado
-
-      return matchesSearch && matchesEstado
+      return (
+        jovenNombre.includes(term) ||
+        tipoAtencion.includes(term) ||
+        profesional.includes(term) ||
+        (atencion.motivo && atencion.motivo.toLowerCase().includes(term))
+      )
     })
-  }, [atenciones, searchTerm, filterEstado])
+  }, [atenciones, searchTerm])
 
-  // Paginación
-  const totalPages = Math.ceil(filteredAtenciones.length / ITEMS_PER_PAGE)
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
-  const endIndex = startIndex + ITEMS_PER_PAGE
-  const paginatedAtenciones = useMemo(() => 
-    filteredAtenciones.slice(startIndex, endIndex),
-    [filteredAtenciones, startIndex, endIndex]
-  )
+  // Paginación (total desde API)
+  const totalPages = Math.max(1, Math.ceil(totalFromApi / itemsPerPage))
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const showingEnd = Math.min(startIndex + filteredAtenciones.length, startIndex + itemsPerPage)
+  const showingStart = totalFromApi === 0 ? 0 : startIndex + 1
 
-  // Resetear página cuando cambian los filtros
+  // Resetear página cuando cambian filtros o tamaño de página
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchTerm, filterEstado])
+  }, [searchTerm, filterEstado, fechaDesde, fechaHasta])
 
   const getEstadoBadge = useCallback((estado: string) => {
     const badges = {
@@ -317,13 +327,13 @@ export default function AtencionesPage() {
     return badges[estado as keyof typeof badges] || 'badge-info'
   }, [])
 
-  // Estadísticas memoizadas
+  // Estadísticas memoizadas (datos visibles en la página actual)
   const stats = useMemo(() => ({
-    total: filteredAtenciones.length,
+    total: totalFromApi,
     pendientes: filteredAtenciones.filter(a => a.estado === 'pendiente').length,
     enProceso: filteredAtenciones.filter(a => a.estado === 'en_proceso').length,
     completadas: filteredAtenciones.filter(a => a.estado === 'completada').length,
-  }), [filteredAtenciones])
+  }), [totalFromApi, filteredAtenciones])
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-gray-50 dark:bg-gray-900 min-h-screen">
@@ -338,17 +348,15 @@ export default function AtencionesPage() {
             <FileText className="w-5 h-5" />
             Formularios
           </Link>
-          {(canCreate || !isAuthReady) && (
-            <Link href="/dashboard/atenciones/nueva" className="btn-primary flex items-center gap-2 whitespace-nowrap">
-              <Plus className="w-5 h-5" />
-              Nueva Atención
-            </Link>
-          )}
+          <Link href="/dashboard/atenciones/nueva" className="btn-primary flex items-center gap-2 whitespace-nowrap">
+            <Plus className="w-5 h-5" />
+            Nueva Atención
+          </Link>
         </div>
       </div>
 
-      {/* Debug Info - Temporal */}
-      {process.env.NODE_ENV === 'development' && debugInfo && (
+      {/* Debug Info - solo después de montar para evitar hydration mismatch */}
+      {mounted && process.env.NODE_ENV === 'development' && debugInfo && (
         <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg text-sm text-blue-700 dark:text-blue-400">
           <strong>Debug:</strong> {debugInfo} | Total en estado: {atenciones.length}
         </div>
@@ -381,34 +389,84 @@ export default function AtencionesPage() {
         </div>
       )}
 
-      {/* Filters */}
+      {/* Filters: más altura, búsqueda/estado un poco más cortos y con espacio para icono */}
       <div className="card mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="relative">
-            <Search className="absolute left-1 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400 w-5 h-5" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1.5fr_1.2fr_150px_150px] gap-4">
+          <div className="flex flex-col min-w-0">
+            <label htmlFor="filter-busqueda" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Búsqueda
+            </label>
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 w-5 h-5 pointer-events-none shrink-0" />
+              <input
+                id="filter-busqueda"
+                type="text"
+                placeholder="Joven, tipo de atención, profesional..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="input-field w-full pl-12 py-2.5 min-h-[44px]"
+              />
+            </div>
+          </div>
+          <div className="flex flex-col min-w-0">
+            <label htmlFor="filter-estado" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Estado
+            </label>
+            <div className="relative flex-1">
+              <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 w-5 h-5 pointer-events-none shrink-0" />
+              <select
+                id="filter-estado"
+                value={filterEstado}
+                onChange={(e) => setFilterEstado(e.target.value)}
+                className="input-field w-full pl-12 py-2.5 min-h-[44px] appearance-none"
+              >
+                <option value="todos">Todos los estados</option>
+                <option value="pendiente">Pendientes</option>
+                <option value="en_proceso">En Proceso</option>
+                <option value="completada">Completadas</option>
+                <option value="cancelada">Canceladas</option>
+              </select>
+            </div>
+          </div>
+          <div className="flex flex-col min-w-0 lg:w-[150px]">
+            <label htmlFor="filter-fecha-desde" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Fecha desde
+            </label>
             <input
-              type="text"
-              placeholder="  Buscar por joven, tipo de atención, profesional..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="input-field pl-10"
+              id="filter-fecha-desde"
+              type="date"
+              value={fechaDesde}
+              onChange={(e) => setFechaDesde(e.target.value)}
+              className="input-field w-full py-2.5 min-h-[44px] max-w-[150px] lg:max-w-none"
             />
           </div>
-          <div className="relative">
-            <Filter className="absolute left-0.01 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400 w-5 h-5" />
-            <select
-              value={filterEstado}
-              onChange={(e) => setFilterEstado(e.target.value)}
-              className="input-field pl-10"
-            >
-              <option value="todos">Todos los estados</option>
-              <option value="pendiente">Pendientes</option>
-              <option value="en_proceso">En Proceso</option>
-              <option value="completada">Completadas</option>
-              <option value="cancelada">Canceladas</option>
-            </select>
+          <div className="flex flex-col min-w-0 lg:w-[150px]">
+            <label htmlFor="filter-fecha-hasta" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Fecha hasta
+            </label>
+            <input
+              id="filter-fecha-hasta"
+              type="date"
+              value={fechaHasta}
+              onChange={(e) => setFechaHasta(e.target.value)}
+              className="input-field w-full py-2.5 min-h-[44px] max-w-[150px] lg:max-w-none"
+            />
           </div>
         </div>
+        {(fechaDesde || fechaHasta) && (
+          <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+            <button
+              type="button"
+              onClick={() => {
+                setFechaDesde('')
+                setFechaHasta('')
+              }}
+              className="text-sm text-primary-600 dark:text-primary-400 hover:underline"
+            >
+              Limpiar filtro de fechas
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Table */}
@@ -427,12 +485,10 @@ export default function AtencionesPage() {
           <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
             {loading ? 'Cargando...' : 'Registra la primera atención para comenzar'}
           </p>
-          {(canCreate || !isAuthReady) && (
-            <Link href="/dashboard/atenciones/nueva" className="btn-primary inline-flex items-center gap-2">
-              <Plus className="w-5 h-5" />
-              Registrar Primera Atención
-            </Link>
-          )}
+          <Link href="/dashboard/atenciones/nueva" className="btn-primary inline-flex items-center gap-2">
+            <Plus className="w-5 h-5" />
+            Registrar Primera Atención
+          </Link>
         </div>
       ) : filteredAtenciones.length === 0 ? (
         <div className="card text-center py-12">
@@ -447,6 +503,8 @@ export default function AtencionesPage() {
             onClick={() => {
               setSearchTerm('')
               setFilterEstado('todos')
+              setFechaDesde('')
+              setFechaHasta('')
             }}
             className="btn-secondary inline-flex items-center gap-2"
           >
@@ -469,7 +527,7 @@ export default function AtencionesPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {paginatedAtenciones.map((atencion) => (
+                  {filteredAtenciones.map((atencion) => (
                     <tr key={atencion.id} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                       <td className="font-medium text-gray-900 dark:text-white">
                         {atencion.jovenes
@@ -499,7 +557,7 @@ export default function AtencionesPage() {
                           >
                             <Eye className="w-4 h-4" />
                           </Link>
-                          {(isAdmin || !isAuthReady) && (
+                          {mounted && (isAdmin || !isAuthReady) && (
                             <>
                               <Link
                                 href={`/dashboard/atenciones/${atencion.id}/editar`}
@@ -529,14 +587,34 @@ export default function AtencionesPage() {
           </div>
 
           {/* Paginación */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between mb-6">
-              <div className="text-sm text-gray-700 dark:text-gray-300">
-                Mostrando {startIndex + 1} - {Math.min(endIndex, filteredAtenciones.length)} de {filteredAtenciones.length} resultados
+          {(totalFromApi > 0 || atenciones.length > 0) && (
+            <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <label htmlFor="atenciones-per-page" className="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                    Registros por página:
+                  </label>
+                  <select
+                    id="atenciones-per-page"
+                    value={itemsPerPage}
+                    onChange={(e) => {
+                      setItemsPerPage(Number(e.target.value) as 25 | 50 | 100)
+                      setCurrentPage(1)
+                    }}
+                    className="input-field py-1.5 px-2 text-sm w-20"
+                  >
+                    {PAGE_SIZE_OPTIONS.map((n) => (
+                      <option key={n} value={n}>{n}</option>
+                    ))}
+                  </select>
+                </div>
+                <span className="text-sm text-gray-700 dark:text-gray-300">
+                  Mostrando {showingStart} - {showingEnd} de {totalFromApi} resultados
+                </span>
               </div>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
                   disabled={currentPage === 1}
                   className="p-2 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
@@ -546,7 +624,7 @@ export default function AtencionesPage() {
                   Página {currentPage} de {totalPages}
                 </span>
                 <button
-                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
                   disabled={currentPage === totalPages}
                   className="p-2 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
