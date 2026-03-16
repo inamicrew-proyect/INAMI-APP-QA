@@ -11,7 +11,8 @@ import {
   UserCheck,
   Activity,
   ArrowUpRight,
-  Shield
+  Shield,
+  RefreshCw
 } from 'lucide-react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { Routes } from '@/lib/routes'
@@ -41,13 +42,18 @@ export default function DashboardPage() {
   })
   const [centros, setCentros] = useState<Centro[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [hasSecurityQuestions, setHasSecurityQuestions] = useState<boolean | null>(null)
 
   // Optimización: Cargar todas las estadísticas en paralelo con timeout y mejor manejo de errores
-  const loadData = async () => {
+  const loadData = async (isRefresh = false) => {
     try {
-      setLoading(true)
+      if (isRefresh) {
+        setRefreshing(true)
+      } else {
+        setLoading(true)
+      }
       setError(null)
 
       // Función helper para agregar timeout a las consultas
@@ -208,6 +214,7 @@ export default function DashboardPage() {
       setCentros([])
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
   }
 
@@ -307,13 +314,25 @@ export default function DashboardPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-gray-50 dark:bg-gray-900 min-h-screen">
       {/* Header con animación */}
-      <div className="mb-8 animate-fade-in">
-        <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
-          Inicio
-        </h1>
-        <p className="text-gray-700 dark:text-gray-200 mt-2 text-lg font-medium">
-          Bienvenido al Sistema de Gestión de Atenciones INAMI
-        </p>
+      <div className="mb-8 animate-fade-in flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
+            Inicio
+          </h1>
+          <p className="text-gray-700 dark:text-gray-200 mt-2 text-lg font-medium">
+            Bienvenido al Sistema de Gestión de Atenciones INAMI
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => loadData(true)}
+          disabled={loading || refreshing}
+          className="btn-secondary flex items-center gap-2 shrink-0"
+          title="Actualizar KPIs"
+        >
+          <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
+          {refreshing ? 'Actualizando…' : 'Actualizar'}
+        </button>
       </div>
 
       {/* Error Message */}
