@@ -11,6 +11,7 @@ export async function middleware(req: NextRequest) {
   const { data: { session } } = await supabase.auth.getSession()
 
   const pathname = req.nextUrl.pathname
+  const INACTIVITY_MS = 30 * 60 * 1000 // 30 minutos
   const isAuthRoute = pathname.startsWith('/login')
   const isVerifyRoute = pathname.startsWith('/login/verify-2fa')
   const isRegisterRoute = pathname.startsWith('/register')
@@ -39,9 +40,43 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL('/login', req.url))
   }
 
-  // 4. Si SÍ hay sesión, verificar el nivel de 2FA solo para el dashboard
+  // 4. Si SÍ hay sesión: control de inactividad (30 min) y actualizar cookie
   if (session) {
-    // 4.5. Verificar acceso a rutas de administrador basándose en permisos de roles
+    const now = Date.now()
+    const lastActivityRaw = req.cookies.get('last-activity')?.value
+    const lastActivity = lastActivityRaw ? parseInt(lastActivityRaw, 10) : NaN
+    const isExpired = !Number.isNaN(lastActivity) && (now - lastActivity > INACTIVITY_MS)
+
+    // Solo redirigir por inactividad en rutas de página (no en llamadas API)
+    if (!isApiRoute && isExpired) {
+      try {
+        await supabase.auth.signOut()
+      } catch {
+        // ignorar
+      }
+      const loginUrl = new URL('/login', req.url)
+      loginUrl.searchParams.set('reason', 'session_expired')
+      const redirectRes = NextResponse.redirect(loginUrl)
+      redirectRes.cookies.set('last-activity', '', { path: '/', maxAge: 0 })
+      redirectRes.cookies.set('login_reason', 'session_expired', { path: '/', maxAge: 60, sameSite: 'lax' })
+      return redirectRes
+    }
+
+    // Refrescar momento de última actividad SOLO en navegación de páginas (no en llamadas API en segundo plano)
+    if (!isApiRoute) {
+      // La cookie dura 1 día; el control de 30 min se hace con el timestamp guardado
+      res.cookies.set('last-activity', String(now), {
+        path: '/',
+        maxAge: 60 * 60 * 24,
+        httpOnly: false,
+        sameSite: 'lax',
+      })
+    }
+  }
+
+  // 5. Si SÍ hay sesión, verificar el nivel de 2FA solo para el dashboard
+  if (session) {
+    // 5.1. Verificar acceso a rutas de administrador basándose en permisos de roles
     if (isAdminRoute) {
       try {
         const { data: profile } = await supabase

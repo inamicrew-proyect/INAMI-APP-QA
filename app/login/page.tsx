@@ -1,13 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 // PASO 1.1: Importar el "auth helper" en lugar de tu "lib/auth"
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { AlertCircle, CheckCircle, Eye, EyeOff } from 'lucide-react'
 
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   // PASO 1.2: Crear el cliente de Supabase específico para Client Components
   const supabase = createClientComponentClient()
 
@@ -20,41 +21,46 @@ export default function LoginPage() {
   const [mounted, setMounted] = useState(false)
   const [passwordChanged, setPasswordChanged] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [sessionExpired, setSessionExpired] = useState(false)
+
+  // Razón de redirección: URL o cookie (la cookie la pone el middleware al redirigir por inactividad)
+  const reasonFromUrl = searchParams.get('reason')
+  const reasonFromCookie =
+    typeof document !== 'undefined' && document.cookie.includes('login_reason=session_expired')
+  const showSessionExpiredMessage = sessionExpired || reasonFromUrl === 'session_expired' || reasonFromCookie
 
   useEffect(() => {
-    // Verificar si viene de un cambio de contraseña exitoso
-    const urlParams = new URLSearchParams(window.location.search)
-    const reason = urlParams.get('reason')
+    const reason = searchParams.get('reason') || (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('reason') : null)
 
-    if (urlParams.get('passwordChanged') === 'true') {
+    if (searchParams.get('passwordChanged') === 'true') {
       setPasswordChanged(true)
       setError('')
       window.history.replaceState({}, '', '/login')
       return
     }
 
-    // Mostrar mensajes claros según la razón de cierre de sesión
     if (reason === 'session_expired') {
-      setError('Tu sesión ha expirado por inactividad. Vuelve a iniciar sesión para continuar.')
+      setSessionExpired(true)
+      setError('')
       window.history.replaceState({}, '', '/login')
+      document.cookie = 'login_reason=; path=/; max-age=0'
     } else if (reason === 'session_replaced') {
       setError('Tu sesión se ha cerrado porque la misma cuenta inició sesión en otro dispositivo. Vuelve a iniciar sesión si deseas continuar aquí.')
       window.history.replaceState({}, '', '/login')
     }
 
-    // Enlace de recuperación expirado o ya usado
-    if (urlParams.get('recovery_expired') === '1') {
+    if (searchParams.get('recovery_expired') === '1') {
       setError(
         'El enlace ha expirado o ya fue usado. Algunos correos abren el enlace en segundo plano y lo invalidan. Solicita uno nuevo y ábrelo directamente en el navegador (o copia la URL y pégala en una pestaña nueva).'
       )
       setShowResetPassword(true)
       window.history.replaceState({}, '', '/login')
     }
-    if (urlParams.get('recovery') === '1') {
+    if (searchParams.get('recovery') === '1') {
       setShowResetPassword(true)
       window.history.replaceState({}, '', '/login')
     }
-  }, [])
+  }, [searchParams])
 
   useEffect(() => {
     setMounted(true)
@@ -183,6 +189,9 @@ export default function LoginPage() {
             }
           } catch (_) {}
           await new Promise(resolve => setTimeout(resolve, 200))
+          // Iniciar contador de inactividad (30 min) para que el middleware no use una cookie antigua
+          const maxAge = 30 * 60
+          document.cookie = `last-activity=${Date.now()}; path=/; max-age=${maxAge}; samesite=lax`
           window.location.href = '/dashboard'
           return
         }
@@ -311,6 +320,15 @@ export default function LoginPage() {
           <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">
             Iniciar Sesión
           </h2>
+
+          {showSessionExpiredMessage && (
+            <div className="mb-4 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-amber-800 dark:text-amber-200 font-medium">
+                La sesión ha expirado por inactividad. Por favor, inicia sesión nuevamente para continuar.
+              </p>
+            </div>
+          )}
 
           {passwordChanged && (
             <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg flex items-start gap-3">
