@@ -21,6 +21,10 @@ export default function JovenesPage() {
 
   const [searchTerm, setSearchTerm] = useState('')
   const [filterEstado, setFilterEstado] = useState<string>('todos')
+  const [fechaIngresoDesde, setFechaIngresoDesde] = useState('')
+  const [fechaIngresoHasta, setFechaIngresoHasta] = useState('')
+  const [edadMin, setEdadMin] = useState('')
+  const [edadMax, setEdadMax] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [, setTotalCount] = useState(0)
@@ -163,9 +167,21 @@ export default function JovenesPage() {
 
       const matchesEstado = filterEstado === 'todos' || joven.estado === filterEstado
 
-      return matchesSearch && matchesEstado
+      const fechaIngreso = joven.fecha_ingreso ? String(joven.fecha_ingreso).slice(0, 10) : ''
+      const matchesFechaIngreso =
+        (!fechaIngresoDesde || fechaIngreso >= fechaIngresoDesde) &&
+        (!fechaIngresoHasta || fechaIngreso <= fechaIngresoHasta)
+
+      const edad = typeof joven.edad === 'number' ? joven.edad : parseInt(String(joven.edad), 10)
+      const minE = edadMin !== '' ? parseInt(edadMin, 10) : NaN
+      const maxE = edadMax !== '' ? parseInt(edadMax, 10) : NaN
+      const matchesEdad =
+        (isNaN(minE) || edad >= minE) &&
+        (isNaN(maxE) || edad <= maxE)
+
+      return matchesSearch && matchesEstado && matchesFechaIngreso && matchesEdad
     })
-  }, [jovenes, searchTerm, filterEstado])
+  }, [jovenes, searchTerm, filterEstado, fechaIngresoDesde, fechaIngresoHasta, edadMin, edadMax])
 
   // Paginación
   const totalPages = Math.ceil(filteredJovenes.length / ITEMS_PER_PAGE)
@@ -179,7 +195,7 @@ export default function JovenesPage() {
   // Resetear página cuando cambian los filtros
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchTerm, filterEstado])
+  }, [searchTerm, filterEstado, fechaIngresoDesde, fechaIngresoHasta, edadMin, edadMax])
 
   const getEstadoBadge = useCallback((estado: string) => {
     const badges = {
@@ -216,30 +232,115 @@ export default function JovenesPage() {
         </Link>
       </div>
 
-      {/* Filters */}
+      {/* Filters: misma estructura y alineación, iconos sin superposición */}
       <div className="card mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="relative">
-            <Search className="absolute left-1 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400 w-5 h-5" />
-
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1.5fr_1.2fr_150px_150px_100px_100px] gap-4">
+          <div className="flex flex-col min-w-0">
+            <label htmlFor="jovenes-busqueda" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Búsqueda
+            </label>
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 w-5 h-5 pointer-events-none shrink-0" />
+              <input
+                id="jovenes-busqueda"
+                type="text"
+                placeholder="Nombre, apellido, identidad..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="input-field w-full pl-[3.25rem] py-2.5 min-h-[44px]"
+              />
+            </div>
+          </div>
+          <div className="flex flex-col min-w-0">
+            <label htmlFor="jovenes-estado" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Estado
+            </label>
+            <div className="relative flex-1">
+              <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 w-5 h-5 pointer-events-none shrink-0" />
+              <select
+                id="jovenes-estado"
+                value={filterEstado}
+                onChange={(e) => setFilterEstado(e.target.value)}
+                className="input-field w-full pl-[3.25rem] py-2.5 min-h-[44px] appearance-none"
+              >
+                <option value="todos">Todos los estados</option>
+                <option value="activo">Activos</option>
+                <option value="egresado">Egresados</option>
+                <option value="transferido">Transferidos</option>
+              </select>
+            </div>
+          </div>
+          <div className="flex flex-col min-w-0">
+            <label htmlFor="jovenes-fecha-desde" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Fecha ingreso desde
+            </label>
             <input
-              type="text"
-              placeholder="  Buscar por nombre, apellido o identidad..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="input-field pl-10"
+              id="jovenes-fecha-desde"
+              type="date"
+              value={fechaIngresoDesde}
+              onChange={(e) => setFechaIngresoDesde(e.target.value)}
+              className="input-field w-full py-2.5 min-h-[44px]"
             />
           </div>
-          <div className="relative">
-            <Filter className="absolute left-1 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400 w-5 h-5" />
-            <select value={filterEstado} onChange={(e) => setFilterEstado(e.target.value)} className="input-field pl-10">
-              <option value="todos">Todos los estados</option>
-              <option value="activo">Activos</option>
-              <option value="egresado">Egresados</option>
-              <option value="transferido">Transferidos</option>
-            </select>
+          <div className="flex flex-col min-w-0">
+            <label htmlFor="jovenes-fecha-hasta" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Fecha ingreso hasta
+            </label>
+            <input
+              id="jovenes-fecha-hasta"
+              type="date"
+              value={fechaIngresoHasta}
+              onChange={(e) => setFechaIngresoHasta(e.target.value)}
+              className="input-field w-full py-2.5 min-h-[44px]"
+            />
+          </div>
+          <div className="flex flex-col min-w-0">
+            <label htmlFor="jovenes-edad-min" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Edad mín.
+            </label>
+            <input
+              id="jovenes-edad-min"
+              type="number"
+              min={0}
+              max={120}
+              placeholder="Ej. 14"
+              value={edadMin}
+              onChange={(e) => setEdadMin(e.target.value.replace(/\D/g, '').slice(0, 3))}
+              className="input-field w-full py-2.5 min-h-[44px]"
+            />
+          </div>
+          <div className="flex flex-col min-w-0">
+            <label htmlFor="jovenes-edad-max" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Edad máx.
+            </label>
+            <input
+              id="jovenes-edad-max"
+              type="number"
+              min={0}
+              max={120}
+              placeholder="Ej. 18"
+              value={edadMax}
+              onChange={(e) => setEdadMax(e.target.value.replace(/\D/g, '').slice(0, 3))}
+              className="input-field w-full py-2.5 min-h-[44px]"
+            />
           </div>
         </div>
+        {(fechaIngresoDesde || fechaIngresoHasta || edadMin || edadMax) && (
+          <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+            <button
+              type="button"
+              onClick={() => {
+                setFechaIngresoDesde('')
+                setFechaIngresoHasta('')
+                setEdadMin('')
+                setEdadMax('')
+              }}
+              className="text-sm text-primary-600 dark:text-primary-400 hover:underline"
+            >
+              Limpiar filtros de fecha y edad
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Error Message */}
