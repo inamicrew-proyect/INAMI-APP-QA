@@ -24,14 +24,29 @@ export default function LoginPage() {
   useEffect(() => {
     // Verificar si viene de un cambio de contraseña exitoso
     const urlParams = new URLSearchParams(window.location.search)
+    const reason = urlParams.get('reason')
+
     if (urlParams.get('passwordChanged') === 'true') {
       setPasswordChanged(true)
       setError('')
       window.history.replaceState({}, '', '/login')
+      return
     }
+
+    // Mostrar mensajes claros según la razón de cierre de sesión
+    if (reason === 'session_expired') {
+      setError('Tu sesión ha expirado por inactividad. Vuelve a iniciar sesión para continuar.')
+      window.history.replaceState({}, '', '/login')
+    } else if (reason === 'session_replaced') {
+      setError('Tu sesión se ha cerrado porque la misma cuenta inició sesión en otro dispositivo. Vuelve a iniciar sesión si deseas continuar aquí.')
+      window.history.replaceState({}, '', '/login')
+    }
+
     // Enlace de recuperación expirado o ya usado
     if (urlParams.get('recovery_expired') === '1') {
-      setError('El enlace ha expirado o ya fue usado. Algunos correos abren el enlace en segundo plano y lo invalidan. Solicita uno nuevo y ábrelo directamente en el navegador (o copia la URL y pégala en una pestaña nueva).')
+      setError(
+        'El enlace ha expirado o ya fue usado. Algunos correos abren el enlace en segundo plano y lo invalidan. Solicita uno nuevo y ábrelo directamente en el navegador (o copia la URL y pégala en una pestaña nueva).'
+      )
       setShowResetPassword(true)
       window.history.replaceState({}, '', '/login')
     }
