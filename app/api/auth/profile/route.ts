@@ -20,43 +20,44 @@ export async function GET(_request: NextRequest) {
     
     const supabase = await createSupabaseRouteHandlerClient()
     
-    // Intentar obtener sesión con timeout
-    const sessionPromise = supabase.auth.getSession()
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Timeout obteniendo sesión')), 5000)
+    // getUser() valida el JWT con Supabase (getSession() solo lee cookies y dispara warnings)
+    const userPromise = supabase.auth.getUser()
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Timeout obteniendo usuario')), 5000)
     )
-    
-    let sessionResult
+
+    let userResult
     try {
-      sessionResult = await Promise.race([sessionPromise, timeoutPromise]) as any
+      userResult = await Promise.race([userPromise, timeoutPromise]) as Awaited<
+        ReturnType<typeof supabase.auth.getUser>
+      >
     } catch (error) {
-      console.error('❌ [API /auth/profile] Error o timeout obteniendo sesión:', error)
+      console.error('❌ [API /auth/profile] Error o timeout obteniendo usuario:', error)
       return NextResponse.json({ profile: null, error: 'Error obteniendo sesión' }, { status: 500 })
     }
-    
-    const { data: { session }, error: sessionError } = sessionResult
 
-    console.log('🔍 [API /auth/profile] Sesión:', {
-      hasSession: !!session,
-      hasUser: !!session?.user,
-      userId: session?.user?.id,
-      userEmail: session?.user?.email,
-      sessionError: sessionError?.message,
-      sessionErrorCode: sessionError?.code
+    const { data: { user }, error: userError } = userResult
+
+    console.log('🔍 [API /auth/profile] Usuario:', {
+      hasUser: !!user,
+      userId: user?.id,
+      userEmail: user?.email,
+      userError: userError?.message,
+      userErrorCode: userError?.code,
     })
 
-    if (sessionError || !session) {
+    if (userError || !user) {
       console.warn('⚠️ [API /auth/profile] No hay sesión activa', {
-        error: sessionError?.message,
-        errorCode: sessionError?.code
+        error: userError?.message,
+        errorCode: userError?.code,
       })
       return NextResponse.json({ profile: null, error: 'No hay sesión activa' }, { status: 401 })
     }
 
     // SOLUCIÓN DIRECTA: Usar SIEMPRE admin client (bypass RLS completamente)
-    console.log('🔍 [API /auth/profile] Cargando perfil con admin client (bypass RLS)...', { 
-      userId: session.user.id,
-      userEmail: session.user.email 
+    console.log('🔍 [API /auth/profile] Cargando perfil con admin client (bypass RLS)...', {
+      userId: user.id,
+      userEmail: user.email,
     })
     
     const adminClient = getSupabaseAdmin()
@@ -74,7 +75,7 @@ export async function GET(_request: NextRequest) {
     const { data: profileById, error: errorById } = await adminClient
       .from('profiles')
       .select('*')
-      .eq('id', session.user.id)
+      .eq('id', user.id)
       .single()
 
     if (!errorById && profileById) {
@@ -91,12 +92,12 @@ export async function GET(_request: NextRequest) {
     let profileByEmail = null
     let errorByEmail = null
     
-    if (session.user.email) {
-      console.log('🔄 [API /auth/profile] Intentando por email...', { email: session.user.email })
+    if (user.email) {
+      console.log('🔄 [API /auth/profile] Intentando por email...', { email: user.email })
       const emailResult = await adminClient
         .from('profiles')
         .select('*')
-        .eq('email', session.user.email)
+        .eq('email', user.email)
         .single()
       
       profileByEmail = emailResult.data
@@ -115,7 +116,7 @@ export async function GET(_request: NextRequest) {
       console.error('❌ [API /auth/profile] Error obteniendo perfil por email:', {
         error: errorByEmail?.message,
         errorCode: errorByEmail?.code,
-        email: session.user.email
+        email: user.email
       })
     }
     
@@ -123,16 +124,16 @@ export async function GET(_request: NextRequest) {
     console.error('❌ [API /auth/profile] No se pudo obtener el perfil:', {
       errorById: errorById?.message,
       errorByEmail: errorByEmail?.message,
-      userId: session.user.id,
-      userEmail: session.user.email
+      userId: user.id,
+      userEmail: user.email
     })
     
     return NextResponse.json({ 
       profile: null, 
       error: 'Perfil no encontrado en la base de datos',
       details: {
-        userId: session.user.id,
-        userEmail: session.user.email,
+        userId: user.id,
+        userEmail: user.email,
         errorById: errorById?.message,
         errorByEmail: errorByEmail?.message
       }

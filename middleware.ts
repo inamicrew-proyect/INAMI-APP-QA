@@ -24,8 +24,8 @@ export async function middleware(req: NextRequest) {
   )
 
   const {
-    data: { session },
-  } = await supabase.auth.getSession()
+    data: { user },
+  } = await supabase.auth.getUser()
 
   const pathname = req.nextUrl.pathname
   const INACTIVITY_MS = 30 * 60 * 1000 // 30 minutos
@@ -49,7 +49,7 @@ export async function middleware(req: NextRequest) {
 
   // 2. Las API routes manejan su propia autenticación, no las bloqueamos aquí
   // Solo protegemos las rutas del dashboard
-  if (isDashboardRoute && !session) {
+  if (isDashboardRoute && !user) {
     const loginUrl = new URL('/login', req.url)
     loginUrl.searchParams.set('redirect', pathname)
     loginUrl.searchParams.set('t', Date.now().toString())
@@ -57,12 +57,12 @@ export async function middleware(req: NextRequest) {
   }
 
   // 3. Si no hay sesión Y NO está en una ruta de autenticación, API, reset-password o callback, redirigir a /login
-  if (!session && !isAuthRoute && !isRegisterRoute && !isApiRoute && !isDashboardRoute && !isResetPasswordRoute && !isAuthCallbackRoute) {
+  if (!user && !isAuthRoute && !isRegisterRoute && !isApiRoute && !isDashboardRoute && !isResetPasswordRoute && !isAuthCallbackRoute) {
     return passCookies(NextResponse.redirect(new URL('/login', req.url)))
   }
 
   // 4. Si SÍ hay sesión: control de inactividad (30 min) y actualizar cookie
-  if (session) {
+  if (user) {
     const now = Date.now()
     const lastActivityRaw = req.cookies.get('last-activity')?.value
     const lastActivity = lastActivityRaw ? parseInt(lastActivityRaw, 10) : NaN
@@ -93,13 +93,13 @@ export async function middleware(req: NextRequest) {
   }
 
   // 5. Si SÍ hay sesión, verificar el nivel de 2FA solo para el dashboard
-  if (session) {
+  if (user) {
     if (isAdminRoute) {
       try {
         const { data: profile } = await supabase
           .from('profiles')
           .select('role')
-          .eq('id', session.user.id)
+          .eq('id', user.id)
           .single()
 
         if (profile?.role === 'admin') {
@@ -108,7 +108,7 @@ export async function middleware(req: NextRequest) {
           const { data: userRoles } = await supabase
             .from('user_roles')
             .select('role_id')
-            .eq('user_id', session.user.id)
+            .eq('user_id', user.id)
 
           if (userRoles && userRoles.length > 0) {
             const roleIds = userRoles.map((ur) => ur.role_id)
@@ -164,7 +164,7 @@ export async function middleware(req: NextRequest) {
           const { count, error: questionsError } = await supabase
             .from('security_questions')
             .select('*', { count: 'exact', head: true })
-            .eq('user_id', session.user.id)
+            .eq('user_id', user.id)
 
           const hasQuestions = !questionsError && (count ?? 0) > 0
 
