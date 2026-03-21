@@ -14,6 +14,8 @@ type AtencionWithRelations = Atencion & {
 }
 import { format } from 'date-fns'
 import { exportAtencionPDF, type PDFData } from '@/lib/pdf-generator'
+import ReadonlyFormView from '@/components/ReadonlyFormView'
+import { pruneFormularioData } from '@/lib/formulario-utils'
 import { useAuth } from '@/lib/auth'
 
 export default function DetallesAtencionPage() {
@@ -171,25 +173,8 @@ export default function DetallesAtencionPage() {
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
           Formulario Específico - {tipoAtencion.nombre}
         </h3>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {Object.entries(formularioEspecifico).map(([key, value]) => {
-            if (!value || value === '') return null
-            
-            return (
-              <div key={key}>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  {key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                </label>
-                <div className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
-                  <p className="text-gray-900 dark:text-gray-100 text-sm">
-                    {typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)}
-                  </p>
-                </div>
-              </div>
-            )
-          })}
-        </div>
+
+        <ReadonlyFormView value={pruneFormularioData(formularioEspecifico)} />
       </div>
     )
   }

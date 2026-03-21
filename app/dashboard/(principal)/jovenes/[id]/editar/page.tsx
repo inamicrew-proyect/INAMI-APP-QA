@@ -190,8 +190,26 @@ export default function EditarJovenPage() {
       }
 
       const sanitized = parsed.data
-      // Usar la edad que el usuario ingresó manualmente, no recalcular desde fecha de nacimiento
-      const edadFinal = formData.edad || calculateAgeFromBirth(sanitized.fecha_nacimiento)
+      // Validación cruzada: edad debe coincidir con la fecha de nacimiento
+      const edadCalculada = calculateAgeFromBirth(sanitized.fecha_nacimiento)
+      const edadIngresada = Number(formData.edad)
+
+      if (!Number.isFinite(edadIngresada) || edadIngresada < 0) {
+        setErrors((prev) => ({ ...prev, edad: 'La edad ingresada no es válida.' }))
+        setSaving(false)
+        return
+      }
+
+      if (edadIngresada !== edadCalculada) {
+        setErrors((prev) => ({
+          ...prev,
+          edad: `La edad no coincide con la fecha de nacimiento. Debe ser ${edadCalculada}.`,
+        }))
+        setSaving(false)
+        return
+      }
+
+      const edadFinal = edadCalculada
 
       setFormData((prev) => ({
         ...prev,
@@ -420,10 +438,13 @@ export default function EditarJovenPage() {
                   type="number"
                   value={formData.edad}
                   onChange={(e) => handleInputChange('edad', parseInt(e.target.value) || 0)}
-                  className="input-field"
+                  className={`input-field ${errors.edad ? 'border-red-500' : ''}`}
                   min="0"
                   max="25"
                 />
+                {errors.edad && (
+                  <p className="text-red-500 text-sm mt-1">{errors.edad}</p>
+                )}
               </div>
 
               <div>

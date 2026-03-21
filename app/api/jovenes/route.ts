@@ -114,7 +114,16 @@ export async function POST(request: NextRequest) {
     const { supabase } = authCheck
 
     // Validar que los campos requeridos estén presentes
-    if (!body.nombres || !body.apellidos || !body.fecha_nacimiento || !body.centro_id || !body.fecha_ingreso) {
+    if (
+      !body.nombres ||
+      !body.apellidos ||
+      !body.fecha_nacimiento ||
+      !body.centro_id ||
+      !body.fecha_ingreso ||
+      !body.direccion ||
+      !body.telefono ||
+      !body.nombre_contacto_emergencia
+    ) {
       return NextResponse.json({ error: 'Faltan campos requeridos' }, { status: 400 })
     }
 

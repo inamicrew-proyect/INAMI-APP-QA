@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
+import { calculateAgeFromBirth } from '@/lib/validation/jovenes'
 
 export const dynamic = 'force-dynamic'
 export const fetchCache = 'force-no-store'
@@ -218,6 +219,27 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     if (!body) {
       return NextResponse.json({ error: 'Datos inválidos' }, { status: 400 })
+    }
+
+    // Validación cruzada servidor: edad debe coincidir con fecha de nacimiento
+    if (body.fecha_nacimiento !== undefined && body.edad !== undefined) {
+      const edadCalculada = calculateAgeFromBirth(String(body.fecha_nacimiento))
+      const edadIngresada = Number(body.edad)
+      if (!Number.isFinite(edadIngresada) || edadIngresada < 0) {
+        return NextResponse.json(
+          { error: 'Edad inválida', details: 'La edad debe ser un número válido mayor o igual a 0.' },
+          { status: 400 }
+        )
+      }
+      if (edadIngresada !== edadCalculada) {
+        return NextResponse.json(
+          {
+            error: 'Edad no coincide con fecha de nacimiento',
+            details: `La edad debe ser ${edadCalculada} según la fecha de nacimiento ingresada.`,
+          },
+          { status: 400 }
+        )
+      }
     }
 
     console.log('Datos recibidos para actualizar joven:', JSON.stringify(body, null, 2))

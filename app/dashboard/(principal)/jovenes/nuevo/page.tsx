@@ -309,20 +309,26 @@ export default function NuevoJovenPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Dirección
+                Dirección *
               </label>
               <input
                 type="text"
                 value={formData.direccion}
                 onChange={(e) => handleInputChange('direccion', e.target.value)}
-                className="input-field"
+                className={`input-field ${errors.direccion ? 'border-red-500' : ''}`}
                 placeholder="Dirección de residencia"
               />
+              {errors.direccion && (
+                <p className="text-red-500 text-sm mt-1 flex items-center gap-1">
+                  <AlertTriangle className="w-4 h-4" />
+                  {errors.direccion}
+                </p>
+              )}
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Teléfono
+                Teléfono *
               </label>
               <input
                 type="tel"
@@ -341,15 +347,21 @@ export default function NuevoJovenPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Contacto de Emergencia
+                Contacto de Emergencia *
               </label>
               <input
                 type="text"
                 value={formData.nombre_contacto_emergencia}
                 onChange={(e) => handleInputChange('nombre_contacto_emergencia', e.target.value)}
-                className="input-field"
+                className={`input-field ${errors.nombre_contacto_emergencia ? 'border-red-500' : ''}`}
                 placeholder="Nombre del contacto de emergencia"
               />
+              {errors.nombre_contacto_emergencia && (
+                <p className="text-red-500 text-sm mt-1 flex items-center gap-1">
+                  <AlertTriangle className="w-4 h-4" />
+                  {errors.nombre_contacto_emergencia}
+                </p>
+              )}
             </div>
 
             <div>

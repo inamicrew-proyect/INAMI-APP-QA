@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Shield, Lock, CheckCircle } from 'lucide-react'
+import { Shield, Lock, CheckCircle, Eye as EyeIcon, EyeOff as EyeOffIcon } from 'lucide-react'
 
 function ResetPasswordContent() {
   const router = useRouter()
@@ -343,9 +343,9 @@ function ResetPasswordContent() {
                     aria-label={showNewPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                   >
                     {showNewPassword ? (
-                      <EyeOff className="w-5 h-5" />
+                      <EyeOffIcon className="w-5 h-5" />
                     ) : (
-                      <Eye className="w-5 h-5" />
+                      <EyeIcon className="w-5 h-5" />
                     )}
                   </button>
                 </div>
@@ -375,9 +375,9 @@ function ResetPasswordContent() {
                     aria-label={showConfirmPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                   >
                     {showConfirmPassword ? (
-                      <EyeOff className="w-5 h-5" />
+                      <EyeOffIcon className="w-5 h-5" />
                     ) : (
-                      <Eye className="w-5 h-5" />
+                      <EyeIcon className="w-5 h-5" />
                     )}
                   </button>
                 </div>

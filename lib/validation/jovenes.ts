@@ -44,6 +44,27 @@ const optionalPhoneSchema = preprocessTrim(
     .optional()
 )
 
+const requiredDireccionSchema = z
+  .string()
+  .min(1, { message: 'La dirección es obligatoria.' })
+  .max(ADDRESS_MAX_LENGTH, { message: `La dirección no puede superar ${ADDRESS_MAX_LENGTH} caracteres.` })
+  .transform(normalizeWhitespace)
+
+const requiredPhoneSchema = z
+  .string()
+  .min(1, { message: 'El teléfono es obligatorio.' })
+  .regex(PHONE_REGEX, {
+    message: 'Número telefónico inválido. Use solo dígitos, espacios, guiones y puede iniciar con +.',
+  })
+  .transform(normalizeWhitespace)
+
+const requiredContactoEmergenciaSchema = z
+  .string()
+  .min(1, { message: 'El contacto de emergencia es obligatorio.' })
+  .min(2, { message: 'El contacto de emergencia debe tener al menos 2 caracteres.' })
+  .max(NAME_MAX_LENGTH, { message: `El contacto de emergencia no puede superar ${NAME_MAX_LENGTH} caracteres.` })
+  .transform(normalizeWhitespace)
+
 const optionalIdentidadSchema = preprocessTrim(
   z
     .string()
@@ -114,7 +135,14 @@ const temporalConsistency = (data: { fecha_nacimiento: string; fecha_ingreso: st
   }
 }
 
-export const jovenCreateSchema = z.object(jovenBaseFields).superRefine(temporalConsistency)
+export const jovenCreateSchema = z
+  .object({
+    ...jovenBaseFields,
+    direccion: requiredDireccionSchema,
+    telefono: requiredPhoneSchema,
+    nombre_contacto_emergencia: requiredContactoEmergenciaSchema,
+  })
+  .superRefine(temporalConsistency)
 
 export const jovenUpdateSchema = z
   .object({

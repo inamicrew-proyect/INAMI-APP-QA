@@ -6,6 +6,8 @@ import { ArrowLeft, Save, FileText, User, AlertTriangle } from 'lucide-react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import type { Atencion, Joven, TipoAtencion, Profile } from '@/lib/supabase'
 import { format } from 'date-fns'
+import DynamicForm from '@/components/DynamicForm'
+import { pruneFormularioData, formularioFieldsByRole } from '@/lib/formulario-utils'
 import { useAuth } from '@/lib/auth'
 
 export default function EditarAtencionPage() {
@@ -21,8 +23,12 @@ export default function EditarAtencionPage() {
   const [joven, setJoven] = useState<Joven | null>(null)
   const [tipoAtencion, setTipoAtencion] = useState<TipoAtencion | null>(null)
   const [profesional, setProfesional] = useState<Profile | null>(null)
+  const [creatorName, setCreatorName] = useState('Sin profesional asignado')
+  const [creatorRole, setCreatorRole] = useState('Sin rol registrado')
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [unauthorized, setUnauthorized] = useState(false)
+
+  // Map global reusado por nuevos formularios (importado)
 
   const [formData, setFormData] = useState({
     fecha_atencion: '',
@@ -35,7 +41,7 @@ export default function EditarAtencionPage() {
   })
 
   useEffect(() => {
-    if (atencionId && currentUserProfile) {
+    if (atencionId) {
       loadData()
     }
   }, [atencionId, currentUserProfile])
@@ -64,11 +70,12 @@ export default function EditarAtencionPage() {
       }
 
       if (atencionData) {
-        // Verificar permisos: solo admin o el creador pueden editar
+        // Verificar permisos cuando el perfil ya está disponible:
+        // si todavía no se hidrata, no bloquear la carga del formulario.
         const isAdmin = currentUserProfile?.role === 'admin'
-        const isCreator = currentUserProfile && atencionData.profesional_id === currentUserProfile.id
-        
-        if (!isAdmin && !isCreator) {
+        const isCreator = !!currentUserProfile?.id && atencionData.profesional_id === currentUserProfile.id
+
+        if (currentUserProfile && !isAdmin && !isCreator) {
           setUnauthorized(true)
           setLoading(false)
           return
@@ -77,7 +84,107 @@ export default function EditarAtencionPage() {
         setAtencion(atencionData)
         setJoven(atencionData.jovenes)
         setTipoAtencion(atencionData.tipos_atencion)
-        setProfesional(atencionData.profesional)
+
+        // Resolver creador y rol de forma robusta:
+        // 1) relación incluida en la query
+        // 2) búsqueda directa por profesional_id
+        // 3) fallback a system_logs de creación
+        let resolvedProfessional = (atencionData.profesional || null) as Profile | null
+        let resolvedName = resolvedProfessional?.full_name || ''
+        let resolvedRole = resolvedProfessional?.role || ''
+
+        if (!resolvedProfessional && atencionData.profesional_id) {
+          const { data: profileById } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', atencionData.profesional_id)
+            .maybeSingle()
+
+          if (profileById) {
+            resolvedProfessional = profileById as Profile
+            resolvedName = profileById.full_name || ''
+            resolvedRole = profileById.role || ''
+          }
+        }
+
+        if (!resolvedName || !resolvedRole) {
+          const { data: creationLog } = await supabase
+            .from('system_logs')
+            .select('usuario_id, detalles')
+            .eq('accion', 'create_atencion')
+            .eq('entidad', 'atenciones')
+            .eq('entidad_id', atencionData.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle()
+
+          const logUserId = creationLog?.usuario_id as string | undefined
+          const details = (creationLog?.detalles || {}) as Record<string, any>
+
+          if (!resolvedRole) {
+            resolvedRole =
+              (typeof details.profesional_role === 'string' && details.profesional_role) ||
+              (typeof details.role === 'string' && details.role) ||
+              ''
+          }
+
+          if (!resolvedName && logUserId) {
+            const { data: profileFromLog } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', logUserId)
+              .maybeSingle()
+
+            if (profileFromLog) {
+              resolvedName = profileFromLog.full_name || ''
+              if (!resolvedRole) resolvedRole = profileFromLog.role || ''
+            } else {
+              resolvedName = `Usuario creador (${logUserId.slice(0, 8)}...)`
+            }
+          }
+        }
+
+        setProfesional(resolvedProfessional)
+        setCreatorName(resolvedName || 'Sin profesional asignado')
+        setCreatorRole(resolvedRole || 'Sin rol registrado')
+
+        // El formulario específico completo vive en `formularios_atencion`.
+        // Si no existe registro relacionado, usar fallback al campo embebido.
+        let formularioEspecificoCompleto: any = atencionData.formulario_especifico || {}
+        const { data: formularioData, error: formularioError } = await supabase
+          .from('formularios_atencion')
+          .select('datos_json')
+          .eq('atencion_id', atencionData.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+
+        if (!formularioError && formularioData?.datos_json) {
+          formularioEspecificoCompleto = formularioData.datos_json
+        }
+
+        const roleKey = atencionData.tipos_atencion?.profesional_responsable as string | undefined
+        const allowedFields = roleKey ? formularioFieldsByRole[roleKey] : undefined
+        let formularioFiltrado = formularioEspecificoCompleto
+
+        // Evitar mezclar formularios: si el tipo tiene esquema conocido,
+        // mostramos solo sus campos esperados.
+        if (
+          allowedFields &&
+          formularioEspecificoCompleto &&
+          typeof formularioEspecificoCompleto === 'object' &&
+          !Array.isArray(formularioEspecificoCompleto)
+        ) {
+          const onlyAllowed = Object.fromEntries(
+            allowedFields
+              .filter((key) => key in formularioEspecificoCompleto)
+              .map((key) => [key, formularioEspecificoCompleto[key]])
+          )
+
+          if (Object.keys(onlyAllowed).length > 0) {
+            formularioFiltrado = onlyAllowed
+          }
+        }
 
         setFormData({
           fecha_atencion: atencionData.fecha_atencion ? format(new Date(atencionData.fecha_atencion), 'yyyy-MM-dd\'T\'HH:mm') : '',
@@ -86,7 +193,7 @@ export default function EditarAtencionPage() {
           recomendaciones: atencionData.recomendaciones || '',
           estado: atencionData.estado || 'completada',
           proxima_cita: atencionData.proxima_cita ? format(new Date(atencionData.proxima_cita), 'yyyy-MM-dd') : '',
-          formulario_especifico: atencionData.formulario_especifico || {}
+          formulario_especifico: formularioFiltrado
         })
       }
 
@@ -106,6 +213,176 @@ export default function EditarAtencionPage() {
       setErrors(prev => ({ ...prev, [field]: '' }))
     }
   }
+
+  const formatFieldLabel = (key: string) =>
+    key
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, (l) => l.toUpperCase())
+
+  const updateFormularioField = (path: Array<string | number>, value: any) => {
+    setFormData((prev) => {
+      const current = prev.formulario_especifico || {}
+      const next = structuredClone(current)
+
+      let ref: any = next
+      for (let i = 0; i < path.length - 1; i++) {
+        const key = path[i]
+        if (typeof ref[key] !== 'object' || ref[key] === null) {
+          ref[key] = typeof path[i + 1] === 'number' ? [] : {}
+        }
+        ref = ref[key]
+      }
+      ref[path[path.length - 1]] = value
+
+      return { ...prev, formulario_especifico: next }
+    })
+  }
+
+  const renderFormularioFields = (data: any, path: Array<string | number> = []): React.ReactNode => {
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
+      return null
+    }
+
+    return Object.entries(data).map(([key, rawValue]) => {
+      const value = rawValue as any
+      const fieldPath = [...path, key]
+      const fieldId = fieldPath.join('.')
+      const label = formatFieldLabel(key)
+
+      if (value && typeof value === 'object' && !Array.isArray(value)) {
+        return (
+          <div key={fieldId} className="rounded-lg border border-gray-200 p-4 space-y-4">
+            <h4 className="text-sm font-semibold text-gray-800">{label}</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {renderFormularioFields(value, fieldPath)}
+            </div>
+          </div>
+        )
+      }
+
+      if (typeof value === 'boolean') {
+        return (
+          <div key={fieldId} className="flex items-center gap-3">
+            <input
+              id={fieldId}
+              type="checkbox"
+              checked={value}
+              onChange={(e) => updateFormularioField(fieldPath, e.target.checked)}
+              className="h-4 w-4"
+            />
+            <label htmlFor={fieldId} className="text-sm font-medium text-gray-700">
+              {label}
+            </label>
+          </div>
+        )
+      }
+
+      if (Array.isArray(value)) {
+        const hasObjectItems = value.some((item) => item && typeof item === 'object' && !Array.isArray(item))
+        const hasPrimitiveItems = value.every((item) => item === null || ['string', 'number', 'boolean'].includes(typeof item))
+
+        return (
+          <div key={fieldId} className="md:col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              {label}
+            </label>
+
+            {value.length === 0 && (
+              <p className="text-sm text-gray-500">Sin elementos.</p>
+            )}
+
+            {hasObjectItems && (
+              <div className="space-y-3">
+                {value.map((item, index) => (
+                  <div key={`${fieldId}-${index}`} className="rounded-lg border border-gray-200 p-3">
+                    <p className="text-xs font-semibold text-gray-500 mb-2">Elemento {index + 1}</p>
+                    {item && typeof item === 'object' && !Array.isArray(item) ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {renderFormularioFields(item, [...fieldPath, index])}
+                      </div>
+                    ) : (
+                      <input
+                        type="text"
+                        value={item ?? ''}
+                        onChange={(e) => updateFormularioField([...fieldPath, index], e.target.value)}
+                        className="input-field"
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {!hasObjectItems && hasPrimitiveItems && (
+              <textarea
+                id={fieldId}
+                value={value.map((item) => (item ?? '').toString()).join('\n')}
+                onChange={(e) => {
+                  const lines = e.target.value
+                    .split('\n')
+                    .map((line) => line.trim())
+                    .filter((line) => line.length > 0)
+                  updateFormularioField(fieldPath, lines)
+                }}
+                className="input-field"
+                rows={4}
+                placeholder="Un valor por línea"
+              />
+            )}
+
+            {!hasObjectItems && !hasPrimitiveItems && (
+              <p className="text-sm text-gray-500">
+                Este campo contiene una estructura compleja no editable en modo visual.
+              </p>
+            )}
+          </div>
+        )
+      }
+
+      const isLongText =
+        typeof value === 'string' &&
+        (value.length > 120 || value.includes('\n') || key.includes('observ') || key.includes('descripcion'))
+
+      if (isLongText) {
+        return (
+          <div key={fieldId} className="md:col-span-2">
+            <label htmlFor={fieldId} className="block text-sm font-medium text-gray-700 mb-2">
+              {label}
+            </label>
+            <textarea
+              id={fieldId}
+              value={value ?? ''}
+              onChange={(e) => updateFormularioField(fieldPath, e.target.value)}
+              className="input-field"
+              rows={4}
+            />
+          </div>
+        )
+      }
+
+      return (
+        <div key={fieldId}>
+          <label htmlFor={fieldId} className="block text-sm font-medium text-gray-700 mb-2">
+            {label}
+          </label>
+          <input
+            id={fieldId}
+            type={typeof value === 'number' ? 'number' : 'text'}
+            value={value ?? ''}
+            onChange={(e) =>
+              updateFormularioField(
+                fieldPath,
+                typeof value === 'number' ? Number(e.target.value || 0) : e.target.value
+              )
+            }
+            className="input-field"
+          />
+        </div>
+      )
+    })
+  }
+
+  // Prune importado desde util
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
@@ -146,6 +423,7 @@ export default function EditarAtencionPage() {
           recomendaciones: formData.recomendaciones.trim() || null,
           estado: formData.estado,
           proxima_cita: formData.proxima_cita || null,
+          formulario_especifico: formData.formulario_especifico || null,
         }),
       })
 
@@ -175,12 +453,16 @@ export default function EditarAtencionPage() {
         return
       }
 
-      alert('Atención actualizada exitosamente')
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('app:toast', { detail: { type: 'success', title: 'Atención actualizada', message: 'Los cambios se guardaron correctamente.' } }))
+      }
       router.push(`/dashboard/atenciones/${atencionId}`)
 
     } catch (error) {
       console.error('Error:', error)
-      alert(error instanceof Error ? error.message : 'Error al actualizar la atención')
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('app:toast', { detail: { type: 'error', title: 'Error', message: error instanceof Error ? error.message : 'Error al actualizar la atención' } }))
+      }
     } finally {
       setSaving(false)
     }
@@ -214,7 +496,7 @@ export default function EditarAtencionPage() {
     )
   }
 
-  if (!atencion || !joven || !tipoAtencion || !profesional) {
+  if (!atencion) {
     return (
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="text-center">
@@ -254,19 +536,19 @@ export default function EditarAtencionPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
             <div>
               <span className="font-medium text-gray-700">Joven:</span>
-              <p className="text-gray-900">{joven.nombres} {joven.apellidos}</p>
+              <p className="text-gray-900">{joven ? `${joven.nombres} ${joven.apellidos}` : 'Sin joven asociado'}</p>
             </div>
             <div>
               <span className="font-medium text-gray-700">Tipo de Atención:</span>
-              <p className="text-gray-900">{tipoAtencion.nombre}</p>
+              <p className="text-gray-900">{tipoAtencion?.nombre || 'Sin tipo de atención'}</p>
             </div>
             <div>
               <span className="font-medium text-gray-700">Profesional:</span>
-              <p className="text-gray-900">{profesional.full_name}</p>
+              <p className="text-gray-900">{creatorName}</p>
             </div>
             <div>
               <span className="font-medium text-gray-700">Rol:</span>
-              <p className="text-gray-900 capitalize">{profesional.role}</p>
+              <p className="text-gray-900 capitalize">{creatorRole}</p>
             </div>
           </div>
         </div>
@@ -367,40 +649,20 @@ export default function EditarAtencionPage() {
           </div>
 
           {/* Formulario Específico */}
-          {tipoAtencion && (
-            <div className="card">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <User className="w-5 h-5 text-primary-600" />
-                Formulario Específico - {tipoAtencion.nombre}
-              </h2>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Datos del Formulario
-                  </label>
-                  <textarea
-                    value={JSON.stringify(formData.formulario_especifico, null, 2)}
-                    onChange={(e) => {
-                      try {
-                        const parsed = JSON.parse(e.target.value)
-                        handleInputChange('formulario_especifico', parsed)
-                      } catch (error) {
-                        // Ignorar errores de JSON mientras se escribe
-                      }
-                    }}
-                    className="input-field font-mono text-sm"
-                    rows={8}
-                    placeholder="Datos del formulario específico en formato JSON..."
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Nota: Este campo contiene los datos específicos del formulario. 
-                    Modifica con cuidado para mantener la estructura JSON válida.
-                  </p>
-                </div>
-              </div>
+          <div className="card">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <User className="w-5 h-5 text-primary-600" />
+              Formulario Específico {tipoAtencion?.nombre ? `- ${tipoAtencion.nombre}` : ''}
+            </h2>
+            
+            <div className="space-y-4">
+              <DynamicForm
+                value={formData.formulario_especifico}
+                onChange={(next) => handleInputChange('formulario_especifico', next)}
+                hideEmpty={false}
+              />
             </div>
-          )}
+          </div>
 
           {/* Botones de acción */}
           <div className="flex justify-end gap-4 pt-6 border-t border-gray-200">

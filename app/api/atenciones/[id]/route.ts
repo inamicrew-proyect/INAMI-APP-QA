@@ -302,6 +302,27 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         // No fallar la operación si el log falla
       }
 
+      // Upsert formulario_especifico si viene en el body
+      if (body.formulario_especifico !== undefined) {
+        // ¿Existe registro?
+        const { data: existingForm } = await adminClient
+          .from('formularios_atencion')
+          .select('id')
+          .eq('atencion_id', id)
+          .maybeSingle()
+
+        if (existingForm?.id) {
+          await adminClient
+            .from('formularios_atencion')
+            .update({ datos_json: body.formulario_especifico, updated_at: new Date().toISOString() })
+            .eq('id', existingForm.id)
+        } else {
+          await adminClient
+            .from('formularios_atencion')
+            .insert({ atencion_id: id, datos_json: body.formulario_especifico })
+        }
+      }
+
       return NextResponse.json({ success: true, data: adminData })
     }
 
@@ -327,6 +348,26 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         error: 'No se actualizó ninguna atención.',
         details: 'La atención puede que ya no exista o no tengas permisos para actualizarla.'
       }, { status: 404 })
+    }
+
+    // Upsert formulario_especifico si viene en el body
+    if (body.formulario_especifico !== undefined) {
+      const { data: existingForm } = await supabase
+        .from('formularios_atencion')
+        .select('id')
+        .eq('atencion_id', id)
+        .maybeSingle()
+
+      if (existingForm?.id) {
+        await supabase
+          .from('formularios_atencion')
+          .update({ datos_json: body.formulario_especifico, updated_at: new Date().toISOString() })
+          .eq('id', existingForm.id)
+      } else {
+        await supabase
+          .from('formularios_atencion')
+          .insert({ atencion_id: id, datos_json: body.formulario_especifico })
+      }
     }
 
     // Registrar log de actualización

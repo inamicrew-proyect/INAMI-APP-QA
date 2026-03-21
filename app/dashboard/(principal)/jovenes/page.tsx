@@ -28,6 +28,8 @@ export default function JovenesPage() {
   const [error, setError] = useState<string | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [, setTotalCount] = useState(0)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
   const loadJovenes = useCallback(async () => {
     setLoading(true)
@@ -105,8 +107,7 @@ export default function JovenesPage() {
   }, [loadJovenes])
 
   const handleDelete = async (id: string) => {
-    if (!confirm('¿Estás seguro de eliminar este registro?')) return
-
+    setDeleteLoading(true)
     try {
       console.log('Iniciando eliminación de joven:', id)
 
@@ -154,6 +155,9 @@ export default function JovenesPage() {
     } catch (error) {
       console.error('Error deleting joven:', error)
       alert('Error al eliminar el registro')
+    } finally {
+      setDeleteLoading(false)
+      setConfirmDeleteId(null)
     }
   }
 
@@ -422,7 +426,7 @@ export default function JovenesPage() {
                               </Link>
                               {isAdmin && (
                                 <button
-                                  onClick={() => handleDelete(joven.id)}
+                                  onClick={() => setConfirmDeleteId(joven.id)}
                                   className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                                   title="Eliminar"
                                 >
@@ -469,6 +473,41 @@ export default function JovenesPage() {
             </div>
           )}
         </>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {confirmDeleteId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 dark:bg-black/60 p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-md w-full p-6 space-y-5">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-full">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Eliminar joven</h2>
+                <p className="text-sm text-gray-600 dark:text-gray-300">
+                  Esta acción no se puede deshacer. ¿Deseas eliminar el registro seleccionado?
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setConfirmDeleteId(null)}
+                className="btn-secondary"
+                disabled={deleteLoading}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => handleDelete(confirmDeleteId)}
+                className="px-4 py-2 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition-colors disabled:opacity-60"
+                disabled={deleteLoading}
+              >
+                {deleteLoading ? 'Eliminando...' : 'Eliminar'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Stats */}

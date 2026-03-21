@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
+import ClientToasts from '@/components/ClientToasts'
 
 // Optimización de fuente con display swap para mejor rendimiento
 const inter = Inter({ 
@@ -187,6 +188,7 @@ export default function RootLayout({
         />
       </head>
       <body className={`${inter.className} ${inter.variable}`} suppressHydrationWarning>
+        <div id="__toasts"><ClientToasts /></div>
         {children}
       </body>
     </html>

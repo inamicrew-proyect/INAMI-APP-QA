@@ -267,6 +267,9 @@ export default function AtencionesPage() {
       console.log('Atención eliminada exitosamente')
       setAtenciones((prev) => prev.filter((a) => a.id !== confirmDeleteId))
       setFeedback({ type: 'success', message: 'Atención eliminada exitosamente.' })
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('app:toast', { detail: { type: 'success', title: 'Eliminada', message: 'La atención se eliminó correctamente.' } }))
+      }
       
       // Disparar evento para actualizar otras partes de la aplicación
       if (typeof window !== 'undefined') {
@@ -276,6 +279,9 @@ export default function AtencionesPage() {
       console.error('Error deleting atencion (catch):', error)
       const errorMessage = error instanceof Error ? error.message : 'Error al eliminar la atención. Intenta nuevamente.'
       setFeedback({ type: 'error', message: errorMessage })
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('app:toast', { detail: { type: 'error', title: 'Error', message: errorMessage } }))
+      }
     } finally {
       setDeleteLoading(false)
       setConfirmDeleteId(null)
