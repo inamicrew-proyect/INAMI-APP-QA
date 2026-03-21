@@ -1,3 +1,5 @@
+const path = require('path')
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Optimizaciones de compilación
@@ -155,6 +157,11 @@ const nextConfig = {
 
   // Optimización de webpack
   webpack: (config, { dev, isServer }) => {
+    config.resolve.alias = {
+      ...(config.resolve.alias || {}),
+      '@supabase/ssr': path.join(__dirname, 'lib/vendor/@supabase/ssr/dist/module/index.js'),
+    }
+
     // Optimizaciones para producción
     if (!dev && !isServer) {
       config.optimization = {

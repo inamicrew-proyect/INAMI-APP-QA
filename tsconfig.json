@@ -30,6 +30,9 @@
     "paths": {
       "@/*": [
         "./*"
+      ],
+      "@supabase/ssr": [
+        "./lib/vendor/@supabase/ssr/dist/module/index.js"
       ]
     }
   },
