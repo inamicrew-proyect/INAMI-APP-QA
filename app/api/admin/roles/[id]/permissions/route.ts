@@ -31,7 +31,7 @@ async function requireAdmin() {
 // GET: Obtener permisos de un rol
 export async function GET(
   _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> | { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const adminCheck = await requireAdmin()
@@ -39,7 +39,7 @@ export async function GET(
       return NextResponse.json({ error: adminCheck.error }, { status: adminCheck.status })
     }
 
-    const resolvedParams = await Promise.resolve(params)
+    const resolvedParams = await params
     const roleId = resolvedParams.id
 
     if (!roleId) {
@@ -77,7 +77,7 @@ export async function GET(
 // POST: Crear o actualizar permisos de un rol
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> | { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const adminCheck = await requireAdmin()
@@ -85,7 +85,7 @@ export async function POST(
       return NextResponse.json({ error: adminCheck.error }, { status: adminCheck.status })
     }
 
-    const resolvedParams = await Promise.resolve(params)
+    const resolvedParams = await params
     const roleId = resolvedParams.id
 
     if (!roleId) {
@@ -156,7 +156,7 @@ export async function POST(
 // DELETE: Eliminar permisos de un rol
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> | { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const adminCheck = await requireAdmin()
@@ -164,7 +164,7 @@ export async function DELETE(
       return NextResponse.json({ error: adminCheck.error }, { status: adminCheck.status })
     }
 
-    const resolvedParams = await Promise.resolve(params)
+    const resolvedParams = await params
     const roleId = resolvedParams.id
 
     const { searchParams } = new URL(request.url)

@@ -54,9 +54,9 @@ async function requireAdminOrProfesional(_request: NextRequest, atencionId: stri
   return { supabase, profile, userId, isAdmin: false } as const
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> | { id: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const resolvedParams = await Promise.resolve(params)
+    const resolvedParams = await params
     const { id } = resolvedParams
 
     if (!id) {
@@ -204,9 +204,9 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
   }
 }
 
-export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> | { id: string } }) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const resolvedParams = await Promise.resolve(params)
+    const resolvedParams = await params
     const { id } = resolvedParams
 
     if (!id) {

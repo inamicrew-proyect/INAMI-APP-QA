@@ -67,9 +67,9 @@ async function requireAuthOrOwnProfile(_request: NextRequest, targetUserId: stri
   return { supabase, profile, userId } as const
 }
 
-export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> | { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const resolvedParams = await Promise.resolve(params)
+    const resolvedParams = await params
     const { id } = resolvedParams
 
     if (!id) {
@@ -134,8 +134,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   }
 }
 
-export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> | { id: string } }) {
-  const resolvedParams = await Promise.resolve(params)
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = await params
   const { id } = resolvedParams
 
   if (!id) {
@@ -389,13 +389,13 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   return NextResponse.json({ user: data })
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> | { id: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const adminCheck = await requireAdmin(request)
   if ('error' in adminCheck) {
     return NextResponse.json({ error: adminCheck.error }, { status: adminCheck.status })
   }
 
-  const resolvedParams = await Promise.resolve(params)
+  const resolvedParams = await params
   const { id } = resolvedParams
 
   if (!id) {

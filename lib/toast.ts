@@ -22,6 +22,5 @@ export function actionSuccess(action: 'crear' | 'editar' | 'eliminar' | 'generar
 }
 
 export function actionError(action: 'crear' | 'editar' | 'eliminar' | 'generar', entity: string, detail?: string) {
-  const capital = action.charAt(0).toUpperCase() + action.slice(1)
   toast.error(`No se pudo ${action} ${entity}.${detail ? ' ' + detail : ''}`)
 }

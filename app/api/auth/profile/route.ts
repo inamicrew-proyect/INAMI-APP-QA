@@ -11,14 +11,14 @@ export async function GET(_request: NextRequest) {
     console.log('🔍 [API /auth/profile] Iniciando...')
     
     // Verificar cookies recibidas
-    const cookieStore = cookies()
+    const cookieStore = await cookies()
     const allCookies = cookieStore.getAll()
     console.log('🔍 [API /auth/profile] Cookies recibidas:', {
       count: allCookies.length,
       cookieNames: allCookies.map(c => c.name)
     })
     
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
+    const supabase = createRouteHandlerClient({ cookies: async () => cookieStore })
     
     // Intentar obtener sesión con timeout
     const sessionPromise = supabase.auth.getSession()

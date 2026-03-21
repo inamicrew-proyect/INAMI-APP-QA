@@ -7,7 +7,7 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import type { Atencion, Joven, TipoAtencion, Profile } from '@/lib/supabase'
 import { format } from 'date-fns'
 import DynamicForm from '@/components/DynamicForm'
-import { pruneFormularioData, formularioFieldsByRole } from '@/lib/formulario-utils'
+import { formularioFieldsByRole, type RoleKey } from '@/lib/formulario-utils'
 import { useAuth } from '@/lib/auth'
 
 export default function EditarAtencionPage() {
@@ -22,7 +22,6 @@ export default function EditarAtencionPage() {
   const [atencion, setAtencion] = useState<Atencion | null>(null)
   const [joven, setJoven] = useState<Joven | null>(null)
   const [tipoAtencion, setTipoAtencion] = useState<TipoAtencion | null>(null)
-  const [profesional, setProfesional] = useState<Profile | null>(null)
   const [creatorName, setCreatorName] = useState('Sin profesional asignado')
   const [creatorRole, setCreatorRole] = useState('Sin rol registrado')
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -144,7 +143,6 @@ export default function EditarAtencionPage() {
           }
         }
 
-        setProfesional(resolvedProfessional)
         setCreatorName(resolvedName || 'Sin profesional asignado')
         setCreatorRole(resolvedRole || 'Sin rol registrado')
 
@@ -163,8 +161,9 @@ export default function EditarAtencionPage() {
           formularioEspecificoCompleto = formularioData.datos_json
         }
 
-        const roleKey = atencionData.tipos_atencion?.profesional_responsable as string | undefined
-        const allowedFields = roleKey ? formularioFieldsByRole[roleKey] : undefined
+        const roleKey = atencionData.tipos_atencion?.profesional_responsable as RoleKey | undefined
+        const allowedFields =
+          roleKey && roleKey in formularioFieldsByRole ? formularioFieldsByRole[roleKey] : undefined
         let formularioFiltrado = formularioEspecificoCompleto
 
         // Evitar mezclar formularios: si el tipo tiene esquema conocido,
@@ -381,8 +380,6 @@ export default function EditarAtencionPage() {
       )
     })
   }
-
-  // Prune importado desde util
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}

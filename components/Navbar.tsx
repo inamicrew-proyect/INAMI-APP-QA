@@ -29,7 +29,7 @@ function Navbar() {
   // 3. REEMPLAZAMOS toda la lógica de 'useState', 'useCallback' y 'useEffect'
   //    con nuestro nuevo hook 'useAuth'.
   const { profile, loading, user } = useAuth()
-  const { canView, loading: permissionsLoading, permissions } = usePermissions()
+  const { canView, loading: permissionsLoading } = usePermissions()
   const { theme } = useTheme()
   const isDark = theme === 'dark'
   
@@ -169,13 +169,6 @@ function Navbar() {
       </nav>
     )
   }
-
-  // Debug: Verificar estado antes de renderizar
-  // Usar directRole como respaldo si el perfil no está disponible
-  const effectiveRole = profile?.role || directRole
-  const isAdminUser = effectiveRole === 'admin'
-  const hasAdminPermission = !permissionsLoading && canView(Routes.ADMIN)
-  const shouldShowAdminPanel = isAdminUser || hasAdminPermission
 
   return (
 	<nav className="bg-gradient-to-r from-sky-500 via-sky-400 to-blue-500 shadow-lg w-full sticky top-0 z-50 backdrop-blur-sm border-b border-white/20">

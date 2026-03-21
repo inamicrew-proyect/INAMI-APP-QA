@@ -13,8 +13,7 @@ function HomeContent() {
     const checkAndRedirect = async () => {
       // Detectar si hay un código en la URL (viene de Supabase)
       const code = searchParams.get('code')
-      const type = searchParams.get('type')
-      
+
       const currentUrl = typeof window !== 'undefined' ? window.location.origin : ''
 
       // PRIORIDAD 0: Hash (Supabase puede enviar tokens, code o error en el fragmento)

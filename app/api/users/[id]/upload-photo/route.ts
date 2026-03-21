@@ -39,10 +39,10 @@ async function requireAuthOrOwnProfile(_request: NextRequest, targetUserId: stri
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> | { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const resolvedParams = await Promise.resolve(params)
+    const resolvedParams = await params
     const { id } = resolvedParams
 
     if (!id) {

@@ -35,9 +35,9 @@ async function requireAuth(_request: NextRequest) {
   return { supabase, profile, userId, isAdmin: profile.role === 'admin' } as const
 }
 
-export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> | { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const resolvedParams = await Promise.resolve(params)
+    const resolvedParams = await params
     const { id } = resolvedParams
 
     if (!id) {
@@ -133,7 +133,7 @@ async function requireAdminOrProfesionalForJoven(_request: NextRequest, jovenId:
   
   if (!session) {
     console.log('No se encontró sesión en requireAdminOrProfesionalForJoven para jovenId:', jovenId)
-    const cookieStore = cookies()
+    const cookieStore = await cookies()
     console.log('Cookies recibidas:', cookieStore.getAll().map(c => c.name))
     return { error: 'No autenticado', status: 401 } as const
   }
@@ -195,9 +195,9 @@ async function requireAdminOrProfesionalForJoven(_request: NextRequest, jovenId:
   return { supabase, profile, userId, isAdmin: false } as const
 }
 
-export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> | { id: string } }) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const resolvedParams = await Promise.resolve(params)
+    const resolvedParams = await params
     const { id } = resolvedParams
 
     if (!id) {
@@ -415,9 +415,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> | { id: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const resolvedParams = await Promise.resolve(params)
+    const resolvedParams = await params
     const { id } = resolvedParams
 
     if (!id) {

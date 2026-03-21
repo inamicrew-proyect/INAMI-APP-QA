@@ -1,6 +1,5 @@
 'use client'
 
-import React from 'react'
 import ToastProvider from './ToastProvider'
 import AlertInterceptor from './AlertInterceptor'
 
