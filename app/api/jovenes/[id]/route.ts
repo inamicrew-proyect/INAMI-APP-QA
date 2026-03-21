@@ -1,7 +1,7 @@
 // app/api/jovenes/[id]/route.ts
 import { NextResponse, type NextRequest } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
+import { createSupabaseRouteHandlerClient } from '@/lib/supabase-route-handler'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { calculateAgeFromBirth } from '@/lib/validation/jovenes'
 
@@ -10,7 +10,7 @@ export const fetchCache = 'force-no-store'
 export const revalidate = 0
 
 async function requireAuth(_request: NextRequest) {
-  const supabase = createRouteHandlerClient({ cookies: () => cookies() })
+  const supabase = await createSupabaseRouteHandlerClient()
   const {
     data: { session },
   } = await supabase.auth.getSession()
@@ -124,7 +124,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
 async function requireAdminOrProfesionalForJoven(_request: NextRequest, jovenId: string) {
   // Usar la misma sintaxis que requireAuth que funciona en GET
-  const supabase = createRouteHandlerClient({ cookies: () => cookies() })
+  const supabase = await createSupabaseRouteHandlerClient()
   const { data: { session }, error: sessionError } = await supabase.auth.getSession()
   
   if (sessionError) {

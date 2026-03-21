@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { createSupabaseRouteHandlerClient } from '@/lib/supabase-route-handler'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 
 // GET - Obtener formularios psicológicos
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies })
+    const supabase = await createSupabaseRouteHandlerClient()
     const { searchParams } = new URL(request.url)
     const jovenId = searchParams.get('joven_id')
     const tipoFormulario = searchParams.get('tipo_formulario')
@@ -70,7 +69,7 @@ export async function GET(request: NextRequest) {
 // POST - Crear nuevo formulario psicológico
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies })
+    const supabase = await createSupabaseRouteHandlerClient()
     const body = await request.json()
 
     // Verificar autenticación
@@ -166,7 +165,7 @@ export async function POST(request: NextRequest) {
 // PUT - Actualizar formulario psicológico existente
 export async function PUT(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies })
+    const supabase = await createSupabaseRouteHandlerClient()
     const body = await request.json()
 
     // Verificar autenticación
@@ -244,7 +243,7 @@ export async function PUT(request: NextRequest) {
 // DELETE - Eliminar formulario psicológico
 export async function DELETE(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies })
+    const supabase = await createSupabaseRouteHandlerClient()
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
 

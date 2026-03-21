@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { createSupabaseRouteHandlerClient } from '@/lib/supabase-route-handler'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 
 export const dynamic = 'force-dynamic'
@@ -27,7 +26,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'La contraseña no puede contener espacios' }, { status: 400 })
     }
 
-    const supabase = createRouteHandlerClient({ cookies: () => cookies() })
+    const supabase = await createSupabaseRouteHandlerClient()
     const { data: { session }, error: sessionError } = await supabase.auth.getSession()
 
     if (sessionError || !session) {

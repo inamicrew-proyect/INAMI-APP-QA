@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
+import { createSupabaseRouteHandlerClient } from '@/lib/supabase-route-handler'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -18,7 +18,7 @@ export async function GET(_request: NextRequest) {
       cookieNames: allCookies.map(c => c.name)
     })
     
-    const supabase = createRouteHandlerClient({ cookies: async () => cookieStore })
+    const supabase = await createSupabaseRouteHandlerClient()
     
     // Intentar obtener sesión con timeout
     const sessionPromise = supabase.auth.getSession()

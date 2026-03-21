@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { createSupabaseRouteHandlerClient } from '@/lib/supabase-route-handler'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { supabaseCache } from '@/lib/optimization'
 
@@ -14,7 +13,7 @@ export const revalidate = 0
 // GET: Obtener permisos de un usuario basándose en sus roles
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies: () => cookies() })
+    const supabase = await createSupabaseRouteHandlerClient()
     const { data: { session } } = await supabase.auth.getSession()
 
     if (!session) {

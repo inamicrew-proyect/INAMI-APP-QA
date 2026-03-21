@@ -1,7 +1,6 @@
 // app/api/users/[id]/route.ts
 import { NextResponse, type NextRequest } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { createSupabaseRouteHandlerClient } from '@/lib/supabase-route-handler'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { userUpdateSchema } from '@/lib/validation/users'
 import { formatZodErrors } from '@/lib/validation/utils'
@@ -11,7 +10,7 @@ export const fetchCache = 'force-no-store'
 export const revalidate = 0
 
 async function requireAdmin(_request: NextRequest) {
-  const supabase = createRouteHandlerClient({ cookies: () => cookies() })
+  const supabase = await createSupabaseRouteHandlerClient()
   const {
     data: { session },
   } = await supabase.auth.getSession()
@@ -39,7 +38,7 @@ async function requireAdmin(_request: NextRequest) {
 }
 
 async function requireAuthOrOwnProfile(_request: NextRequest, targetUserId: string) {
-  const supabase = createRouteHandlerClient({ cookies: () => cookies() })
+  const supabase = await createSupabaseRouteHandlerClient()
   const {
     data: { session },
   } = await supabase.auth.getSession()

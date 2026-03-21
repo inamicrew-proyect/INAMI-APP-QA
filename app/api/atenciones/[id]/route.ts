@@ -1,7 +1,6 @@
 // app/api/atenciones/[id]/route.ts
 import { NextResponse, type NextRequest } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { createSupabaseRouteHandlerClient } from '@/lib/supabase-route-handler'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 
 export const dynamic = 'force-dynamic'
@@ -9,7 +8,7 @@ export const fetchCache = 'force-no-store'
 export const revalidate = 0
 
 async function requireAdminOrProfesional(_request: NextRequest, atencionId: string) {
-  const supabase = createRouteHandlerClient({ cookies: () => cookies() })
+  const supabase = await createSupabaseRouteHandlerClient()
   const {
     data: { session },
   } = await supabase.auth.getSession()

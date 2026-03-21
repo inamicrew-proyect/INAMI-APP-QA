@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { createSupabaseRouteHandlerClient } from '@/lib/supabase-route-handler'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,7 +21,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const supabase = createRouteHandlerClient({ cookies: () => cookies() })
+    const supabase = await createSupabaseRouteHandlerClient()
     const { error } = await supabase.auth.setSession({
       access_token,
       refresh_token,

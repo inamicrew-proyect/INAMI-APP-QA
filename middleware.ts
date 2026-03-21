@@ -1,14 +1,31 @@
-// middleware.ts
-import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
+// middleware.ts — @supabase/ssr compatible con Next.js 15+ (cookies async en Route Handlers)
+import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 export async function middleware(req: NextRequest) {
-  const res = NextResponse.next()
-  const supabase = createMiddlewareClient({ req, res })
+  let res = NextResponse.next({ request: req })
 
-  // 1. Obtener la sesión actual
-  const { data: { session } } = await supabase.auth.getSession()
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return req.cookies.getAll()
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) =>
+            res.cookies.set(name, value, options)
+          )
+        },
+      },
+    }
+  )
+
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
 
   const pathname = req.nextUrl.pathname
   const INACTIVITY_MS = 30 * 60 * 1000 // 30 minutos
@@ -23,21 +40,25 @@ export async function middleware(req: NextRequest) {
   const isAdminRoute = pathname.startsWith('/dashboard/admin')
   const isLogoutRoute = req.nextUrl.searchParams.get('logout') === 'true'
 
+  const passCookies = (response: NextResponse) => {
+    res.cookies.getAll().forEach(({ name, value }) => {
+      response.cookies.set(name, value)
+    })
+    return response
+  }
+
   // 2. Las API routes manejan su propia autenticación, no las bloqueamos aquí
   // Solo protegemos las rutas del dashboard
   if (isDashboardRoute && !session) {
-    // Redirigir a login si intenta acceder al dashboard sin sesión
-    // Agregar timestamp para evitar cache
     const loginUrl = new URL('/login', req.url)
     loginUrl.searchParams.set('redirect', pathname)
     loginUrl.searchParams.set('t', Date.now().toString())
-    return NextResponse.redirect(loginUrl)
+    return passCookies(NextResponse.redirect(loginUrl))
   }
 
   // 3. Si no hay sesión Y NO está en una ruta de autenticación, API, reset-password o callback, redirigir a /login
-  // IMPORTANTE: reset-password y auth/callback deben estar permitidas sin sesión para el flujo de recuperación
   if (!session && !isAuthRoute && !isRegisterRoute && !isApiRoute && !isDashboardRoute && !isResetPasswordRoute && !isAuthCallbackRoute) {
-    return NextResponse.redirect(new URL('/login', req.url))
+    return passCookies(NextResponse.redirect(new URL('/login', req.url)))
   }
 
   // 4. Si SÍ hay sesión: control de inactividad (30 min) y actualizar cookie
@@ -47,7 +68,6 @@ export async function middleware(req: NextRequest) {
     const lastActivity = lastActivityRaw ? parseInt(lastActivityRaw, 10) : NaN
     const isExpired = !Number.isNaN(lastActivity) && (now - lastActivity > INACTIVITY_MS)
 
-    // Solo redirigir por inactividad en rutas de página (no en llamadas API)
     if (!isApiRoute && isExpired) {
       try {
         await supabase.auth.signOut()
@@ -59,12 +79,10 @@ export async function middleware(req: NextRequest) {
       const redirectRes = NextResponse.redirect(loginUrl)
       redirectRes.cookies.set('last-activity', '', { path: '/', maxAge: 0 })
       redirectRes.cookies.set('login_reason', 'session_expired', { path: '/', maxAge: 60, sameSite: 'lax' })
-      return redirectRes
+      return passCookies(redirectRes)
     }
 
-    // Refrescar momento de última actividad SOLO en navegación de páginas (no en llamadas API en segundo plano)
     if (!isApiRoute) {
-      // La cookie dura 1 día; el control de 30 min se hace con el timestamp guardado
       res.cookies.set('last-activity', String(now), {
         path: '/',
         maxAge: 60 * 60 * 24,
@@ -76,7 +94,6 @@ export async function middleware(req: NextRequest) {
 
   // 5. Si SÍ hay sesión, verificar el nivel de 2FA solo para el dashboard
   if (session) {
-    // 5.1. Verificar acceso a rutas de administrador basándose en permisos de roles
     if (isAdminRoute) {
       try {
         const { data: profile } = await supabase
@@ -94,7 +111,7 @@ export async function middleware(req: NextRequest) {
             .eq('user_id', session.user.id)
 
           if (userRoles && userRoles.length > 0) {
-            const roleIds = userRoles.map(ur => ur.role_id)
+            const roleIds = userRoles.map((ur) => ur.role_id)
             const { data: adminModule } = await supabase
               .from('modulos')
               .select('id')
@@ -111,52 +128,37 @@ export async function middleware(req: NextRequest) {
                 .limit(1)
 
               if (!permissions || permissions.length === 0) {
-                return NextResponse.redirect(new URL('/dashboard', req.url))
+                return passCookies(NextResponse.redirect(new URL('/dashboard', req.url)))
               }
             } else {
-              return NextResponse.redirect(new URL('/dashboard', req.url))
+              return passCookies(NextResponse.redirect(new URL('/dashboard', req.url)))
             }
           } else {
-            // No tiene roles asignados, solo permitir a admins
             console.warn('Middleware: Usuario no tiene roles asignados, redirigiendo')
-            return NextResponse.redirect(new URL('/dashboard', req.url))
+            return passCookies(NextResponse.redirect(new URL('/dashboard', req.url)))
           }
         }
       } catch (error) {
         console.error('Middleware: Error verificando permisos de admin:', error)
-        return NextResponse.redirect(new URL('/dashboard', req.url))
+        return passCookies(NextResponse.redirect(new URL('/dashboard', req.url)))
       }
     }
 
-    // 5. Si está en una ruta protegida (dashboard), verificar 2FA y preguntas secretas
-    // Las API routes manejan su propia verificación
     if (isDashboardRoute && !isSecurityQuestionsRoute && !isAdminRoute) {
       try {
-        // Obtener el nivel de aseguramiento (AAL)
         const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
 
         if (aal) {
-          // 'aal1' = Logueado pero SIN 2FA
-          // 'aal2' = Logueado Y CON 2FA verificada
-          
-          // 6. Si el nivel actual NO es 'aal2' Y el siguiente nivel SÍ es 'aal2'
-          //    (significa que tiene 2FA activado pero no lo ha ingresado)
-          
           if (aal.currentLevel !== 'aal2' && aal.nextLevel === 'aal2') {
-            // Si está en el dashboard y no está verificado, redirigir a verificación
             if (!isVerifyRoute) {
-              return NextResponse.redirect(new URL('/login/verify-2fa', req.url))
+              return passCookies(NextResponse.redirect(new URL('/login/verify-2fa', req.url)))
             }
           }
         }
       } catch (error) {
-        // Si hay un error obteniendo el AAL, permitir el acceso (puede ser que no tenga 2FA configurado)
         console.error('Error obteniendo AAL:', error)
       }
 
-      // 6.5. Verificar si el usuario tiene preguntas secretas configuradas
-      // Si no las tiene, redirigir a la página de configuración
-      // IMPORTANTE: Solo verificar si NO está ya en la página de preguntas secretas para evitar loops
       if (!isSecurityQuestionsRoute) {
         try {
           const { count, error: questionsError } = await supabase
@@ -167,72 +169,55 @@ export async function middleware(req: NextRequest) {
           const hasQuestions = !questionsError && (count ?? 0) > 0
 
           if (!hasQuestions) {
-            // Si no tiene preguntas secretas, redirigir a la página de configuración
-            // Solo si no está ya ahí para evitar loops infinitos
-            return NextResponse.redirect(new URL('/dashboard/configuracion/preguntas-secretas', req.url))
+            return passCookies(
+              NextResponse.redirect(new URL('/dashboard/configuracion/preguntas-secretas', req.url))
+            )
           }
         } catch (error) {
-          // Si hay error verificando preguntas, NO redirigir automáticamente
-          // Permitir que el usuario acceda al dashboard y mostrar un mensaje allí
-          // Esto evita que el usuario quede "al aire" si hay problemas con la base de datos
           console.error('Error verificando preguntas secretas:', error)
-          // Continuar al dashboard en lugar de redirigir
         }
       }
     }
-    
-    // 7. Si ya está autenticado e intenta ir a /login (excepto si es logout)
+
     if (isAuthRoute && !isLogoutRoute && !isVerifyRoute) {
-      // Si es logout, permitir acceso a login para limpiar sesión
-      // Verificar si tiene 2FA completo antes de redirigir al dashboard
       try {
         const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
         if (aal && aal.currentLevel === 'aal2') {
-          // Si tiene 2FA completo, redirigir al dashboard
           const dashboardUrl = new URL('/dashboard', req.url)
           dashboardUrl.searchParams.set('t', Date.now().toString())
-          return NextResponse.redirect(dashboardUrl)
+          return passCookies(NextResponse.redirect(dashboardUrl))
         } else if (!aal || aal.currentLevel === 'aal1') {
-          // Si no tiene 2FA o está en aal1, también puede ir al dashboard
           const dashboardUrl = new URL('/dashboard', req.url)
           dashboardUrl.searchParams.set('t', Date.now().toString())
-          return NextResponse.redirect(dashboardUrl)
+          return passCookies(NextResponse.redirect(dashboardUrl))
         }
       } catch (error) {
-        // Si hay error, asumir que puede ir al dashboard
         const dashboardUrl = new URL('/dashboard', req.url)
         dashboardUrl.searchParams.set('t', Date.now().toString())
-        return NextResponse.redirect(dashboardUrl)
+        return passCookies(NextResponse.redirect(dashboardUrl))
       }
     }
-    
-    // 7.5. Si es logout, forzar limpieza de sesión
+
     if (isLogoutRoute) {
-      // Cerrar sesión en Supabase
       try {
         await supabase.auth.signOut({ scope: 'global' })
       } catch (error) {
-        // Ignorar errores, solo intentar cerrar
         try {
           await supabase.auth.signOut()
         } catch (e) {
           // Ignorar
         }
       }
-      // Permitir acceso a login sin redirigir
     }
-    
-    // 8. Si ya está autenticado e intenta ir a /register
+
     if (isRegisterRoute && !isLogoutRoute) {
-      return NextResponse.redirect(new URL('/dashboard', req.url))
+      return passCookies(NextResponse.redirect(new URL('/dashboard', req.url)))
     }
   }
 
   return res
 }
 
-// Configuración del Matcher: Aplica el middleware a todas las rutas EXCEPTO
-// las estáticas (_next/static, _next/image) y favicon.ico
 export const config = {
   matcher: [
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|gif|webp|svg|ico)$).*)',

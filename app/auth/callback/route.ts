@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { createSupabaseRouteHandlerClient } from '@/lib/supabase-route-handler'
 
 export const dynamic = 'force-dynamic'
 export const fetchCache = 'force-no-store'
@@ -65,7 +64,7 @@ export async function GET(request: NextRequest) {
                      next?.includes('reset-password') ||
                      requestUrl.searchParams.get('type') === 'recovery'
 
-  const supabase = createRouteHandlerClient({ cookies: () => cookies() })
+  const supabase = await createSupabaseRouteHandlerClient()
   
   try {
     const { error, data } = await supabase.auth.exchangeCodeForSession(code)

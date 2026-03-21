@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { createSupabaseRouteHandlerClient } from '@/lib/supabase-route-handler'
 import { hashSecurityAnswer } from '@/lib/security-questions'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 
@@ -27,7 +26,7 @@ const SOLO_LETRAS_Y_ESPACIOS = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/
 // GET - Obtener preguntas del usuario (sin respuestas)
 export async function GET(_request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies: () => cookies() })
+    const supabase = await createSupabaseRouteHandlerClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
 
     if (authError || !user) {
@@ -55,7 +54,7 @@ export async function GET(_request: NextRequest) {
 // POST - Crear o actualizar preguntas secretas
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies: () => cookies() })
+    const supabase = await createSupabaseRouteHandlerClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
 
     if (authError || !user) {
