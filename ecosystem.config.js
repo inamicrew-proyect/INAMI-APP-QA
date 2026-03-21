@@ -1,5 +1,5 @@
-// Copia a ecosystem.config.js y ajusta cwd / logs si tu usuario o carpeta no coinciden.
-// VPS QA por defecto: /home/inami_admin/INAMI.APP_QA
+// PM2 — QA en VPS (ruta home + carpeta del clon)
+// Tras cambios: npm run build && pm2 restart inami-qa
 
 module.exports = {
   apps: [{
