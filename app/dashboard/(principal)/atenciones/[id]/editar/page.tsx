@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { ArrowLeft, Save, FileText, User, AlertTriangle } from 'lucide-react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createClientComponentClient } from '@/lib/supabase-browser'
 import type { Atencion, Joven, TipoAtencion, Profile } from '@/lib/supabase'
 import { format } from 'date-fns'
 import DynamicForm from '@/components/DynamicForm'
@@ -69,10 +69,11 @@ export default function EditarAtencionPage() {
       }
 
       if (atencionData) {
+        const atencionRow: any = atencionData
         // Verificar permisos cuando el perfil ya está disponible:
         // si todavía no se hidrata, no bloquear la carga del formulario.
         const isAdmin = currentUserProfile?.role === 'admin'
-        const isCreator = !!currentUserProfile?.id && atencionData.profesional_id === currentUserProfile.id
+        const isCreator = !!currentUserProfile?.id && atencionRow.profesional_id === currentUserProfile.id
 
         if (currentUserProfile && !isAdmin && !isCreator) {
           setUnauthorized(true)
@@ -81,28 +82,29 @@ export default function EditarAtencionPage() {
         }
         
         setAtencion(atencionData)
-        setJoven(atencionData.jovenes)
-        setTipoAtencion(atencionData.tipos_atencion)
+        setJoven(atencionRow.jovenes)
+        setTipoAtencion(atencionRow.tipos_atencion)
 
         // Resolver creador y rol de forma robusta:
         // 1) relación incluida en la query
         // 2) búsqueda directa por profesional_id
         // 3) fallback a system_logs de creación
-        let resolvedProfessional = (atencionData.profesional || null) as Profile | null
+        let resolvedProfessional = (atencionRow.profesional || null) as Profile | null
         let resolvedName = resolvedProfessional?.full_name || ''
         let resolvedRole = resolvedProfessional?.role || ''
 
-        if (!resolvedProfessional && atencionData.profesional_id) {
+        if (!resolvedProfessional && atencionRow.profesional_id) {
           const { data: profileById } = await supabase
             .from('profiles')
             .select('*')
-            .eq('id', atencionData.profesional_id)
+            .eq('id', atencionRow.profesional_id)
             .maybeSingle()
 
           if (profileById) {
-            resolvedProfessional = profileById as Profile
-            resolvedName = profileById.full_name || ''
-            resolvedRole = profileById.role || ''
+            const profileByIdAny = profileById as any
+            resolvedProfessional = profileByIdAny as Profile
+            resolvedName = profileByIdAny.full_name || ''
+            resolvedRole = profileByIdAny.role || ''
           }
         }
 
@@ -112,13 +114,14 @@ export default function EditarAtencionPage() {
             .select('usuario_id, detalles')
             .eq('accion', 'create_atencion')
             .eq('entidad', 'atenciones')
-            .eq('entidad_id', atencionData.id)
+            .eq('entidad_id', atencionRow.id)
             .order('created_at', { ascending: false })
             .limit(1)
             .maybeSingle()
 
-          const logUserId = creationLog?.usuario_id as string | undefined
-          const details = (creationLog?.detalles || {}) as Record<string, any>
+          const creationLogAny = creationLog as any
+          const logUserId = creationLogAny?.usuario_id as string | undefined
+          const details = (creationLogAny?.detalles || {}) as Record<string, any>
 
           if (!resolvedRole) {
             resolvedRole =
@@ -135,8 +138,9 @@ export default function EditarAtencionPage() {
               .maybeSingle()
 
             if (profileFromLog) {
-              resolvedName = profileFromLog.full_name || ''
-              if (!resolvedRole) resolvedRole = profileFromLog.role || ''
+              const profileFromLogAny = profileFromLog as any
+              resolvedName = profileFromLogAny.full_name || ''
+              if (!resolvedRole) resolvedRole = profileFromLogAny.role || ''
             } else {
               resolvedName = `Usuario creador (${logUserId.slice(0, 8)}...)`
             }
@@ -148,11 +152,11 @@ export default function EditarAtencionPage() {
 
         // El formulario específico completo vive en `formularios_atencion`.
         // Si no existe registro relacionado, usar fallback al campo embebido.
-        let formularioEspecificoCompleto: any = atencionData.formulario_especifico || {}
+        let formularioEspecificoCompleto: any = atencionRow.formulario_especifico || {}
         const { data: formularioData, error: formularioError } = await supabase
           .from('formularios_atencion')
           .select('datos_json')
-          .eq('atencion_id', atencionData.id)
+          .eq('atencion_id', atencionRow.id)
           .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle()
@@ -161,7 +165,7 @@ export default function EditarAtencionPage() {
           formularioEspecificoCompleto = formularioData.datos_json
         }
 
-        const roleKey = atencionData.tipos_atencion?.profesional_responsable as RoleKey | undefined
+        const roleKey = atencionRow.tipos_atencion?.profesional_responsable as RoleKey | undefined
         const allowedFields =
           roleKey && roleKey in formularioFieldsByRole ? formularioFieldsByRole[roleKey] : undefined
         let formularioFiltrado = formularioEspecificoCompleto
@@ -186,12 +190,12 @@ export default function EditarAtencionPage() {
         }
 
         setFormData({
-          fecha_atencion: atencionData.fecha_atencion ? format(new Date(atencionData.fecha_atencion), 'yyyy-MM-dd\'T\'HH:mm') : '',
-          motivo: atencionData.motivo || '',
-          observaciones: atencionData.observaciones || '',
-          recomendaciones: atencionData.recomendaciones || '',
-          estado: atencionData.estado || 'completada',
-          proxima_cita: atencionData.proxima_cita ? format(new Date(atencionData.proxima_cita), 'yyyy-MM-dd') : '',
+          fecha_atencion: atencionRow.fecha_atencion ? format(new Date(atencionRow.fecha_atencion), 'yyyy-MM-dd\'T\'HH:mm') : '',
+          motivo: atencionRow.motivo || '',
+          observaciones: atencionRow.observaciones || '',
+          recomendaciones: atencionRow.recomendaciones || '',
+          estado: atencionRow.estado || 'completada',
+          proxima_cita: atencionRow.proxima_cita ? format(new Date(atencionRow.proxima_cita), 'yyyy-MM-dd') : '',
           formulario_especifico: formularioFiltrado
         })
       }

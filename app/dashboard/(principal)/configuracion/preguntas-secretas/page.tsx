@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createClientComponentClient } from '@/lib/supabase-browser'
 import { PREDEFINED_QUESTIONS } from '@/lib/security-questions'
 import { Shield, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'

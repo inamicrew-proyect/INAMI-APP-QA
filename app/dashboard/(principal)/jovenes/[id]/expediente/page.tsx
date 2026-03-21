@@ -15,7 +15,7 @@ import {
   Download,
   Printer,
 } from 'lucide-react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createClientComponentClient } from '@/lib/supabase-browser'
 import type { Joven, Centro } from '@/lib/supabase'
 import { format } from 'date-fns'
 import { exportExpedientePDF, type PDFData } from '@/lib/pdf-generator'

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, UserPlus, ShieldCheck, Copy, RefreshCcw, Loader2 } from 'lucide-react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createClientComponentClient } from '@/lib/supabase-browser'
 import { userCreateSchema } from '@/lib/validation/users'
 import { formatZodErrors } from '@/lib/validation/utils'
 

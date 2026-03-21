@@ -4,7 +4,7 @@
 
 'use client'
 
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createClientComponentClient } from '@/lib/supabase-browser'
 
 // Usar el tipo de retorno de createClientComponentClient para evitar errores de tipo
 type SupabaseClient = ReturnType<typeof createClientComponentClient>

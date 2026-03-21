@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo, useCallback } from 'react'
 import Link from 'next/link'
 import { Search, Plus, Edit, Trash2, Eye, Filter, FileText, CheckCircle2, AlertTriangle, X, ChevronLeft, ChevronRight } from 'lucide-react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createClientComponentClient } from '@/lib/supabase-browser'
 import type { Atencion } from '@/lib/supabase'
 import { format } from 'date-fns'
 import { useIsAdmin, useCanCreate } from '@/lib/auth'

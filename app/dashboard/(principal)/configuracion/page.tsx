@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { ArrowLeft, Settings, Palette, Bell, Shield, ShieldOff, Lock, Sun, Moon, CheckCircle, Eye, EyeOff } from 'lucide-react'
 import { useTheme } from '@/lib/useTheme'
 import NotificationSettings from '@/components/NotificationSettings'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createClientComponentClient } from '@/lib/supabase-browser'
 
 export default function ConfiguracionPage() {
   const router = useRouter()
@@ -54,7 +54,7 @@ export default function ConfiguracionPage() {
         }
 
         const verifiedTotpFactor = factors?.all?.find(
-          (factor) => factor.factor_type === 'totp' && factor.status === 'verified'
+          (factor: any) => factor.factor_type === 'totp' && factor.status === 'verified'
         )
         const hasVerifiedTotp = !!verifiedTotpFactor
 

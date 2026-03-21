@@ -197,7 +197,7 @@ async function crearAtencionPsicologica(
 ): Promise<string | null> {
   try {
     // Obtener el usuario actual
-    const { createClientComponentClient } = await import('@supabase/auth-helpers-nextjs')
+    const { createClientComponentClient } = await import('@/lib/supabase-browser')
     const supabase = createClientComponentClient()
     
     const { data: { user } } = await supabase.auth.getUser()
@@ -309,7 +309,7 @@ export async function saveOrUpdateFormulario(
       // Si se creó la atención y el formulario, vincularlos en formularios_atencion
       if (atencionId && formulario) {
         try {
-          const { createClientComponentClient } = await import('@supabase/auth-helpers-nextjs')
+          const { createClientComponentClient } = await import('@/lib/supabase-browser')
           const supabase = createClientComponentClient()
           
           await supabase

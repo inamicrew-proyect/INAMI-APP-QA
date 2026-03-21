@@ -7,7 +7,7 @@ import { ArrowLeft, Save } from 'lucide-react'
 
 // 1. CAMBIO: Borramos la importación del cliente antiguo
 // import { supabase } from '@/lib/supabase' 
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createClientComponentClient } from '@/lib/supabase-browser'
 import type { Joven, TipoAtencion } from '@/lib/supabase'
 import NoUsersWarning from '@/components/NoUsersWarning'
 import { atencionCreateSchema } from '@/lib/validation/atenciones'

@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo, useCallback } from 'react'
 import Link from 'next/link'
 import { Search, Plus, Edit, Trash2, Eye, RefreshCw, UserPlus, Filter, ChevronLeft, ChevronRight } from 'lucide-react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs' 
+import { createClientComponentClient } from '@/lib/supabase-browser' 
 import { format } from 'date-fns'
 
 const ITEMS_PER_PAGE = 20

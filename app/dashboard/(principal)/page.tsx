@@ -14,7 +14,7 @@ import {
   Shield,
   RefreshCw
 } from 'lucide-react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createClientComponentClient } from '@/lib/supabase-browser'
 import { Routes } from '@/lib/routes'
 
 interface Stats {

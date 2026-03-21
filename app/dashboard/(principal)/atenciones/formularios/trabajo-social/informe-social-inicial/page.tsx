@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createClientComponentClient } from '@/lib/supabase-browser'
 import { Save, ArrowLeft, User, Plus, Trash2, Users, Home } from 'lucide-react'
 import Link from 'next/link'
 
