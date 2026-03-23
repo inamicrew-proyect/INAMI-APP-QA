@@ -5,7 +5,8 @@ import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { AlertCircle, ArrowLeft, Loader2, Save } from 'lucide-react'
 import { createClientComponentClient } from '@/lib/supabase-browser'
-import { userUpdateSchema } from '@/lib/validation/users'
+import { ACCOUNT_STATUSES, passwordSchema, userUpdateSchema } from '@/lib/validation/users'
+import { useAuth } from '@/lib/auth'
 import { formatZodErrors } from '@/lib/validation/utils'
 import { useAdminAccess } from '@/lib/hooks/useAdminAccess'
 
@@ -15,6 +16,7 @@ type UserProfile = {
   full_name: string
   role: string
   photo_url?: string | null
+  account_status?: string | null
 }
 
 export default function EditarUsuarioPage() {
@@ -23,6 +25,7 @@ export default function EditarUsuarioPage() {
   const id = params?.id as string | undefined
   const supabase = createClientComponentClient()
   const { hasAccess, loading: authLoading } = useAdminAccess()
+  const { user: authUser } = useAuth()
 
   const [user, setUser] = useState<UserProfile | null>(null)
   const [fullName, setFullName] = useState('')
@@ -37,8 +40,13 @@ export default function EditarUsuarioPage() {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const [accountStatus, setAccountStatus] = useState<(typeof ACCOUNT_STATUSES)[number]>('activo')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const MAX_PROFILE_PHOTO_SIZE = 1024 * 1024 // 1 MB
   const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+
+  const isEditingSelf = Boolean(authUser?.id && id && authUser.id === id)
 
   // Verificar que el usuario tiene acceso
   useEffect(() => {
@@ -112,6 +120,14 @@ export default function EditarUsuarioPage() {
         setUser(result.user)
         setFullName(result.user.full_name ?? '')
         setRole(result.user.role ?? '')
+        const rawStatus = result.user.account_status ?? 'activo'
+        setAccountStatus(
+          ACCOUNT_STATUSES.includes(rawStatus as (typeof ACCOUNT_STATUSES)[number])
+            ? (rawStatus as (typeof ACCOUNT_STATUSES)[number])
+            : 'activo'
+        )
+        setNewPassword('')
+        setConfirmPassword('')
         const existingPhoto = result.user.photo_url ?? null
         setPhotoUrl(existingPhoto)
         setPhotoPreview(existingPhoto)
@@ -137,6 +153,26 @@ export default function EditarUsuarioPage() {
     setSuccess(null)
 
     try {
+      if (newPassword || confirmPassword) {
+        if (!newPassword.trim() || !confirmPassword.trim()) {
+          setError('Completa ambos campos de nueva contraseña o déjalos vacíos.')
+          setSaving(false)
+          return
+        }
+        if (newPassword !== confirmPassword) {
+          setError('Las contraseñas nuevas no coinciden.')
+          setSaving(false)
+          return
+        }
+        const pwdCheck = passwordSchema.safeParse(newPassword)
+        if (!pwdCheck.success) {
+          const errs = formatZodErrors(pwdCheck.error)
+          setError(errs[0] ?? 'La nueva contraseña no cumple los requisitos de seguridad.')
+          setSaving(false)
+          return
+        }
+      }
+
       const parsed = userUpdateSchema.safeParse({
         fullName,
         role,
@@ -194,17 +230,23 @@ export default function EditarUsuarioPage() {
         return
       }
 
+      const bodyPayload: Record<string, unknown> = {
+        fullName: sanitized.fullName,
+        role: sanitized.role,
+        photoUrl: uploadedPhotoUrl ?? null,
+        accountStatus,
+      }
+      if (newPassword.trim().length > 0) {
+        bodyPayload.password = newPassword
+      }
+
       const response = await fetch(`/api/users/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
         cache: 'no-store',
-        body: JSON.stringify({
-          fullName: sanitized.fullName,
-          role: sanitized.role,
-          photoUrl: uploadedPhotoUrl ?? null,
-        }),
+        body: JSON.stringify(bodyPayload),
         credentials: 'include',
       })
       const result = await response.json()
@@ -225,6 +267,14 @@ export default function EditarUsuarioPage() {
 
       setSuccess('Usuario actualizado correctamente.')
       setUser(result.user)
+      const rs = result.user.account_status ?? 'activo'
+      setAccountStatus(
+        ACCOUNT_STATUSES.includes(rs as (typeof ACCOUNT_STATUSES)[number])
+          ? (rs as (typeof ACCOUNT_STATUSES)[number])
+          : 'activo'
+      )
+      setNewPassword('')
+      setConfirmPassword('')
       setPhotoPreview(result.user.photo_url ?? null)
       setPhotoFile(null)
       if (typeof window !== 'undefined') {
@@ -309,7 +359,7 @@ export default function EditarUsuarioPage() {
         {loading && (
           <div className="flex items-center gap-3 text-gray-600 dark:text-gray-400">
             <Loader2 className="w-5 h-5 animate-spin" />
-            Cargando informaci?n...
+            Cargando información...
           </div>
         )}
 
@@ -386,6 +436,38 @@ export default function EditarUsuarioPage() {
               />
             </div>
 
+            <div className="rounded-lg border border-gray-200 dark:border-gray-600 p-4 space-y-2">
+              <label htmlFor="accountStatus" className="block text-sm font-medium text-gray-700 dark:text-gray-200">
+                Estado de la cuenta
+              </label>
+              <select
+                id="accountStatus"
+                name="accountStatus"
+                value={accountStatus}
+                onChange={(e) =>
+                  setAccountStatus(e.target.value as (typeof ACCOUNT_STATUSES)[number])
+                }
+                className="input-field"
+              >
+                <option value="activo">Activo — puede iniciar sesión y usar el sistema</option>
+                <option value="inactivo">
+                  Inactivo — no puede acceder (sesiones cerradas al guardar o al entrar al panel)
+                </option>
+                <option value="bloqueado">
+                  Bloqueado — acceso denegado en el login (cuenta suspendida)
+                </option>
+              </select>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Solo administradores pueden cambiar este valor. &quot;Bloqueado&quot; aplica también el bloqueo en el
+                sistema de autenticación.
+              </p>
+              {isEditingSelf && accountStatus !== 'activo' && (
+                <p className="text-xs text-amber-700 dark:text-amber-300">
+                  Estás modificando tu propia cuenta. Si te marcas como inactivo o bloqueado, podrías perder el acceso.
+                </p>
+              )}
+            </div>
+
             <div>
               <label htmlFor="role" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Rol</label>
               {loadingRoles ? (
@@ -410,6 +492,51 @@ export default function EditarUsuarioPage() {
                   ))}
                 </select>
               )}
+            </div>
+
+            <div className="rounded-lg border border-gray-200 dark:border-gray-600 p-4 space-y-4">
+              <div>
+                <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-1">Nueva contraseña (opcional)</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                  Deja en blanco para no cambiar la contraseña. Mínimo 8 caracteres, mayúsculas, minúsculas, números y
+                  símbolos. Sin espacios.
+                </p>
+                <div className="space-y-3">
+                  <div>
+                    <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+                      Nueva contraseña
+                    </label>
+                    <input
+                      type="password"
+                      id="newPassword"
+                      name="newPassword"
+                      autoComplete="new-password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      className="input-field"
+                      placeholder="••••••••"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="confirmPassword"
+                      className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
+                    >
+                      Confirmar nueva contraseña
+                    </label>
+                    <input
+                      type="password"
+                      id="confirmPassword"
+                      name="confirmPassword"
+                      autoComplete="new-password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="input-field"
+                      placeholder="••••••••"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">

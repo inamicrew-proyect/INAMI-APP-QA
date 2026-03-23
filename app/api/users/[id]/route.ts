@@ -2,7 +2,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createSupabaseRouteHandlerClient } from '@/lib/supabase-route-handler'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { userUpdateSchema } from '@/lib/validation/users'
+import { adminUserExtraSchema, userUpdateSchema } from '@/lib/validation/users'
 import { formatZodErrors } from '@/lib/validation/utils'
 
 export const dynamic = 'force-dynamic'
@@ -123,7 +123,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     console.log('Usuario obtenido exitosamente:', { id: data.id, email: data.email })
 
-    return NextResponse.json({ user: data })
+    const userOut = {
+      ...data,
+      account_status: (data as { account_status?: string }).account_status ?? 'activo',
+    }
+
+    return NextResponse.json({ user: userOut })
   } catch (error) {
     console.error('Unexpected error fetching user:', error)
     return NextResponse.json({ 
@@ -173,7 +178,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
   const { data: existingProfile } = await adminClient
     .from('profiles')
-    .select('role, full_name, email')
+    .select('role, full_name, email, account_status')
     .eq('id', id)
     .maybeSingle()
 
@@ -209,6 +214,24 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   }
 
   const { fullName, photoUrl, role } = parsed.data
+
+  let adminExtras: { accountStatus?: 'activo' | 'inactivo' | 'bloqueado'; password?: string } = {}
+  if (isAdmin) {
+    const extraParsed = adminUserExtraSchema.safeParse({
+      accountStatus: body.accountStatus ?? body.account_status,
+      password: typeof body.password === 'string' && body.password.length > 0 ? body.password : undefined,
+    })
+    if (!extraParsed.success) {
+      return NextResponse.json(
+        {
+          error: 'Los datos del usuario no son válidos.',
+          details: formatZodErrors(extraParsed.error),
+        },
+        { status: 422 }
+      )
+    }
+    adminExtras = extraParsed.data
+  }
 
   // Verificar que el rol existe en la tabla roles (siempre, para asegurar que es válido)
   if (isAdmin && role) {
@@ -249,6 +272,11 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     updatePayload.role = role
   }
 
+  // Solo admin: estado de cuenta (activo / inactivo / bloqueado)
+  if (isAdmin && adminExtras.accountStatus !== undefined) {
+    updatePayload.account_status = adminExtras.accountStatus
+  }
+
   // Todos pueden cambiar la foto (subir o quitar)
   if (photoUrl !== undefined) {
     updatePayload.photo_url = photoUrl ?? null
@@ -283,6 +311,72 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   }
 
   console.log('Usuario actualizado exitosamente en profiles:', { id: data.id, email: data.email, role: data.role })
+
+  const prevStatus = ((existingProfile as { account_status?: string }).account_status ?? 'activo') as
+    | 'activo'
+    | 'inactivo'
+    | 'bloqueado'
+
+  // Efectos en Auth: contraseña y ban (bloqueado)
+  if (isAdmin && adminExtras.password) {
+    try {
+      const { error: pwdErr } = await adminClient.auth.admin.updateUserById(id, {
+        password: adminExtras.password,
+      })
+      if (pwdErr) {
+        console.error('Error actualizando contraseña (auth):', pwdErr)
+        return NextResponse.json(
+          { error: 'El perfil se actualizó pero no se pudo cambiar la contraseña.', details: pwdErr.message },
+          { status: 500 }
+        )
+      }
+      try {
+        const { SystemLogger } = await import('@/lib/system-logger')
+        await SystemLogger.updateUser(userId, id, { password_reset_by_admin: true })
+      } catch {
+        // ignorar log
+      }
+    } catch (authPwdErr) {
+      console.error('Error inesperado al cambiar contraseña:', authPwdErr)
+      return NextResponse.json({ error: 'No se pudo cambiar la contraseña.' }, { status: 500 })
+    }
+  }
+
+  if (isAdmin && adminExtras.accountStatus !== undefined) {
+    const nextStatus = adminExtras.accountStatus
+    try {
+      if (nextStatus === 'bloqueado') {
+        const { error: banErr } = await adminClient.auth.admin.updateUserById(id, {
+          ban_duration: '876000h',
+        })
+        if (banErr) {
+          console.error('Error bloqueando usuario en auth:', banErr)
+          return NextResponse.json(
+            { error: 'El perfil se actualizó pero no se pudo bloquear la cuenta en el sistema de acceso.', details: banErr.message },
+            { status: 500 }
+          )
+        }
+      } else {
+        const { error: unbanErr } = await adminClient.auth.admin.updateUserById(id, {
+          ban_duration: 'none',
+        })
+        if (unbanErr) {
+          console.warn('No se pudo quitar el bloqueo en auth (puede ser normal):', unbanErr)
+        }
+      }
+
+      try {
+        const { SystemLogger } = await import('@/lib/system-logger')
+        if (prevStatus !== nextStatus) {
+          await SystemLogger.updateUser(userId, id, { account_status: { from: prevStatus, to: nextStatus } })
+        }
+      } catch {
+        // ignorar log
+      }
+    } catch (authStatusErr) {
+      console.error('Error aplicando estado de cuenta en auth:', authStatusErr)
+    }
+  }
 
   // Si se cambió el rol, actualizar user_roles
   if (isAdmin && role && role !== existingProfile.role) {
@@ -375,6 +469,13 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       metadata.role = existingProfile.role
     }
     
+    if (isAdmin && adminExtras.accountStatus !== undefined) {
+      metadata.account_status = adminExtras.accountStatus
+    } else {
+      metadata.account_status =
+        (data as { account_status?: string }).account_status ?? 'activo'
+    }
+
     await adminClient.auth.admin.updateUserById(id, {
       user_metadata: metadata,
     })
@@ -385,7 +486,12 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
   console.log('Usuario actualizado exitosamente:', { id: data.id, email: data.email })
 
-  return NextResponse.json({ user: data })
+  const userOut = {
+    ...data,
+    account_status: (data as { account_status?: string }).account_status ?? 'activo',
+  }
+
+  return NextResponse.json({ user: userOut })
 }
 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {

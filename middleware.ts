@@ -56,6 +56,34 @@ export async function middleware(req: NextRequest) {
     return passCookies(NextResponse.redirect(loginUrl))
   }
 
+  // Cuenta inactiva o marcada como bloqueada en perfiles: cerrar sesión y volver al login
+  if (user && isDashboardRoute) {
+    try {
+      const { data: acct } = await supabase
+        .from('profiles')
+        .select('account_status')
+        .eq('id', user.id)
+        .maybeSingle()
+      const st = (acct?.account_status as string | undefined) ?? 'activo'
+      if (st !== 'activo') {
+        try {
+          await supabase.auth.signOut()
+        } catch {
+          // ignorar
+        }
+        const loginUrl = new URL('/login', req.url)
+        loginUrl.searchParams.set(
+          'reason',
+          st === 'bloqueado' ? 'account_blocked' : 'account_inactive'
+        )
+        loginUrl.searchParams.set('t', Date.now().toString())
+        return passCookies(NextResponse.redirect(loginUrl))
+      }
+    } catch (e) {
+      console.warn('middleware: no se pudo verificar account_status', e)
+    }
+  }
+
   // 3. Si no hay sesión Y NO está en una ruta de autenticación, API, reset-password o callback, redirigir a /login
   if (!user && !isAuthRoute && !isRegisterRoute && !isApiRoute && !isDashboardRoute && !isResetPasswordRoute && !isAuthCallbackRoute) {
     return passCookies(NextResponse.redirect(new URL('/login', req.url)))

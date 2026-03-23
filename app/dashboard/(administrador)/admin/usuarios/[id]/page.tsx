@@ -15,6 +15,22 @@ type UserProfile = {
   created_at: string
   updated_at: string
   photo_url?: string | null
+  account_status?: string | null
+}
+
+const accountStatusLabels: Record<string, { label: string; className: string }> = {
+  activo: {
+    label: 'Activo',
+    className: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200',
+  },
+  inactivo: {
+    label: 'Inactivo',
+    className: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200',
+  },
+  bloqueado: {
+    label: 'Bloqueado',
+    className: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200',
+  },
 }
 
 const roleLabels: Record<string, string> = {
@@ -200,6 +216,18 @@ export default function UsuarioDetallePage() {
               <div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">UID</p>
                 <p className="font-mono text-gray-900 dark:text-gray-100">{user.id}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Estado de la cuenta</p>
+                {(() => {
+                  const st = user.account_status ?? 'activo'
+                  const cfg = accountStatusLabels[st] ?? accountStatusLabels.activo
+                  return (
+                    <span className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${cfg.className}`}>
+                      {cfg.label}
+                    </span>
+                  )
+                })()}
               </div>
               <div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Rol</p>

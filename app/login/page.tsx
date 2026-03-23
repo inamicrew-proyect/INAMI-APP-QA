@@ -44,6 +44,14 @@ function LoginPageContent() {
       setError('')
       window.history.replaceState({}, '', '/login')
       document.cookie = 'login_reason=; path=/; max-age=0'
+    } else if (reason === 'account_inactive') {
+      setError(
+        'Tu cuenta está inactiva. No puedes acceder al sistema. Contacta a un administrador si necesitas reactivarla.'
+      )
+      window.history.replaceState({}, '', '/login')
+    } else if (reason === 'account_blocked') {
+      setError('Tu cuenta ha sido bloqueada. Contacta a un administrador si crees que es un error.')
+      window.history.replaceState({}, '', '/login')
     } else if (reason === 'session_replaced') {
       setError('Tu sesión se ha cerrado porque la misma cuenta inició sesión en otro dispositivo. Vuelve a iniciar sesión si deseas continuar aquí.')
       window.history.replaceState({}, '', '/login')
@@ -182,6 +190,17 @@ function LoginPageContent() {
             const profileResponse = await fetch('/api/auth/profile', { cache: 'no-store', credentials: 'include' })
             if (profileResponse.ok) {
               const profileResult = await profileResponse.json()
+              const st = profileResult.profile?.account_status ?? 'activo'
+              if (st !== 'activo') {
+                await supabase.auth.signOut()
+                setLoading(false)
+                setError(
+                  st === 'bloqueado'
+                    ? 'Tu cuenta ha sido bloqueada. Contacta a un administrador si crees que es un error.'
+                    : 'Tu cuenta está inactiva. No puedes acceder al sistema. Contacta a un administrador si necesitas reactivarla.'
+                )
+                return
+              }
               if (profileResult.profile) {
                 const { cacheProfile } = await import('@/lib/profile-cache')
                 cacheProfile(profileResult.profile)

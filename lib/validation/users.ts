@@ -58,7 +58,7 @@ const emailSchema = z
   )
 
 // La contraseña no se recorta (.trim()); se permiten espacios.
-const passwordSchema = z
+export const passwordSchema = z
   .string()
   .min(1, { message: 'La contraseña temporal es obligatoria.' })
   .min(8, { message: 'La contraseña debe tener al menos 8 caracteres.' })
@@ -106,6 +106,20 @@ export const userUpdateSchema = userBaseSchema
   .omit({ email: true })
   .extend({
   photoUrl: photoUrlSchema,
+})
+
+/** Estados de cuenta gestionados por administradores */
+export const ACCOUNT_STATUSES = ['activo', 'inactivo', 'bloqueado'] as const
+export type AccountStatus = (typeof ACCOUNT_STATUSES)[number]
+
+export const accountStatusSchema = z.enum(ACCOUNT_STATUSES, {
+  message: 'El estado de cuenta no es válido.',
+})
+
+/** Campos opcionales solo para administradores al editar otro usuario */
+export const adminUserExtraSchema = z.object({
+  accountStatus: accountStatusSchema.optional(),
+  password: passwordSchema.optional(),
 })
 
 export type UserCreateInput = z.infer<typeof userCreateSchema>
