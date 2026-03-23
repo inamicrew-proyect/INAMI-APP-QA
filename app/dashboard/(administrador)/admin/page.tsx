@@ -55,7 +55,7 @@ export default function AdminPanelPage() {
             </div>
             <div className="flex-1">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
-                Gestión de Usuarios
+                Usuarios
               </h3>
               <p className="text-sm text-gray-600 dark:text-gray-400">
                 Administrar usuarios, cambiar roles y gestionar permisos de módulos

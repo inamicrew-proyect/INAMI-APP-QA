@@ -224,7 +224,7 @@ function Navbar() {
               }}
               className={getNavButtonClass(Routes.ADMIN)}
             >
-              Panel Admin
+              Seguridad
             </button>
           )}
           <Link href={Routes.NOTIFICACIONES} className={getNavButtonClass(Routes.NOTIFICACIONES)}>
@@ -315,7 +315,7 @@ function Navbar() {
               }}
               className={`block w-full text-left px-4 py-2.5 rounded-lg font-medium text-base transition-all border-2 ${getMobileNavButtonClass(Routes.ADMIN)}`}
             >
-              Panel Admin
+              Seguridad
             </button>
           )}
 <Link 

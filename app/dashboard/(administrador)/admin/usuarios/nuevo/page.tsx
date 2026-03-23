@@ -10,24 +10,47 @@ import { formatZodErrors } from '@/lib/validation/utils'
 import { useAdminAccess } from '@/lib/hooks/useAdminAccess'
 
 const generateSecurePassword = () => {
-  const charset = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*'
+  const uppercase = 'ABCDEFGHJKLMNPQRSTUVWXYZ'
+  const lowercase = 'abcdefghijkmnopqrstuvwxyz'
+  const numbers = '23456789'
+  const symbols = '!@#$%^&*'
+  const allChars = `${uppercase}${lowercase}${numbers}${symbols}`
   const length = 12
-  let password = ''
   const cryptoObj = typeof window !== 'undefined' ? window.crypto : null
 
-  if (cryptoObj && cryptoObj.getRandomValues) {
-    const randomValues = new Uint32Array(length)
-    cryptoObj.getRandomValues(randomValues)
-    for (let i = 0; i < length; i++) {
-      password += charset[randomValues[i] % charset.length]
+  const randomIndex = (max: number) => {
+    if (cryptoObj && cryptoObj.getRandomValues) {
+      const randomValue = new Uint32Array(1)
+      cryptoObj.getRandomValues(randomValue)
+      return randomValue[0] % max
     }
-  } else {
-    for (let i = 0; i < length; i++) {
-      password += charset[Math.floor(Math.random() * charset.length)]
-    }
+    return Math.floor(Math.random() * max)
   }
 
-  return password
+  const pickChar = (charset: string) => charset[randomIndex(charset.length)]
+
+  // Garantiza al menos un carácter de cada categoría obligatoria.
+  const requiredChars = [
+    pickChar(uppercase),
+    pickChar(lowercase),
+    pickChar(numbers),
+    pickChar(symbols),
+  ]
+
+  const remainingChars: string[] = []
+  for (let i = requiredChars.length; i < length; i++) {
+    remainingChars.push(pickChar(allChars))
+  }
+
+  const passwordChars = [...requiredChars, ...remainingChars]
+
+  // Mezcla Fisher-Yates para no dejar categorías en posiciones predecibles.
+  for (let i = passwordChars.length - 1; i > 0; i--) {
+    const j = randomIndex(i + 1)
+    ;[passwordChars[i], passwordChars[j]] = [passwordChars[j], passwordChars[i]]
+  }
+
+  return passwordChars.join('')
 }
 
 export default function NuevoUsuarioPage() {
@@ -255,8 +278,8 @@ export default function NuevoUsuarioPage() {
         throw new Error(detail || result.error || 'No se pudo crear el usuario.')
       }
 
-      setSuccessMessage('Usuario creado correctamente. Recuerda compartir las credenciales de forma segura.')
-      setFormData((prev) => ({ ...prev, confirmPassword: '' }))
+      setSuccessMessage('Usuario creado exitosamente. Recuerda compartir las credenciales de forma segura.')
+      setFormData((prev) => ({ ...prev, password: '', confirmPassword: '' }))
       setPhotoFile(null)
       setPhotoPreview(null)
       
@@ -266,7 +289,7 @@ export default function NuevoUsuarioPage() {
       
       setTimeout(() => {
         router.push('/dashboard/admin/usuarios')
-      }, 1500)
+      }, 2200)
     } catch (err) {
       console.error('Error creating user:', err)
       setError(err instanceof Error ? err.message : 'Error inesperado al crear el usuario.')
@@ -325,156 +348,167 @@ export default function NuevoUsuarioPage() {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="md:col-span-2">
-              <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-2">
-                Nombre completo
-              </label>
-              <input
-                type="text"
-                id="fullName"
-                name="fullName"
-                value={formData.fullName}
-                onChange={(e) => handleInputChange('fullName', e.target.value)}
-                className="input-field"
-                placeholder="Nombre y apellidos"
-                required
-                minLength={3}
-                maxLength={120}
-                title="Entre 3 y 120 caracteres"
-              />
-            </div>
-
-            <div className="md:col-span-2">
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                Correo institucional
-              </label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                value={formData.email}
-                onChange={(e) => handleInputChange('email', e.target.value)}
-                className="input-field"
-                placeholder="colaborador@inami.hn"
-                required
-              />
-            </div>
-
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Foto de perfil (opcional)</label>
-              <div className="flex flex-col md:flex-row md:items-center gap-4">
-                <div className="h-20 w-20 rounded-full bg-primary-100 flex items-center justify-center overflow-hidden">
-                  {photoPreview ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={photoPreview} alt="Vista previa" className="h-full w-full object-cover" />
-                  ) : (
-                    <span className="text-sm font-semibold text-primary-600">
-                      {formData.fullName
-                        ? formData.fullName
-                            .split(' ')
-                            .map((n) => n[0])
-                            .join('')
-                            .slice(0, 2)
-                        : 'IN'}
-                    </span>
-                  )}
-                </div>
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <label className="btn-secondary cursor-pointer">
-                    Seleccionar foto
-                    <input type="file" id="photo" name="photo" accept="image/*" className="hidden" onChange={handlePhotoChange} />
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <section className="rounded-xl border border-gray-200 p-4 sm:p-5">
+            <h2 className="text-sm font-semibold text-gray-800 mb-4">Datos básicos</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="md:col-span-2 space-y-4">
+                <div>
+                  <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-2">
+                    Nombre completo
                   </label>
-                  {photoPreview && (
-                    <button type="button" className="btn-secondary" onClick={handleRemovePhoto}>
-                      Quitar foto
-                    </button>
+                  <input
+                    type="text"
+                    id="fullName"
+                    name="fullName"
+                    value={formData.fullName}
+                    onChange={(e) => handleInputChange('fullName', e.target.value)}
+                    className="input-field"
+                    placeholder="Nombre y apellidos"
+                    required
+                    minLength={3}
+                    maxLength={120}
+                    title="Entre 3 y 120 caracteres"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                    Correo institucional
+                  </label>
+                  <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={(e) => handleInputChange('email', e.target.value)}
+                    className="input-field"
+                    placeholder="colaborador@inami.hn"
+                    required
+                  />
+                </div>
+              </div>
+
+              <aside className="rounded-lg border border-primary-100 bg-primary-50 p-4 h-fit md:justify-self-end md:w-full">
+                <label className="block text-sm font-medium text-gray-700 mb-3">Foto de perfil (opcional)</label>
+                <div className="flex md:flex-col items-center gap-3">
+                  <div className="h-20 w-20 rounded-full bg-primary-100 flex items-center justify-center overflow-hidden">
+                    {photoPreview ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={photoPreview} alt="Vista previa" className="h-full w-full object-cover" />
+                    ) : (
+                      <span className="text-sm font-semibold text-primary-600">
+                        {formData.fullName
+                          ? formData.fullName
+                              .split(' ')
+                              .map((n) => n[0])
+                              .join('')
+                              .slice(0, 2)
+                          : 'IN'}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-2 w-full">
+                    <label className="btn-secondary cursor-pointer text-center">
+                      Seleccionar foto
+                      <input type="file" id="photo" name="photo" accept="image/*" className="hidden" onChange={handlePhotoChange} />
+                    </label>
+                    {photoPreview && (
+                      <button type="button" className="btn-secondary" onClick={handleRemovePhoto}>
+                        Quitar foto
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500 mt-3">Imagen cuadrada recomendada (mínimo 300x300 px).</p>
+              </aside>
+            </div>
+          </section>
+
+          <section className="rounded-xl border border-gray-200 p-4 sm:p-5">
+            <h2 className="text-sm font-semibold text-gray-800 mb-4">Acceso y seguridad</h2>
+            <div className="max-w-xl space-y-4">
+              <div>
+                <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-2">
+                  Rol dentro del sistema
+                </label>
+                <select
+                  id="role"
+                  name="role"
+                  value={formData.role}
+                  onChange={(e) => handleInputChange('role', e.target.value)}
+                  className="input-field"
+                >
+                  {loadingRoles ? (
+                    <option value="">Cargando roles...</option>
+                  ) : (
+                    roles.map((role) => (
+                      <option key={role.value} value={role.value}>
+                        {role.label}
+                      </option>
+                    ))
                   )}
+                </select>
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label htmlFor="password" className="block text-sm font-medium text-gray-700">Contraseña temporal</label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      id="password"
+                      name="password"
+                      value={formData.password}
+                      onChange={(e) => handleInputChange('password', e.target.value)}
+                      className="input-field pr-24"
+                      required
+                      minLength={8}
+                      pattern="[^\s]+"
+                      title="La contraseña no puede contener espacios"
+                    />
+                    <div className="absolute inset-y-0 right-0 flex items-center gap-1 pr-2">
+                      <button
+                        type="button"
+                        onClick={copyPassword}
+                        className="p-2 rounded-md text-primary-600 hover:bg-primary-100"
+                        title="Copiar contraseña"
+                      >
+                        <Copy className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={resetPasswordSuggestion}
+                        className="p-2 rounded-md text-primary-600 hover:bg-primary-100"
+                        title="Generar nueva contraseña segura"
+                      >
+                        <RefreshCcw className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                  {copied && <p className="text-xs text-green-600">Contraseña copiada al portapapeles.</p>}
+                  <p className="text-xs text-gray-500">
+                    Mínimo 8 caracteres, con mayúsculas, minúsculas, números y símbolos. Sin espacios.
+                  </p>
+                </div>
+
+                <div>
+                  <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
+                    Confirmar contraseña
+                  </label>
+                  <input
+                    type="text"
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    value={formData.confirmPassword}
+                    onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
+                    className="input-field"
+                    required
+                    minLength={8}
+                  />
                 </div>
               </div>
-              <p className="text-xs text-gray-500 mt-2">Se recomienda una imagen cuadrada (mínimo 300x300 px).</p>
             </div>
-
-            <div>
-              <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-2">
-                Rol dentro del sistema
-              </label>
-              <select
-                id="role"
-                name="role"
-                value={formData.role}
-                onChange={(e) => handleInputChange('role', e.target.value)}
-                className="input-field"
-              >
-                {loadingRoles ? (
-                  <option value="">Cargando roles...</option>
-                ) : (
-                  roles.map((role) => (
-                    <option key={role.value} value={role.value}>
-                      {role.label}
-                    </option>
-                  ))
-                )}
-              </select>
-            </div>
-
-            <div className="space-y-2">
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">Contraseña temporal</label>
-              <div className="relative">
-                <input
-                  type="text"
-                  id="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={(e) => handleInputChange('password', e.target.value)}
-                  className="input-field pr-24"
-                  required
-                  minLength={8}
-                  pattern="[^\s]+"
-                  title="La contraseña no puede contener espacios"
-                />
-                <div className="absolute inset-y-0 right-0 flex items-center gap-1 pr-2">
-                  <button
-                    type="button"
-                    onClick={copyPassword}
-                    className="p-2 rounded-md text-primary-600 hover:bg-primary-100"
-                    title="Copiar contraseña"
-                  >
-                    <Copy className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={resetPasswordSuggestion}
-                    className="p-2 rounded-md text-primary-600 hover:bg-primary-100"
-                    title="Generar nueva contraseña segura"
-                  >
-                    <RefreshCcw className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-              {copied && <p className="text-xs text-green-600">Contraseña copiada al portapapeles.</p>}
-              <p className="text-xs text-gray-500">
-                Mínimo 8 caracteres, con mayúsculas, minúsculas, números y símbolos. Sin espacios.
-              </p>
-            </div>
-
-            <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
-                Confirmar contraseña
-              </label>
-              <input
-                type="text"
-                id="confirmPassword"
-                name="confirmPassword"
-                value={formData.confirmPassword}
-                onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-                className="input-field"
-                required
-                minLength={8}
-              />
-            </div>
-          </div>
+          </section>
 
           {error && (
             <div className="p-4 rounded-lg border border-red-200 bg-red-50 text-sm text-red-700">
