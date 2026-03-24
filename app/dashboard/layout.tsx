@@ -11,7 +11,7 @@ export default function DashboardLayout({
 }) {
 
   // 3. ¡Toda la lógica de 'useEffect' y 'loading' se fue!
-  // El 'middleware.ts' ya protege esta ruta.
+  // El proxy (antes middleware) ya protege esta ruta.
   // El 'Navbar' (que es 'use client') maneja su propio estado de carga
   // con el hook 'useAuth'.
 

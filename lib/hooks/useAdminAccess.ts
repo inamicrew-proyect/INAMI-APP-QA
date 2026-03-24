@@ -14,24 +14,27 @@ export function useAdminAccess() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Si aún está cargando auth, mantener loading
     if (authLoading) {
-      setLoading(true)
+      queueMicrotask(() => setLoading(true))
       return
     }
 
     // Si es admin, siempre tiene acceso - NO ESPERAR permisos
     if (profile?.role === 'admin') {
       console.log('useAdminAccess: Usuario es admin, acceso permitido inmediatamente')
-      setHasAccess(true)
-      setLoading(false)
+      queueMicrotask(() => {
+        setHasAccess(true)
+        setLoading(false)
+      })
       return
     }
 
     // Si no hay perfil, no tiene acceso
     if (!profile?.id) {
-      setHasAccess(false)
-      setLoading(false)
+      queueMicrotask(() => {
+        setHasAccess(false)
+        setLoading(false)
+      })
       return
     }
 
@@ -58,8 +61,10 @@ export function useAdminAccess() {
       permissions: permissions.map(p => ({ ruta: p.modulo.ruta, puede_ver: p.puede_ver }))
     })
     
-    setHasAccess(canAccessAdmin)
-    setLoading(false)
+    queueMicrotask(() => {
+      setHasAccess(canAccessAdmin)
+      setLoading(false)
+    })
   }, [authLoading, permissionsLoading, profile?.role, profile?.id, canView, permissions])
 
   return {

@@ -1,6 +1,7 @@
 'use client'
 
 import { createBrowserClient } from '@supabase/ssr'
+import { getPublicSupabaseAnonKey, getPublicSupabaseUrl } from '@/lib/env/public-supabase'
 
 type SupabaseBrowserClient = ReturnType<typeof createBrowserClient<any>>
 
@@ -13,8 +14,8 @@ let browserClient: SupabaseBrowserClient | null = null
 export function createClientComponentClient(): SupabaseBrowserClient {
   if (!browserClient) {
     browserClient = createBrowserClient<any>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      getPublicSupabaseUrl(),
+      getPublicSupabaseAnonKey()
     )
   }
   return browserClient

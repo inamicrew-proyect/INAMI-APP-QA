@@ -2,6 +2,19 @@
 // Utilidades para verificar permisos basados en roles
 
 import { supabaseCache } from './optimization'
+import { fetchTimeoutSignal } from './fetch-timeout-signal'
+
+const PERMISSIONS_FETCH_TIMEOUT_MS = 10000
+
+function isAbortError(e: unknown): boolean {
+  if (typeof DOMException !== 'undefined' && e instanceof DOMException) {
+    return e.name === 'AbortError' || e.name === 'TimeoutError'
+  }
+  if (e instanceof Error) {
+    return e.name === 'AbortError' || e.name === 'TimeoutError'
+  }
+  return false
+}
 
 // Cache de permisos en el cliente (5 minutos)
 const PERMISSIONS_CACHE_TTL = 5 * 60 * 1000
@@ -39,16 +52,10 @@ export async function getUserPermissions(userId?: string, retries = 1): Promise<
   
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
-      // Timeout más corto (3 segundos) para cargar más rápido
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 3000) // 3 segundos
-
       const response = await fetch(url, {
         cache: 'no-store',
-        signal: controller.signal,
+        signal: fetchTimeoutSignal(PERMISSIONS_FETCH_TIMEOUT_MS, 'user-permissions'),
       })
-
-      clearTimeout(timeoutId)
 
       if (!response.ok) {
         // Si es un error 401 o 403, no reintentar
@@ -75,9 +82,12 @@ export async function getUserPermissions(userId?: string, retries = 1): Promise<
       
       return permisos
     } catch (error) {
-      // Si es el último intento o es un error de aborto, retornar array vacío
-      if (attempt === retries || (error instanceof Error && error.name === 'AbortError')) {
-        console.error('Error getting user permissions (final):', error)
+      if (attempt === retries || isAbortError(error)) {
+        if (isAbortError(error)) {
+          console.warn('⚠️ Permisos: petición cancelada o timeout:', error)
+        } else {
+          console.error('Error getting user permissions (final):', error)
+        }
         return []
       }
       

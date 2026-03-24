@@ -9,28 +9,26 @@ export function useTheme() {
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    // Solo ejecutar en el cliente
     if (typeof window === 'undefined') return
-    
-    setMounted(true)
-    
-    try {
-    // Cargar tema guardado o usar light por defecto
-      const savedTheme = (localStorage.getItem('theme') as Theme) || 'light'
-    setTheme(savedTheme)
-      
-      // Aplicar clase dark al documento
-      if (savedTheme === 'dark') {
-        document.documentElement.classList.add('dark')
-      } else {
+
+    queueMicrotask(() => {
+      setMounted(true)
+
+      try {
+        const savedTheme = (localStorage.getItem('theme') as Theme) || 'light'
+        setTheme(savedTheme)
+
+        if (savedTheme === 'dark') {
+          document.documentElement.classList.add('dark')
+        } else {
+          document.documentElement.classList.remove('dark')
+        }
+      } catch (error) {
+        console.error('Error loading theme:', error)
+        setTheme('light')
         document.documentElement.classList.remove('dark')
       }
-    } catch (error) {
-      console.error('Error loading theme:', error)
-      // Si hay error, usar light por defecto
-      setTheme('light')
-      document.documentElement.classList.remove('dark')
-    }
+    })
   }, [])
 
   const toggleTheme = () => {

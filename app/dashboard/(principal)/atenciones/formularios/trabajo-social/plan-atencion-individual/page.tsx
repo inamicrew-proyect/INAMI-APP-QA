@@ -642,7 +642,7 @@ export default function PlanAtencionIndividualPage() {
                   {formData.areas_intervencion.length === 0 && (
                     <tr>
                       <td colSpan={7} className="border border-gray-300 dark:border-gray-600 px-4 py-4 text-center text-gray-500 dark:text-gray-400">
-                        No hay áreas agregadas. Haga clic en "Agregar Área" para comenzar.
+                        {`No hay áreas agregadas. Haga clic en "Agregar Área" para comenzar.`}
                       </td>
                     </tr>
                   )}

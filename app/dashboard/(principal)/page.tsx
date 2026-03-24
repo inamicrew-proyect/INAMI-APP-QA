@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { createClientComponentClient } from '@/lib/supabase-browser'
 import { Routes } from '@/lib/routes'
+import { HydrationSafeLucide } from '@/components/HydrationSafeLucide'
 
 interface Stats {
   totalJovenes: number
@@ -330,7 +331,10 @@ export default function DashboardPage() {
           className="btn-secondary flex items-center gap-2 shrink-0"
           title="Actualizar KPIs"
         >
-          <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
+          <HydrationSafeLucide
+            icon={RefreshCw}
+            className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`}
+          />
           {refreshing ? 'Actualizando…' : 'Actualizar'}
         </button>
       </div>
@@ -346,7 +350,10 @@ export default function DashboardPage() {
       {hasSecurityQuestions === false && (
         <div className="mb-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
           <div className="flex items-start gap-3">
-            <Shield className="w-5 h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
+            <HydrationSafeLucide
+              icon={Shield}
+              className="w-5 h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5"
+            />
             <div className="flex-1">
               <p className="text-sm font-semibold text-yellow-800 dark:text-yellow-200 mb-1">
                 Configuración de Seguridad Pendiente
@@ -388,7 +395,10 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between mb-4">
                 <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">{stat.title}</p>
                 <div className={`${stat.bgColor} p-3 rounded-xl group-hover:scale-110 transition-transform duration-300 shadow-md`}>
-                  <stat.icon className={`w-6 h-6 ${stat.textColor} group-hover:rotate-12 transition-transform duration-300`} />
+                  <HydrationSafeLucide
+                    icon={stat.icon}
+                    className={`w-6 h-6 ${stat.textColor} group-hover:rotate-12 transition-transform duration-300`}
+                  />
                 </div>
               </div>
               <div className="flex items-baseline justify-between">
@@ -397,7 +407,10 @@ export default function DashboardPage() {
                 </p>
                 {stat.trend && (
                   <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-xs font-semibold text-gray-700 dark:text-gray-200">
-                    <TrendingUp className="w-3 h-3 text-gray-700 dark:text-gray-200" />
+                    <HydrationSafeLucide
+                      icon={TrendingUp}
+                      className="w-3 h-3 text-gray-700 dark:text-gray-200"
+                    />
                     <span>{stat.trend}%</span>
                   </div>
                 )}
@@ -424,7 +437,10 @@ export default function DashboardPage() {
               <div className={`absolute inset-0 ${action.color} opacity-0 group-hover:opacity-5 transition-opacity duration-300`}></div>
               
               <div className={`${action.color} w-14 h-14 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 group-hover:rotate-6 transition-all duration-300 shadow-lg relative z-10`}>
-                <action.icon className="w-7 h-7 text-white group-hover:scale-110 transition-transform duration-300" />
+                <HydrationSafeLucide
+                  icon={action.icon}
+                  className="w-7 h-7 text-white group-hover:scale-110 transition-transform duration-300"
+                />
               </div>
               <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2 group-hover:text-primary-600 dark:group-hover:text-primary-300 transition-colors duration-300">
                 {action.title}
@@ -432,7 +448,10 @@ export default function DashboardPage() {
               <p className="text-sm text-gray-700 dark:text-gray-300 mb-4 font-medium">{action.description}</p>
               <div className="mt-4 flex items-center text-sm font-semibold text-primary-600 dark:text-primary-400 group-hover:text-primary-700 dark:group-hover:text-primary-300 group-hover:gap-2 transition-all duration-300">
                 <span>Explorar</span>
-                <ArrowUpRight className="w-4 h-4 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300" />
+                <HydrationSafeLucide
+                  icon={ArrowUpRight}
+                  className="w-4 h-4 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300"
+                />
               </div>
               
               {/* Efecto de borde animado */}
@@ -448,7 +467,10 @@ export default function DashboardPage() {
         <div className="card-hover animate-slide-in-left">
           <div className="flex items-center gap-3 mb-6">
             <div className="p-3 bg-gradient-to-br from-primary-100 to-primary-200 dark:from-primary-900/30 dark:to-primary-800/30 rounded-xl shadow-md">
-              <Building2 className="w-7 h-7 text-primary-600 dark:text-primary-400" />
+              <HydrationSafeLucide
+                icon={Building2}
+                className="w-7 h-7 text-primary-600 dark:text-primary-400"
+              />
             </div>
             <h3 className="text-2xl font-bold text-gray-900 dark:text-white">Centros de Atención</h3>
           </div>
@@ -490,7 +512,10 @@ export default function DashboardPage() {
         <div className="card-hover animate-slide-in-right">
           <div className="flex items-center gap-3 mb-6">
             <div className="p-3 bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-900/30 dark:to-purple-800/30 rounded-xl shadow-md">
-              <TrendingUp className="w-7 h-7 text-purple-600 dark:text-purple-400" />
+              <HydrationSafeLucide
+                icon={TrendingUp}
+                className="w-7 h-7 text-purple-600 dark:text-purple-400"
+              />
             </div>
             <h3 className="text-2xl font-bold text-gray-900 dark:text-white">Tipos de Atención</h3>
           </div>

@@ -1,14 +1,15 @@
-// middleware.ts — @supabase/ssr compatible con Next.js 15+ (cookies async en Route Handlers)
+// proxy.ts — @supabase/ssr compatible con Next.js 15+ (antes middleware.ts)
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { getPublicSupabaseAnonKey, getPublicSupabaseUrl } from '@/lib/env/public-supabase'
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   let res = NextResponse.next({ request: req })
 
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    getPublicSupabaseUrl(),
+    getPublicSupabaseAnonKey(),
     {
       cookies: {
         getAll() {
@@ -80,7 +81,7 @@ export async function middleware(req: NextRequest) {
         return passCookies(NextResponse.redirect(loginUrl))
       }
     } catch (e) {
-      console.warn('middleware: no se pudo verificar account_status', e)
+      console.warn('proxy: no se pudo verificar account_status', e)
     }
   }
 

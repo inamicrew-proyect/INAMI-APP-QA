@@ -244,7 +244,8 @@ const nextConfig = {
   // Optimización de experimental features
   experimental: {
     optimizeCss: true,
-    optimizePackageImports: ['lucide-react', '@supabase/supabase-js'],
+    // lucide-react omitido: optimizePackageImports puede provocar HTML distinto SSR vs cliente (errores de hidratación).
+    optimizePackageImports: ['@supabase/supabase-js'],
     // Habilitar caché de rutas para mejor rendimiento
     staleTimes: {
       dynamic: 30,

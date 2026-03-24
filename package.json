@@ -9,7 +9,7 @@
     "postbuild": "node scripts/copy-standalone-files.js",
     "start": "node .next/standalone/server.js",
     "start:next": "next start",
-    "lint": "next lint"
+    "lint": "eslint ."
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

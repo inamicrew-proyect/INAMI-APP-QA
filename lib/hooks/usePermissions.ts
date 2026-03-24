@@ -27,14 +27,9 @@ export function usePermissions() {
         userId: profile.id,
         role: profile.role
       })
-      
-      // Timeout más largo (5 segundos) para dar más tiempo
-      const timeoutPromise = new Promise<ModulePermission[]>((_, reject) => {
-        setTimeout(() => reject(new Error('Timeout al cargar permisos')), 5000)
-      })
-      
-      const permsPromise = getUserPermissions(profile.id)
-      const perms = await Promise.race([permsPromise, timeoutPromise])
+
+      // El timeout ya va en getUserPermissions (AbortSignal.timeout)
+      const perms = await getUserPermissions(profile.id)
       
       console.log('✅ [usePermissions] Permisos cargados exitosamente:', {
         count: perms.length,

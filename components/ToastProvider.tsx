@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { CheckCircle, AlertTriangle, Info, XCircle, X } from 'lucide-react'
 
 type ToastType = 'success' | 'error' | 'warning' | 'info'
@@ -15,6 +15,10 @@ type Toast = {
 
 export default function ToastProvider() {
   const [toasts, setToasts] = useState<Toast[]>([])
+
+  const dismiss = useCallback((id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id))
+  }, [])
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -33,11 +37,7 @@ export default function ToastProvider() {
     }
     window.addEventListener('app:toast', handler as EventListener)
     return () => window.removeEventListener('app:toast', handler as EventListener)
-  }, [])
-
-  const dismiss = (id: string) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id))
-  }
+  }, [dismiss])
 
   const getStyles = (type: ToastType) => {
     switch (type) {

@@ -7,9 +7,49 @@ import { getSupabaseClient } from './supabase-client'
 import type { Profile } from './supabase' // Tus tipos están bien
 import type { User } from '@supabase/supabase-js'
 import { cacheProfile, getCachedProfile, clearProfileCache } from './profile-cache'
+import { fetchTimeoutSignal } from './fetch-timeout-signal'
+
+/** La ruta /api/auth/profile puede tardar (Supabase + service role en frío); 10s provoca timeouts falsos */
+const AUTH_PROFILE_FETCH_TIMEOUT_MS = 20000
 
 // Tipo del cliente de Supabase del singleton
 type SupabaseClientType = ReturnType<typeof getSupabaseClient>
+
+/**
+ * Misma origen explícito para /api/* en el navegador.
+ * Algunos entornos (extensiones, iframes, PWA) fallan con rutas relativas ("Failed to fetch").
+ */
+function sameOriginApiUrl(path: string): string {
+  if (typeof window === 'undefined') return path
+  return path.startsWith('/') ? `${window.location.origin}${path}` : `${window.location.origin}/${path}`
+}
+
+function isAbortError(e: unknown): boolean {
+  if (typeof DOMException !== 'undefined' && e instanceof DOMException) {
+    return e.name === 'AbortError'
+  }
+  if (e instanceof Error) {
+    return e.name === 'AbortError'
+  }
+  if (typeof e === 'object' && e !== null && 'name' in e) {
+    return (e as { name: string }).name === 'AbortError'
+  }
+  return false
+}
+
+function formatFetchError(e: unknown): { name: string; message: string } {
+  if (typeof DOMException !== 'undefined' && e instanceof DOMException) {
+    return { name: e.name, message: e.message || '(sin mensaje)' }
+  }
+  if (e instanceof Error) {
+    return { name: e.name, message: e.message || '(sin mensaje)' }
+  }
+  try {
+    return { name: typeof e, message: String(e) }
+  } catch {
+    return { name: 'unknown', message: 'Error no serializable' }
+  }
+}
 
 /**
  * Función auxiliar para obtener el perfil.
@@ -84,23 +124,19 @@ export function useAuth() {
       try {
         console.log(`🔄 [useAuth] Intentando cargar perfil desde API (intento ${retryCount + 1}/${maxRetries + 1})...`, { userId, isMounted })
         
-        const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 segundos timeout
-        
-        const response = await fetch('/api/auth/profile', { 
+        const response = await fetch(sameOriginApiUrl('/api/auth/profile'), {
           cache: 'no-store',
           credentials: 'include',
-          signal: controller.signal,
+          signal: fetchTimeoutSignal(AUTH_PROFILE_FETCH_TIMEOUT_MS, '/api/auth/profile'),
           headers: {
             'Content-Type': 'application/json',
-            'Accept': 'application/json',
+            Accept: 'application/json',
             'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache',
-            'Expires': '0'
-          }
+            Pragma: 'no-cache',
+            Expires: '0',
+          },
         })
-        
-        clearTimeout(timeoutId)
+
         console.log('🔍 [useAuth] API Response status:', response.status, response.statusText)
         
         if (!response.ok) {
@@ -165,15 +201,15 @@ export function useAuth() {
         
         return false
       } catch (apiError) {
-        if (apiError instanceof Error && apiError.name === 'AbortError') {
-          console.error('❌ [useAuth] Timeout cargando perfil desde API (intento ' + (retryCount + 1) + ')')
+        const { name, message } = formatFetchError(apiError)
+        if (isAbortError(apiError)) {
+          console.warn(
+            `⚠️ [useAuth] Petición /api/auth/profile cancelada o timeout (intento ${retryCount + 1}): ${name} — ${message}`
+          )
         } else {
-          console.error('❌ [useAuth] Error cargando perfil desde API:', {
-            error: apiError,
-            message: apiError instanceof Error ? apiError.message : 'Unknown error',
-            stack: apiError instanceof Error ? apiError.stack : undefined,
-            intento: retryCount + 1
-          })
+          console.warn(
+            `⚠️ [useAuth] Error cargando perfil desde API (intento ${retryCount + 1}): ${name} — ${message}`
+          )
         }
         
         // Reintentar si no es el último intento
@@ -251,15 +287,16 @@ export function useAuth() {
             console.log(`🔄 [useAuth] Intento ${attempt}/${maxRetries} de cargar perfil desde API...`)
             
             try {
-              const apiResponse = await fetch('/api/auth/profile', { 
+              const apiResponse = await fetch(sameOriginApiUrl('/api/auth/profile'), {
                 cache: 'no-store',
                 credentials: 'include',
-                headers: { 
+                signal: fetchTimeoutSignal(AUTH_PROFILE_FETCH_TIMEOUT_MS, '/api/auth/profile'),
+                headers: {
                   'Content-Type': 'application/json',
-                  'Accept': 'application/json'
-                }
+                  Accept: 'application/json',
+                },
               })
-              
+
               console.log(`🔍 [useAuth] API Response status (intento ${attempt}):`, apiResponse.status, apiResponse.statusText)
               
               if (apiResponse.ok) {
@@ -290,7 +327,14 @@ export function useAuth() {
                 console.error(`❌ [useAuth] API Error (intento ${attempt}):`, apiResponse.status, errorText.substring(0, 200))
               }
             } catch (apiError) {
-              console.error(`❌ [useAuth] Error en intento ${attempt}:`, apiError)
+              const msg = apiError instanceof Error ? apiError.message : String(apiError)
+              if (msg === 'Failed to fetch' || msg.includes('fetch')) {
+                console.warn(
+                  `⚠️ [useAuth] Red/API no disponible (intento ${attempt}): ${msg}. Se usará fallback directo a Supabase si sigue la sesión.`
+                )
+              } else {
+                console.warn(`⚠️ [useAuth] Error en intento ${attempt}:`, apiError)
+              }
             }
             
             // Esperar antes del siguiente intento (solo si no es el último)

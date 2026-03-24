@@ -1475,7 +1475,7 @@ export default function FichaSocialAreaTrabajoSocialPage() {
                 {formData.estructura_familiar.length === 0 && (
                   <tr>
                     <td colSpan={7} className="border border-gray-300 dark:border-gray-600 px-4 py-4 text-center text-gray-500 dark:text-gray-400 text-sm">
-                      No hay registros. Haga clic en "Agregar" para comenzar.
+                      {`No hay registros. Haga clic en "Agregar" para comenzar.`}
                     </td>
                   </tr>
                 )}

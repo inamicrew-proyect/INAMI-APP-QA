@@ -52,15 +52,14 @@ function Navbar() {
       }
       checkRoleDirectly()
     } else if (profile) {
-      setDirectRole(null) // Limpiar si el perfil se carga
+      queueMicrotask(() => setDirectRole(null)) // Limpiar si el perfil se carga
     }
   }, [profile, user, loading])
 
   // Evitar error de hidratación
   useEffect(() => {
-    // Solo marcar como montado en el cliente
     if (typeof window !== 'undefined') {
-      setMounted(true)
+      queueMicrotask(() => setMounted(true))
     }
   }, [])
 

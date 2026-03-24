@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClientComponentClient } from '@/lib/supabase-browser'
 import { Save, ArrowLeft, User, Users } from 'lucide-react'
@@ -95,11 +95,8 @@ interface FormData {
 export default function EntrevistaFamiliarPMSPLPage() {
   const router = useRouter()
   const supabase = createClientComponentClient()
-  const [jovenes, setJovenes] = useState<Joven[]>([])
-  const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const [searchTerm, setSearchTerm] = useState('')
 
   const [formData, setFormData] = useState<FormData>({
     joven_id: '',
@@ -165,90 +162,6 @@ export default function EntrevistaFamiliarPMSPLPage() {
     trabajador_social: ''
   })
 
-  useEffect(() => {
-    loadJovenes()
-  }, [])
-
-  const loadJovenes = async () => {
-    try {
-      setLoading(true)
-      
-      // Verificar sesión
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
-        console.error('No hay sesión activa')
-        return
-      }
-
-      // Usar la API route para cargar jóvenes (evita problemas de RLS)
-      const response = await fetch('/api/jovenes', {
-        method: 'GET',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        cache: 'no-store',
-      })
-
-      if (!response.ok) {
-        console.error('Error cargando jóvenes desde API:', response.status)
-        return
-      }
-
-      const result = await response.json()
-      
-      if (result.success && result.jovenes) {
-        // Filtrar solo los activos y mapear a la estructura esperada
-        const jovenesActivos = result.jovenes
-          .filter((j: any) => j.estado === 'activo')
-          .map((j: any) => ({
-            id: j.id,
-            nombres: j.nombres || '',
-            apellidos: j.apellidos || '',
-            expediente_administrativo: j.expediente_administrativo || ''
-          }))
-        
-        setJovenes(jovenesActivos)
-        console.log(`✅ Cargados ${jovenesActivos.length} jóvenes activos exitosamente`)
-      } else {
-        setJovenes([])
-      }
-    } catch (error) {
-      console.error('Error loading jovenes:', error)
-      setJovenes([])
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Filtrar jóvenes según el término de búsqueda
-  const filteredJovenes = useMemo(() => {
-    if (!searchTerm || searchTerm.trim() === '') {
-      return jovenes.slice(0, 20) // Mostrar solo los primeros 20 si no hay término de búsqueda
-    }
-    
-    const searchLower = searchTerm.toLowerCase().trim()
-    
-    return jovenes.filter(joven => {
-      const nombres = (joven.nombres || '').toLowerCase().trim()
-      const apellidos = (joven.apellidos || '').toLowerCase().trim()
-      const fullName = `${nombres} ${apellidos}`.trim()
-      const expAdmin = (joven.expediente_administrativo || '').toLowerCase().trim()
-      
-      return fullName.includes(searchLower) || 
-             nombres.includes(searchLower) || 
-             apellidos.includes(searchLower) ||
-             expAdmin.includes(searchLower)
-    }).slice(0, 20) // Limitar a 20 resultados
-  }, [jovenes, searchTerm])
-  
-  console.log('Filtrado de jóvenes:', {
-    totalJovenes: jovenes.length,
-    searchTerm: searchTerm,
-    filteredCount: filteredJovenes.length,
-    filteredNames: filteredJovenes.map(j => `${j.nombres} ${j.apellidos}`)
-  })
-
   const handleJovenSelect = (joven: Joven) => {
     setFormData(prev => ({
       ...prev,
@@ -256,7 +169,6 @@ export default function EntrevistaFamiliarPMSPLPage() {
       nombre_completo_nnaj: `${joven.nombres} ${joven.apellidos}`,
       exp_administrativo: joven.expediente_administrativo || ''
     }))
-    setSearchTerm(`${joven.nombres} ${joven.apellidos}`)
   }
 
   const handleCheckboxChange = (field: string, value: string, checked: boolean) => {
@@ -389,17 +301,6 @@ export default function EntrevistaFamiliarPMSPLPage() {
     } finally {
       setSaving(false)
     }
-  }
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600 dark:text-gray-300">Cargando...</p>
-        </div>
-      </div>
-    )
   }
 
   return (

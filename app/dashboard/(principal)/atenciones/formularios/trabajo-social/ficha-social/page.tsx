@@ -389,14 +389,6 @@ export default function FichaSocialPage() {
       return matchFullName || matchNombres || matchApellidos || matchWords
     }).slice(0, 20) // Limitar a 20 resultados
   }, [jovenes, jovenSearchTerm])
-  
-  console.log('Filtrado de jóvenes:', {
-    totalJovenes: jovenes.length,
-    searchTerm: jovenSearchTerm,
-    filteredCount: filteredJovenes.length,
-    filteredNames: filteredJovenes.map(j => `${j.nombres} ${j.apellidos}`),
-    muestraDropdown: showJovenDropdown
-  })
 
   const handleJovenChange = (jovenId: string) => {
     const joven = jovenes.find(j => j.id === jovenId)
@@ -739,7 +731,7 @@ export default function FichaSocialPage() {
                 )}
                 {showJovenDropdown && jovenSearchTerm.trim() && filteredJovenes.length === 0 && jovenes.length > 0 && (
                   <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg p-4">
-                    <p className="text-gray-500 dark:text-gray-400 text-sm">No se encontraron jóvenes con "{jovenSearchTerm}"</p>
+                    <p className="text-gray-500 dark:text-gray-400 text-sm">{`No se encontraron jóvenes con "${jovenSearchTerm}"`}</p>
                     <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Total de jóvenes disponibles: {jovenes.length}</p>
                     <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Nombres disponibles: {jovenes.slice(0, 5).map(j => `${j.nombres} ${j.apellidos}`).join(', ')}...</p>
                   </div>
