@@ -607,3 +607,17 @@ img {
     break-before: page !important;
   }
 }
+
+/* Barra indeterminada al cambiar de módulo / ruta en el dashboard */
+@keyframes nav-indeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(350%);
+  }
+}
+
+.nav-route-progress-bar {
+  animation: nav-indeterminate 1.2s ease-in-out infinite;
+}

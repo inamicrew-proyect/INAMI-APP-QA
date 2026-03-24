@@ -227,7 +227,7 @@ export default function UsuariosPage() {
 
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Gestión de Usuarios</h1>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Usuarios</h1>
           <p className="text-gray-600 dark:text-gray-300 mt-2">
             Administrar usuarios del sistema INAMI
           </p>

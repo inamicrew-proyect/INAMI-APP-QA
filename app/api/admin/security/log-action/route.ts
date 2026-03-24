@@ -42,12 +42,21 @@ export async function POST(request: NextRequest) {
                      'unknown'
     const userAgent = request.headers.get('user-agent') || 'unknown'
 
+    const accionNorm = String(accion).toLowerCase()
+    if (accionNorm === 'login' || accionNorm === 'logout') {
+      await adminClient
+        .from('system_logs')
+        .delete()
+        .eq('usuario_id', userId)
+        .eq('accion', accionNorm)
+    }
+
     // Insertar log
     const { error } = await adminClient
       .from('system_logs')
       .insert({
         usuario_id: userId,
-        accion,
+        accion: accionNorm === 'login' || accionNorm === 'logout' ? accionNorm : accion,
         entidad: entidad || null,
         entidad_id: entidad_id || null,
         detalles: detalles ? JSON.stringify(detalles) : null,

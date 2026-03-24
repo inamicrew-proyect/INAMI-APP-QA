@@ -93,10 +93,10 @@ export default function AdminPanelPage() {
             </div>
             <div className="flex-1">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
-                Seguridad
+                Bitácora
               </h3>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Alertas de seguridad y monitoreo del sistema
+                Bitácora de actividad del sistema
               </p>
             </div>
           </div>

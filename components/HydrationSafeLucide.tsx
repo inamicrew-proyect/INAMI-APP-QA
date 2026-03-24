@@ -1,8 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-
-type LucideIcon = React.ComponentType<{ className?: string; 'aria-hidden'?: boolean }>
+import type { LucideIcon } from 'lucide-react'
 
 /**
  * Evita errores de hidratación cuando el servidor y el cliente resuelven
@@ -19,7 +18,9 @@ export function HydrationSafeLucide({
   'aria-hidden'?: boolean
 }) {
   const [mounted, setMounted] = useState(false)
-  useEffect(() => setMounted(true), [])
+  useEffect(() => {
+    queueMicrotask(() => setMounted(true))
+  }, [])
 
   if (!mounted) {
     return <span className={`inline-block shrink-0 ${className ?? ''}`} aria-hidden />

@@ -92,6 +92,35 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Error al crear rol' }, { status: 500 })
     }
 
+    try {
+      const { SystemLogger } = await import('@/lib/system-logger')
+      await SystemLogger.createRole(adminCheck.userId, rol.id, nombre, descripcion)
+    } catch (logErr) {
+      console.error('Error registrando create_role en bitácora:', logErr)
+    }
+
+    try {
+      const { notifyAdminsCriticalSecurity } = await import('@/lib/admin-notifications')
+      const { data: actor } = await adminClient
+        .from('profiles')
+        .select('full_name, email')
+        .eq('id', adminCheck.userId)
+        .maybeSingle()
+      const por = actor?.full_name || actor?.email || adminCheck.userId
+      await notifyAdminsCriticalSecurity({
+        titulo: 'Nuevo rol creado',
+        mensaje: `Se creó el rol «${nombre}».${descripcion ? ` ${descripcion}` : ''} Acción realizada por ${por}.`,
+        datos_adicionales: {
+          tipo: 'rol_creado',
+          rol_id: rol.id,
+          nombre_rol: nombre,
+          creado_por_id: adminCheck.userId,
+        },
+      })
+    } catch (notifyErr) {
+      console.error('Error enviando notificaciones por nuevo rol:', notifyErr)
+    }
+
     return NextResponse.json({ rol })
   } catch (error) {
     console.error('Unexpected error:', error)

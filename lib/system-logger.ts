@@ -52,6 +52,16 @@ export async function logSystemAction(
       return
     }
 
+    const accionNorm = String(action.accion).toLowerCase()
+    // Solo conservar el último login y el último logout por usuario (no llenar la bitácora)
+    if (accionNorm === 'login' || accionNorm === 'logout') {
+      await adminClient
+        .from('system_logs')
+        .delete()
+        .eq('usuario_id', finalUserId)
+        .eq('accion', accionNorm)
+    }
+
     // Obtener IP y User Agent si están disponibles
     let ipAddress: string | undefined
     let userAgent: string | undefined
@@ -67,7 +77,7 @@ export async function logSystemAction(
       .from('system_logs')
       .insert({
         usuario_id: finalUserId,
-        accion: action.accion,
+        accion: accionNorm === 'login' || accionNorm === 'logout' ? accionNorm : action.accion,
         entidad: action.entidad || null,
         entidad_id: action.entidad_id || null,
         detalles: action.detalles ? JSON.stringify(action.detalles) : null,
@@ -138,6 +148,15 @@ export const SystemLogger = {
       entidad: 'usuarios',
       entidad_id: targetUserId,
       detalles: { old_role: oldRole, new_role: newRole, changed_by: userId },
+    }, userId)
+  },
+
+  createRole: async (userId: string, rolId: string, nombre: string, descripcion?: string | null) => {
+    await logSystemAction({
+      accion: 'create_role',
+      entidad: 'roles',
+      entidad_id: rolId,
+      detalles: { nombre, descripcion: descripcion ?? null, created_by: userId },
     }, userId)
   },
 

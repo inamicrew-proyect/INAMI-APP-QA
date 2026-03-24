@@ -1,24 +1,21 @@
 // app/dashboard/layout.tsx
 
-// 1. YA NO ES UN CLIENT COMPONENT
-// 2. No necesitamos 'useEffect', 'useState', 'router' ni 'supabase'
 import Navbar from '@/components/Navbar'
+import { DashboardNavigationLoading } from '@/components/DashboardNavigationLoading'
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-
-  // 3. ¡Toda la lógica de 'useEffect' y 'loading' se fue!
-  // El proxy (antes middleware) ya protege esta ruta.
-  // El 'Navbar' (que es 'use client') maneja su propio estado de carga
-  // con el hook 'useAuth'.
-
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <Navbar />
-      <main>{children}</main>
+      <DashboardNavigationLoading>
+        <Navbar />
+        <main className="relative" aria-live="polite">
+          {children}
+        </main>
+      </DashboardNavigationLoading>
     </div>
   )
 }
