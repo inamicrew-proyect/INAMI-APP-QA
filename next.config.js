@@ -4,6 +4,17 @@ const path = require('path')
 const nextConfig = {
   // Optimizaciones de compilación
   reactStrictMode: true,
+
+  /** Ruta antigua con ñ → ruta estable solo ASCII (evita 404 en algunos entornos) */
+  async redirects() {
+    return [
+      {
+        source: '/cambiar-contraseña-inicial',
+        destination: '/cambiar-contrasena-inicial',
+        permanent: true,
+      },
+    ]
+  },
   
   // Optimización de imágenes
   images: {

@@ -115,6 +115,7 @@ export async function POST(request: NextRequest) {
         full_name: fullName,
         role,
         photo_url: finalPhotoUrl,
+        must_change_password: true,
       },
     })
 

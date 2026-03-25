@@ -4,7 +4,8 @@ import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 // PASO 1.1: Importar el "auth helper" en lugar de tu "lib/auth"
 import { createClientComponentClient } from '@/lib/supabase-browser'
-import { AlertCircle, CheckCircle, Eye, EyeOff } from 'lucide-react'
+import { userMustChangePassword } from '@/lib/auth-must-change-password'
+import { AlertCircle, CheckCircle, Eye, EyeOff, Mail, HelpCircle } from 'lucide-react'
 
 function LoginPageContent() {
   const router = useRouter()
@@ -18,6 +19,7 @@ function LoginPageContent() {
   const [loading, setLoading] = useState(false)
   const [showResetPassword, setShowResetPassword] = useState(false)
   const [resetMessage, setResetMessage] = useState('')
+  const [recoveryEmailSent, setRecoveryEmailSent] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [passwordChanged, setPasswordChanged] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
@@ -62,10 +64,16 @@ function LoginPageContent() {
         'El enlace ha expirado o ya fue usado. Algunos correos abren el enlace en segundo plano y lo invalidan. Solicita uno nuevo y ábrelo directamente en el navegador (o copia la URL y pégala en una pestaña nueva).'
       )
       setShowResetPassword(true)
+      setRecoveryEmailSent(false)
+      setResetMessage('')
       window.history.replaceState({}, '', '/login')
     }
     if (searchParams.get('recovery') === '1') {
       setShowResetPassword(true)
+      setRecoveryEmailSent(false)
+      setResetMessage('')
+      const em = searchParams.get('email')
+      if (em) setEmail(em)
       window.history.replaceState({}, '', '/login')
     }
   }, [searchParams])
@@ -211,6 +219,10 @@ function LoginPageContent() {
           // Iniciar contador de inactividad (30 min) para que el middleware no use una cookie antigua
           const maxAge = 30 * 60
           document.cookie = `last-activity=${Date.now()}; path=/; max-age=${maxAge}; samesite=lax`
+          if (userMustChangePassword(session.user)) {
+            window.location.href = '/cambiar-contrasena-inicial'
+            return
+          }
           window.location.href = '/dashboard'
           return
         }
@@ -223,51 +235,36 @@ function LoginPageContent() {
     }
   }
 
-  const handleResetPassword = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const getRecoveryRedirectSiteUrl = () => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : ''
+    const isLocalhost = /localhost|127\.0\.0\.1/.test(origin)
+    return isLocalhost
+      ? process.env.NEXT_PUBLIC_SITE_URL && !/localhost|127\.0\.0\.1/.test(process.env.NEXT_PUBLIC_SITE_URL)
+        ? process.env.NEXT_PUBLIC_SITE_URL
+        : 'https://qa.inamiunah.online'
+      : process.env.NEXT_PUBLIC_SITE_URL || origin || 'https://qa.inamiunah.online'
+  }
+
+  /** Recuperación por enlace mágico al correo (el usuario elige este método explícitamente) */
+  const handleRecoveryByEmail = async () => {
     setResetMessage('')
+    setRecoveryEmailSent(false)
     setLoading(true)
 
-    if (!email) {
+    if (!email?.trim()) {
       setResetMessage('Por favor ingrese su correo electrónico')
       setLoading(false)
       return
     }
 
-    // Primero verificar si el usuario tiene preguntas secretas
-    try {
-      const questionsResponse = await fetch(`/api/security-questions/by-email?email=${encodeURIComponent(email)}`)
-      const questionsResult = await questionsResponse.json()
-
-      if (questionsResponse.ok && questionsResult.questions && questionsResult.questions.length > 0) {
-        // El usuario tiene preguntas secretas, redirigir a esa página
-        setLoading(false)
-        router.push(`/reset-password?email=${encodeURIComponent(email)}`)
-        return
-      }
-    } catch (error) {
-      console.error('Error checking security questions:', error)
-    }
-
-    // Si no tiene preguntas secretas, usar el método tradicional por email
-    // redirectTo debe ser la URL pública: si estás en localhost, el enlace del correo debe apuntar a producción
-    // para que al hacer clic funcione (en localhost el enlace suele dar otp_expired por prefetch o entorno).
-    const origin = typeof window !== 'undefined' ? window.location.origin : ''
-    const isLocalhost = /localhost|127\.0\.0\.1/.test(origin)
-    const siteUrl =
-      isLocalhost
-        ? (process.env.NEXT_PUBLIC_SITE_URL && !/localhost|127\.0\.0\.1/.test(process.env.NEXT_PUBLIC_SITE_URL)
-            ? process.env.NEXT_PUBLIC_SITE_URL
-            : 'https://qa.inamiunah.online')
-        : (process.env.NEXT_PUBLIC_SITE_URL || origin || 'https://qa.inamiunah.online')
+    const siteUrl = getRecoveryRedirectSiteUrl()
 
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${siteUrl.replace(/\/$/, '')}/auth/callback?type=recovery&next=/reset-password`,
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: `${String(siteUrl).replace(/\/$/, '')}/auth/callback?type=recovery&next=/reset-password`,
       })
 
       if (error) {
-        // Detectar error 429 (Too Many Requests)
         if (error.status === 429 || error.message?.includes('429') || error.message?.toLowerCase().includes('too many requests')) {
           setResetMessage('Has solicitado demasiados enlaces de recuperación. Por favor, espera unos minutos antes de intentar nuevamente. Si el problema persiste, verifica tu correo electrónico o contacta al administrador.')
         } else if (error.message?.toLowerCase().includes('rate limit')) {
@@ -277,15 +274,51 @@ function LoginPageContent() {
         }
         console.error('Error al enviar correo de recuperación:', error)
       } else {
+        setRecoveryEmailSent(true)
         setResetMessage('Se ha enviado un correo de recuperación a su email. Por favor, revise su bandeja de entrada.')
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error inesperado al solicitar recuperación:', error)
-      if (error?.status === 429 || error?.message?.includes('429')) {
+      const err = error as { status?: number; message?: string }
+      if (err?.status === 429 || err?.message?.includes('429')) {
         setResetMessage('Has solicitado demasiados enlaces de recuperación. Por favor, espera unos minutos antes de intentar nuevamente.')
       } else {
         setResetMessage('Error inesperado al enviar el correo de recuperación. Por favor, intente nuevamente más tarde.')
       }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  /** Recuperación respondiendo preguntas secretas (solo si están configuradas) */
+  const handleRecoveryBySecretQuestions = async () => {
+    setResetMessage('')
+    setRecoveryEmailSent(false)
+    setLoading(true)
+
+    if (!email?.trim()) {
+      setResetMessage('Por favor ingrese su correo electrónico')
+      setLoading(false)
+      return
+    }
+
+    try {
+      const questionsResponse = await fetch(`/api/security-questions/by-email?email=${encodeURIComponent(email.trim())}`)
+      const questionsResult = await questionsResponse.json()
+
+      if (questionsResponse.ok && questionsResult.questions && questionsResult.questions.length > 0) {
+        setShowResetPassword(false)
+        setResetMessage('')
+        router.push(`/reset-password?email=${encodeURIComponent(email.trim())}`)
+        return
+      }
+
+      setResetMessage(
+        'Este correo no tiene preguntas secretas configuradas. Usa «Enlace por correo» o, si ya tienes cuenta, inicia sesión y configura las preguntas en Configuración.'
+      )
+    } catch (err) {
+      console.error('Error checking security questions:', err)
+      setResetMessage('No se pudieron comprobar las preguntas secretas. Intente de nuevo o use el enlace por correo.')
     } finally {
       setLoading(false)
     }
@@ -447,7 +480,12 @@ function LoginPageContent() {
             <div className="text-sm text-gray-600">
               ¿Olvidaste tu contraseña?{' '}
               <button
-                onClick={() => setShowResetPassword(true)}
+                type="button"
+                onClick={() => {
+                  setShowResetPassword(true)
+                  setRecoveryEmailSent(false)
+                  setResetMessage('')
+                }}
                 className="text-primary-600 hover:text-primary-700 font-medium"
               >
                 Recupérala aquí
@@ -459,10 +497,13 @@ function LoginPageContent() {
         {/* Modal de recuperación de contraseña */}
         {showResetPassword && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg p-6 max-w-md w-full">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Recuperar Contraseña</h3>
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-lg w-full shadow-xl">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Recuperar contraseña</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                Ingresa tu correo y elige cómo quieres continuar: enlace por email o preguntas secretas (si las configuraste).
+              </p>
 
-              {resetMessage && !resetMessage.includes('Error') && !resetMessage.includes('Demasiadas') && !resetMessage.includes('espera') ? (
+              {recoveryEmailSent ? (
                 <>
                   <div className="mb-4 p-4 rounded-lg bg-green-50 text-green-800 border border-green-200">
                     {resetMessage}
@@ -475,6 +516,7 @@ function LoginPageContent() {
                     onClick={() => {
                       setShowResetPassword(false)
                       setResetMessage('')
+                      setRecoveryEmailSent(false)
                     }}
                     className="w-full btn-primary"
                   >
@@ -485,8 +527,12 @@ function LoginPageContent() {
                 <>
                   {resetMessage && (
                     <div
-                      className={`mb-4 p-3 rounded-lg ${
-                        resetMessage.includes('Error') || resetMessage.includes('Demasiadas') || resetMessage.includes('espera')
+                      className={`mb-4 p-3 rounded-lg text-sm ${
+                        resetMessage.includes('Error') ||
+                        resetMessage.includes('Demasiadas') ||
+                        resetMessage.includes('espera') ||
+                        resetMessage.includes('no tiene preguntas') ||
+                        resetMessage.includes('comprobar')
                           ? 'bg-red-50 text-red-800 border border-red-200'
                           : 'bg-green-50 text-green-800 border border-green-200'
                       }`}
@@ -495,10 +541,10 @@ function LoginPageContent() {
                     </div>
                   )}
 
-                  <form onSubmit={handleResetPassword} className="space-y-4">
+                  <div className="space-y-4">
                     <div>
-                      <label htmlFor="resetEmail" className="block text-sm font-medium text-gray-700 mb-2">
-                        Correo Electrónico
+                      <label htmlFor="resetEmail" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Correo electrónico
                       </label>
                       <input
                         id="resetEmail"
@@ -507,29 +553,58 @@ function LoginPageContent() {
                         onChange={(e) => setEmail(e.target.value)}
                         className="input-field"
                         placeholder="tu@correo.com"
-                        required
+                        autoComplete="email"
                       />
                     </div>
 
-                    <div className="flex gap-3">
-                      <button type="submit" className="flex-1 btn-primary" disabled={loading}>
-                        {loading ? 'Enviando...' : 'Enviar Correo'}
-                      </button>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <button
                         type="button"
-                        onClick={() => {
-                          setShowResetPassword(false)
-                          setResetMessage('')
-                        }}
-                        className="flex-1 btn-secondary"
+                        onClick={handleRecoveryByEmail}
+                        disabled={loading}
+                        className="flex flex-col items-start gap-1 p-4 rounded-xl border-2 border-primary-200 bg-primary-50/50 hover:bg-primary-50 dark:border-primary-700 dark:bg-primary-900/20 dark:hover:bg-primary-900/30 text-left transition-colors disabled:opacity-60"
                       >
-                        Cancelar
+                        <span className="flex items-center gap-2 font-semibold text-gray-900 dark:text-white">
+                          <Mail className="w-5 h-5 text-primary-600 shrink-0" aria-hidden />
+                          Enlace por correo
+                        </span>
+                        <span className="text-xs text-gray-600 dark:text-gray-400">
+                          Recibirás un email con un enlace para crear una nueva contraseña.
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleRecoveryBySecretQuestions}
+                        disabled={loading}
+                        className="flex flex-col items-start gap-1 p-4 rounded-xl border-2 border-amber-200 bg-amber-50/50 hover:bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 dark:hover:bg-amber-950/40 text-left transition-colors disabled:opacity-60"
+                      >
+                        <span className="flex items-center gap-2 font-semibold text-gray-900 dark:text-white">
+                          <HelpCircle className="w-5 h-5 text-amber-700 shrink-0" aria-hidden />
+                          Preguntas secretas
+                        </span>
+                        <span className="text-xs text-gray-600 dark:text-gray-400">
+                          Responde las preguntas que configuraste en tu cuenta (si aplica).
+                        </span>
                       </button>
                     </div>
-                    <p className="text-xs text-gray-500 mt-2">
-                      El enlace es válido 1 hora y solo puede usarse una vez. Al recibir el correo, haz clic en el botón o copia la URL y ábrela en el navegador (evita que el correo abra el enlace en segundo plano).
+
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      Si no recuerdas el correo o no tienes preguntas configuradas, contacta al administrador institucional.
                     </p>
-                  </form>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowResetPassword(false)
+                        setResetMessage('')
+                        setRecoveryEmailSent(false)
+                      }}
+                      className="w-full btn-secondary"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
                 </>
               )}
             </div>

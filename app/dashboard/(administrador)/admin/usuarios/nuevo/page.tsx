@@ -8,50 +8,7 @@ import { createClientComponentClient } from '@/lib/supabase-browser'
 import { userCreateSchema } from '@/lib/validation/users'
 import { formatZodErrors } from '@/lib/validation/utils'
 import { useAdminAccess } from '@/lib/hooks/useAdminAccess'
-
-const generateSecurePassword = () => {
-  const uppercase = 'ABCDEFGHJKLMNPQRSTUVWXYZ'
-  const lowercase = 'abcdefghijkmnopqrstuvwxyz'
-  const numbers = '23456789'
-  const symbols = '!@#$%^&*'
-  const allChars = `${uppercase}${lowercase}${numbers}${symbols}`
-  const length = 12
-  const cryptoObj = typeof window !== 'undefined' ? window.crypto : null
-
-  const randomIndex = (max: number) => {
-    if (cryptoObj && cryptoObj.getRandomValues) {
-      const randomValue = new Uint32Array(1)
-      cryptoObj.getRandomValues(randomValue)
-      return randomValue[0] % max
-    }
-    return Math.floor(Math.random() * max)
-  }
-
-  const pickChar = (charset: string) => charset[randomIndex(charset.length)]
-
-  // Garantiza al menos un carácter de cada categoría obligatoria.
-  const requiredChars = [
-    pickChar(uppercase),
-    pickChar(lowercase),
-    pickChar(numbers),
-    pickChar(symbols),
-  ]
-
-  const remainingChars: string[] = []
-  for (let i = requiredChars.length; i < length; i++) {
-    remainingChars.push(pickChar(allChars))
-  }
-
-  const passwordChars = [...requiredChars, ...remainingChars]
-
-  // Mezcla Fisher-Yates para no dejar categorías en posiciones predecibles.
-  for (let i = passwordChars.length - 1; i > 0; i--) {
-    const j = randomIndex(i + 1)
-    ;[passwordChars[i], passwordChars[j]] = [passwordChars[j], passwordChars[i]]
-  }
-
-  return passwordChars.join('')
-}
+import { generateTemporaryPassword } from '@/lib/generate-temporary-password'
 
 export default function NuevoUsuarioPage() {
   const router = useRouter()
@@ -62,7 +19,7 @@ export default function NuevoUsuarioPage() {
     fullName: '',
     email: '',
     role: 'seguridad',
-    password: generateSecurePassword(),
+    password: generateTemporaryPassword(),
     confirmPassword: '',
   })
   const [roles, setRoles] = useState<Array<{ value: string; label: string }>>([])
@@ -152,7 +109,7 @@ export default function NuevoUsuarioPage() {
   }
 
   const resetPasswordSuggestion = () => {
-    const newPassword = generateSecurePassword()
+    const newPassword = generateTemporaryPassword()
     setFormData((prev) => ({ ...prev, password: newPassword, confirmPassword: '' }))
     setCopied(false)
   }

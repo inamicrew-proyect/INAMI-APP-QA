@@ -3,6 +3,7 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { getPublicSupabaseAnonKey, getPublicSupabaseUrl } from '@/lib/env/public-supabase'
+import { userMustChangePassword } from '@/lib/auth-must-change-password'
 
 export async function proxy(req: NextRequest) {
   let res = NextResponse.next({ request: req })
@@ -37,6 +38,7 @@ export async function proxy(req: NextRequest) {
   const isApiRoute = pathname.startsWith('/api')
   const isResetPasswordRoute = pathname.startsWith('/reset-password')
   const isAuthCallbackRoute = pathname.startsWith('/auth/callback')
+  const isFirstPasswordRoute = pathname.startsWith('/cambiar-contrasena-inicial')
   const isSecurityQuestionsRoute = pathname.startsWith('/dashboard/configuracion/preguntas-secretas')
   const isAdminRoute = pathname.startsWith('/dashboard/admin')
   const isLogoutRoute = req.nextUrl.searchParams.get('logout') === 'true'
@@ -55,6 +57,11 @@ export async function proxy(req: NextRequest) {
     loginUrl.searchParams.set('redirect', pathname)
     loginUrl.searchParams.set('t', Date.now().toString())
     return passCookies(NextResponse.redirect(loginUrl))
+  }
+
+  // Obligado a cambiar contraseña temporal: no usar el dashboard hasta completar el flujo
+  if (user && isFirstPasswordRoute && !userMustChangePassword(user)) {
+    return passCookies(NextResponse.redirect(new URL('/dashboard', req.url)))
   }
 
   // Cuenta inactiva o marcada como bloqueada en perfiles: cerrar sesión y volver al login
@@ -79,6 +86,10 @@ export async function proxy(req: NextRequest) {
         )
         loginUrl.searchParams.set('t', Date.now().toString())
         return passCookies(NextResponse.redirect(loginUrl))
+      }
+      if (userMustChangePassword(user)) {
+        const firstPwUrl = new URL('/cambiar-contrasena-inicial', req.url)
+        return passCookies(NextResponse.redirect(firstPwUrl))
       }
     } catch (e) {
       console.warn('proxy: no se pudo verificar account_status', e)
@@ -210,6 +221,11 @@ export async function proxy(req: NextRequest) {
 
     if (isAuthRoute && !isLogoutRoute && !isVerifyRoute) {
       try {
+        if (userMustChangePassword(user)) {
+          return passCookies(
+            NextResponse.redirect(new URL('/cambiar-contrasena-inicial', req.url))
+          )
+        }
         const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
         if (aal && aal.currentLevel === 'aal2') {
           const dashboardUrl = new URL('/dashboard', req.url)

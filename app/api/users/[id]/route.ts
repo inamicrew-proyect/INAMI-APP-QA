@@ -317,11 +317,23 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     | 'inactivo'
     | 'bloqueado'
 
+  /** Contraseña temporal aplicada: el usuario deberá cambiarla al iniciar sesión */
+  let appliedTemporaryPassword = false
+
   // Efectos en Auth: contraseña y ban (bloqueado)
   if (isAdmin && adminExtras.password) {
     try {
+      const { data: authUserData, error: getUserErr } = await adminClient.auth.admin.getUserById(id)
+      if (getUserErr) {
+        console.error('Error obteniendo usuario auth para metadata:', getUserErr)
+      }
+      const prevMeta = (authUserData?.user?.user_metadata ?? {}) as Record<string, unknown>
       const { error: pwdErr } = await adminClient.auth.admin.updateUserById(id, {
         password: adminExtras.password,
+        user_metadata: {
+          ...prevMeta,
+          must_change_password: true,
+        },
       })
       if (pwdErr) {
         console.error('Error actualizando contraseña (auth):', pwdErr)
@@ -330,6 +342,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
           { status: 500 }
         )
       }
+      appliedTemporaryPassword = true
       try {
         const { SystemLogger } = await import('@/lib/system-logger')
         await SystemLogger.updateUser(userId, id, { password_reset_by_admin: true })
@@ -497,6 +510,10 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     } else {
       metadata.account_status =
         (data as { account_status?: string }).account_status ?? 'activo'
+    }
+
+    if (appliedTemporaryPassword) {
+      metadata.must_change_password = true
     }
 
     await adminClient.auth.admin.updateUserById(id, {

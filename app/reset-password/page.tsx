@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import { Shield, Lock, CheckCircle, Eye as EyeIcon, EyeOff as EyeOffIcon } from 'lucide-react'
 
 function ResetPasswordContent() {
@@ -276,6 +277,17 @@ function ResetPasswordContent() {
                 ? 'Responda sus preguntas secretas para continuar'
                 : 'Ingrese su nueva contraseña'}
             </p>
+            {step === 'questions' && (email || userEmail) && (
+              <p className="text-xs text-gray-500 mt-3">
+                ¿Prefieres recibir un enlace por correo?{' '}
+                <Link
+                  href={`/login?recovery=1&email=${encodeURIComponent(email || userEmail)}`}
+                  className="text-primary-600 hover:text-primary-700 font-medium underline"
+                >
+                  Volver al login y elegir «Enlace por correo»
+                </Link>
+              </p>
+            )}
           </div>
 
           {error && (

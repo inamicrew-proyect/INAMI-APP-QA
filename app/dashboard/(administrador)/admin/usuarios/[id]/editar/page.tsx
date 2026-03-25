@@ -3,12 +3,13 @@
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
-import { AlertCircle, ArrowLeft, Loader2, Save } from 'lucide-react'
+import { AlertCircle, ArrowLeft, Copy, Loader2, RefreshCcw, Save, ShieldCheck } from 'lucide-react'
 import { createClientComponentClient } from '@/lib/supabase-browser'
 import { ACCOUNT_STATUSES, passwordSchema, userUpdateSchema } from '@/lib/validation/users'
 import { useAuth } from '@/lib/auth'
 import { formatZodErrors } from '@/lib/validation/utils'
 import { useAdminAccess } from '@/lib/hooks/useAdminAccess'
+import { generateTemporaryPassword } from '@/lib/generate-temporary-password'
 
 type UserProfile = {
   id: string
@@ -34,15 +35,21 @@ export default function EditarUsuarioPage() {
   const [loading, setLoading] = useState(true)
   const [loadingRoles, setLoadingRoles] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  /** Error al cargar el usuario (sin formulario) */
+  const [loadError, setLoadError] = useState<string | null>(null)
+  /** Errores generales al guardar (nombre, rol, API, etc.) */
+  const [formError, setFormError] = useState<string | null>(null)
+  /** Validación contraseña temporal (misma regla que crear usuario) */
+  const [passwordError, setPasswordError] = useState<string | null>(null)
+  const [tempPassword, setTempPassword] = useState('')
+  const [confirmTempPassword, setConfirmTempPassword] = useState('')
+  const [copiedTemp, setCopiedTemp] = useState(false)
   const [success, setSuccess] = useState<string | null>(null)
   const [photoUrl, setPhotoUrl] = useState<string | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [accountStatus, setAccountStatus] = useState<(typeof ACCOUNT_STATUSES)[number]>('activo')
-  const [newPassword, setNewPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
   const MAX_PROFILE_PHOTO_SIZE = 1024 * 1024 // 1 MB
   const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 
@@ -92,14 +99,14 @@ export default function EditarUsuarioPage() {
 
     const fetchUser = async () => {
       setLoading(true)
-      setError(null)
+      setLoadError(null)
       try {
         const {
           data: { session },
         } = await supabase.auth.getSession()
 
         if (!session) {
-          setError('No autenticado. Vuelve a iniciar sesi?n.')
+          setLoadError('No autenticado. Vuelve a iniciar sesión.')
           setLoading(false)
           return
         }
@@ -112,7 +119,7 @@ export default function EditarUsuarioPage() {
         const result = await response.json()
 
         if (!response.ok) {
-          setError(result.error || result.message || 'No se pudo cargar la informaci?n.')
+          setLoadError(result.error || result.message || 'No se pudo cargar la información.')
           setUser(null)
           return
         }
@@ -126,14 +133,15 @@ export default function EditarUsuarioPage() {
             ? (rawStatus as (typeof ACCOUNT_STATUSES)[number])
             : 'activo'
         )
-        setNewPassword('')
-        setConfirmPassword('')
+        setTempPassword('')
+        setConfirmTempPassword('')
+        setCopiedTemp(false)
         const existingPhoto = result.user.photo_url ?? null
         setPhotoUrl(existingPhoto)
         setPhotoPreview(existingPhoto)
       } catch (err: any) {
         console.error('Error fetching user:', err)
-        setError(`Ocurri? un error al cargar la informaci?n: ${err?.message || 'Error desconocido'}`)
+        setLoadError(`Ocurrió un error al cargar la información: ${err?.message || 'Error desconocido'}`)
       } finally {
         setLoading(false)
       }
@@ -149,25 +157,26 @@ export default function EditarUsuarioPage() {
     if (!id) return
 
     setSaving(true)
-    setError(null)
+    setFormError(null)
+    setPasswordError(null)
     setSuccess(null)
 
     try {
-      if (newPassword || confirmPassword) {
-        if (!newPassword.trim() || !confirmPassword.trim()) {
-          setError('Completa ambos campos de nueva contraseña o déjalos vacíos.')
+      if (tempPassword.trim() || confirmTempPassword.trim()) {
+        if (!tempPassword.trim() || !confirmTempPassword.trim()) {
+          setPasswordError('Completa ambos campos de contraseña temporal o déjalos vacíos para no cambiarla.')
           setSaving(false)
           return
         }
-        if (newPassword !== confirmPassword) {
-          setError('Las contraseñas nuevas no coinciden.')
+        if (tempPassword !== confirmTempPassword) {
+          setPasswordError('Las contraseñas temporales no coinciden.')
           setSaving(false)
           return
         }
-        const pwdCheck = passwordSchema.safeParse(newPassword)
+        const pwdCheck = passwordSchema.safeParse(tempPassword)
         if (!pwdCheck.success) {
           const errs = formatZodErrors(pwdCheck.error)
-          setError(errs[0] ?? 'La nueva contraseña no cumple los requisitos de seguridad.')
+          setPasswordError(errs[0] ?? 'La contraseña temporal no cumple los requisitos de seguridad.')
           setSaving(false)
           return
         }
@@ -181,8 +190,8 @@ export default function EditarUsuarioPage() {
 
       if (!parsed.success) {
         const errors = formatZodErrors(parsed.error)
-        const firstError = errors && errors.length > 0 ? errors[0] : 'Los datos del usuario no son v?lidos.'
-        setError(firstError)
+        const firstError = errors && errors.length > 0 ? errors[0] : 'Los datos del usuario no son válidos.'
+        setFormError(firstError)
         setSaving(false)
         return
       }
@@ -224,7 +233,7 @@ export default function EditarUsuarioPage() {
       } = await supabase.auth.getSession()
 
       if (!session?.access_token) {
-        setError('No autenticado. Vuelve a iniciar sesi?n.')
+        setFormError('No autenticado. Vuelve a iniciar sesión.')
         setSaving(false)
         setUploadingPhoto(false)
         return
@@ -236,8 +245,8 @@ export default function EditarUsuarioPage() {
         photoUrl: uploadedPhotoUrl ?? null,
         accountStatus,
       }
-      if (newPassword.trim().length > 0) {
-        bodyPayload.password = newPassword
+      if (tempPassword.trim().length > 0) {
+        bodyPayload.password = tempPassword
       }
 
       const response = await fetch(`/api/users/${id}`, {
@@ -250,13 +259,14 @@ export default function EditarUsuarioPage() {
         credentials: 'include',
       })
       const result = await response.json()
+      const assignedTemporaryPassword = tempPassword.trim().length > 0
 
       if (!response.ok) {
         if (response.status === 401) {
-          throw new Error('No est?s autenticado. Por favor, inicia sesi?n nuevamente.')
+          throw new Error('No estás autenticado. Por favor, inicia sesión nuevamente.')
         }
         if (response.status === 403) {
-          throw new Error('No tienes permisos para editar usuarios. Solo los administradores pueden realizar esta acci?n.')
+          throw new Error('No tienes permisos para editar usuarios. Solo los administradores pueden realizar esta acción.')
         }
         if (response.status === 404) {
           throw new Error('Usuario no encontrado.')
@@ -265,7 +275,11 @@ export default function EditarUsuarioPage() {
         throw new Error(detail || result.error || result.details || 'No se pudo actualizar al usuario.')
       }
 
-      setSuccess('Usuario actualizado correctamente.')
+      setSuccess(
+        assignedTemporaryPassword
+          ? 'Usuario actualizado. Se asignó contraseña temporal: deberá cambiarla al iniciar sesión.'
+          : 'Usuario actualizado correctamente.'
+      )
       setUser(result.user)
       const rs = result.user.account_status ?? 'activo'
       setAccountStatus(
@@ -273,23 +287,56 @@ export default function EditarUsuarioPage() {
           ? (rs as (typeof ACCOUNT_STATUSES)[number])
           : 'activo'
       )
-      setNewPassword('')
-      setConfirmPassword('')
+      setTempPassword('')
+      setConfirmTempPassword('')
+      setCopiedTemp(false)
       setPhotoPreview(result.user.photo_url ?? null)
       setPhotoFile(null)
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('usuarios:updated'))
       }
       router.refresh()
-      setTimeout(() => {
-        router.push(`/dashboard/admin/usuarios/${id}`)
-      }, 1000)
     } catch (err) {
       console.error('Error updating user:', err)
-      setError(err instanceof Error ? err.message : 'Ocurri? un error al actualizar.')
+      setFormError(err instanceof Error ? err.message : 'Ocurrió un error al actualizar.')
     } finally {
       setSaving(false)
       setUploadingPhoto(false)
+    }
+  }
+
+  const resetTempPasswordSuggestion = () => {
+    const next = generateTemporaryPassword()
+    setTempPassword(next)
+    setConfirmTempPassword('')
+    setPasswordError(null)
+    setCopiedTemp(false)
+  }
+
+  const copyTempPassword = async () => {
+    try {
+      if (!tempPassword.trim()) return
+      if (!navigator.clipboard?.writeText) {
+        const textArea = document.createElement('textarea')
+        textArea.value = tempPassword
+        textArea.style.position = 'fixed'
+        textArea.style.left = '-999999px'
+        document.body.appendChild(textArea)
+        textArea.select()
+        try {
+          document.execCommand('copy')
+          setCopiedTemp(true)
+          setTimeout(() => setCopiedTemp(false), 2000)
+        } finally {
+          document.body.removeChild(textArea)
+        }
+        return
+      }
+      await navigator.clipboard.writeText(tempPassword)
+      setCopiedTemp(true)
+      setTimeout(() => setCopiedTemp(false), 2000)
+    } catch {
+      setPasswordError('No se pudo copiar. Copia la contraseña manualmente.')
     }
   }
 
@@ -298,19 +345,19 @@ export default function EditarUsuarioPage() {
     if (!file) return
 
     if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-      setError('Selecciona una imagen JPG, PNG o WebP.')
+      setFormError('Selecciona una imagen JPG, PNG o WebP.')
       return
     }
 
     if (file.size > MAX_PROFILE_PHOTO_SIZE) {
-      setError('La foto no puede superar 1 MB.')
+      setFormError('La foto no puede superar 1 MB.')
       return
     }
 
     setPhotoFile(file)
     const previewUrl = URL.createObjectURL(file)
     setPhotoPreview(previewUrl)
-    setError(null)
+    setFormError(null)
   }
 
   const handleRemovePhoto = () => {
@@ -363,18 +410,19 @@ export default function EditarUsuarioPage() {
           </div>
         )}
 
-        {!loading && error && (
+        {!loading && !user && loadError && (
           <div className="flex items-center gap-3 text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-6">
-            <AlertCircle className="w-5 h-5" />
-            <span>{error}</span>
+            <AlertCircle className="w-5 h-5 shrink-0" />
+            <span>{loadError}</span>
           </div>
         )}
 
-        {!loading && !error && user && (
+        {!loading && user && (
           <form onSubmit={handleSubmit} className="space-y-6">
-            {success && (
-              <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300 rounded-lg">
-                {success}
+            {formError && (
+              <div className="flex items-start gap-3 text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+                <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+                <span>{formError}</span>
               </div>
             )}
 
@@ -406,12 +454,12 @@ export default function EditarUsuarioPage() {
                     </button>
                   )}
                 </div>
-                <p className="text-xs text-gray-500 dark:text-gray-300">Formatos aceptados: JPG, PNG. Tama?o recomendado 400x400 px.</p>
+                <p className="text-xs text-gray-500 dark:text-gray-300">Formatos aceptados: JPG, PNG. Tamaño recomendado 400x400 px.</p>
               </div>
             </div>
 
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Correo electr?nico</label>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Correo electrónico</label>
               <input
                 type="email"
                 id="email"
@@ -494,49 +542,104 @@ export default function EditarUsuarioPage() {
               )}
             </div>
 
-            <div className="rounded-lg border border-gray-200 dark:border-gray-600 p-4 space-y-4">
-              <div>
-                <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-1">Nueva contraseña (opcional)</h3>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                  Deja en blanco para no cambiar la contraseña. Mínimo 8 caracteres, mayúsculas, minúsculas, números y
-                  símbolos. Sin espacios.
-                </p>
-                <div className="space-y-3">
-                  <div>
-                    <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
-                      Nueva contraseña
-                    </label>
-                    <input
-                      type="password"
-                      id="newPassword"
-                      name="newPassword"
-                      autoComplete="new-password"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      className="input-field"
-                      placeholder="••••••••"
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="confirmPassword"
-                      className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
-                    >
-                      Confirmar nueva contraseña
-                    </label>
-                    <input
-                      type="password"
-                      id="confirmPassword"
-                      name="confirmPassword"
-                      autoComplete="new-password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      className="input-field"
-                      placeholder="••••••••"
-                    />
-                  </div>
+            <div className="rounded-lg border border-primary-100 bg-primary-50/80 dark:bg-primary-900/10 dark:border-primary-900/30 p-4 space-y-4">
+              <div className="flex gap-3 text-sm text-primary-800 dark:text-primary-200">
+                <ShieldCheck className="w-5 h-5 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold">Contraseña temporal (opcional)</p>
+                  <p className="font-normal text-primary-700 dark:text-primary-300 mt-1">
+                    Mínimo 8 caracteres, mayúscula, minúscula, número y símbolo.
+                    Sin espacios. Si guardas una contraseña temporal, el usuario deberá cambiarla al iniciar sesión.
+                  </p>
                 </div>
               </div>
+              <div className="rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900/40 p-4 space-y-4">
+                <div className="space-y-2">
+                  <label htmlFor="tempPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-200">
+                    Contraseña temporal
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      id="tempPassword"
+                      name="tempPassword"
+                      autoComplete="new-password"
+                      value={tempPassword}
+                      onChange={(e) => {
+                        setTempPassword(e.target.value)
+                        setPasswordError(null)
+                      }}
+                      className="input-field pr-24"
+                      placeholder="Vacío = no cambiar"
+                      minLength={8}
+                      pattern="[^\s]+"
+                      title="La contraseña no puede contener espacios"
+                    />
+                    <div className="absolute inset-y-0 right-0 flex items-center gap-1 pr-2">
+                      <button
+                        type="button"
+                        onClick={copyTempPassword}
+                        disabled={!tempPassword.trim()}
+                        className="p-2 rounded-md text-primary-600 hover:bg-primary-100 dark:text-primary-400 dark:hover:bg-primary-900/40 disabled:opacity-40"
+                        title="Copiar contraseña"
+                      >
+                        <Copy className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={resetTempPasswordSuggestion}
+                        className="p-2 rounded-md text-primary-600 hover:bg-primary-100 dark:text-primary-400 dark:hover:bg-primary-900/40"
+                        title="Generar nueva contraseña segura"
+                      >
+                        <RefreshCcw className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                  {copiedTemp && (
+                    <p className="text-xs text-green-600 dark:text-green-400">Contraseña copiada al portapapeles.</p>
+                  )}
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Usa «Generar» para una contraseña que cumple las reglas automáticamente. Compártela por un canal
+                    seguro.
+                  </p>
+                </div>
+                <div>
+                  <label
+                    htmlFor="confirmTempPassword"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2"
+                  >
+                    Confirmar contraseña temporal
+                  </label>
+                  <input
+                    type="text"
+                    id="confirmTempPassword"
+                    name="confirmTempPassword"
+                    autoComplete="new-password"
+                    value={confirmTempPassword}
+                    onChange={(e) => {
+                      setConfirmTempPassword(e.target.value)
+                      setPasswordError(null)
+                    }}
+                    className="input-field"
+                    placeholder="Repite la contraseña temporal"
+                    minLength={8}
+                  />
+                </div>
+                {passwordError && (
+                  <div
+                    className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-800 dark:bg-red-900/20 dark:text-red-200"
+                    role="alert"
+                  >
+                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                    <span>{passwordError}</span>
+                  </div>
+                )}
+              </div>
+              {success && (
+                <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300 rounded-lg text-sm">
+                  {success}
+                </div>
+              )}
             </div>
 
             <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
