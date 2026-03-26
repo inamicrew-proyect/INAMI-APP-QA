@@ -5,7 +5,10 @@ import { useState, useEffect } from 'react'
 import { createClientComponentClient } from '@/lib/supabase-browser'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, CheckCircle, ShieldAlert, Shield } from 'lucide-react'
+import { ArrowLeft, CheckCircle, ShieldAlert, Shield, LayoutDashboard, Users, ChevronRight } from 'lucide-react'
+import { useAuth } from '@/lib/auth'
+import { usePermissions } from '@/lib/hooks/usePermissions'
+import { Routes } from '@/lib/routes'
 
 export default function SeguridadPage() {
   const supabase = createClientComponentClient()
@@ -18,6 +21,11 @@ export default function SeguridadPage() {
   const [loading, setLoading] = useState(false)
   const [mfaEnabled, setMfaEnabled] = useState(false)
   const [checkingStatus, setCheckingStatus] = useState(true)
+
+  const { profile } = useAuth()
+  const { canView, loading: permissionsLoading } = usePermissions()
+  const showAdminPanel =
+    profile?.role === 'admin' || (!permissionsLoading && canView(Routes.ADMIN))
 
   // Verificar el estado de 2FA al cargar la página
   useEffect(() => {
@@ -116,8 +124,53 @@ export default function SeguridadPage() {
         <ArrowLeft className="w-4 h-4" />
         Volver al Dashboard
       </Link>
-      <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">Seguridad</h1>
-      
+      <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Seguridad</h1>
+      <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+        Cuenta, autenticación y, si aplica, administración del sistema.
+      </p>
+
+      {showAdminPanel && (
+        <div className="card mb-6 border-2 border-sky-200 dark:border-sky-800 bg-sky-50/80 dark:bg-sky-950/40">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-1 flex items-center gap-2">
+            <LayoutDashboard className="w-5 h-5 text-sky-600 dark:text-sky-400" />
+            Administración del sistema
+          </h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+            Usuarios, roles, permisos y bitácora. El acceso anterior del menú principal está aquí.
+          </p>
+          <Link
+            href={Routes.ADMIN}
+            className="btn-primary inline-flex items-center gap-2 mb-4"
+          >
+            Ir al panel de administración
+            <ChevronRight className="w-4 h-4" />
+          </Link>
+          <div className="flex flex-wrap gap-3 text-sm">
+            <Link
+              href={Routes.ADMIN_USUARIOS}
+              className="inline-flex items-center gap-1.5 text-sky-700 dark:text-sky-300 hover:underline font-medium"
+            >
+              <Users className="w-4 h-4" />
+              Usuarios
+            </Link>
+            <span className="text-gray-300 dark:text-gray-600">|</span>
+            <Link
+              href={Routes.ADMIN_ROLES}
+              className="text-sky-700 dark:text-sky-300 hover:underline font-medium"
+            >
+              Roles
+            </Link>
+            <span className="text-gray-300 dark:text-gray-600">|</span>
+            <Link
+              href={Routes.ADMIN_SEGURIDAD}
+              className="text-sky-700 dark:text-sky-300 hover:underline font-medium"
+            >
+              Bitácora / seguridad
+            </Link>
+          </div>
+        </div>
+      )}
+
       <div className="card">
         <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
           Autenticación de Dos Factores (2FA)

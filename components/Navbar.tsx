@@ -8,7 +8,6 @@ import { LogOut, Menu, X, User } from 'lucide-react'
 // --- 1. ¡LOS ÚNICOS IMPORTS DE AUTH QUE NECESITAS! ---
 import { useAuth } from '@/lib/auth' 
 import { getSupabaseClient } from '@/lib/supabase-client'
-import { usePermissions } from '@/lib/hooks/usePermissions'
 // ---
 
 import NotificationCenter from './NotificationCenter'
@@ -27,33 +26,9 @@ function Navbar() {
 
   // 3. REEMPLAZAMOS toda la lógica de 'useState', 'useCallback' y 'useEffect'
   //    con nuestro nuevo hook 'useAuth'.
-  const { profile, loading, user } = useAuth()
-  const { canView, loading: permissionsLoading } = usePermissions()
+  const { profile } = useAuth()
   const { theme } = useTheme()
   const isDark = theme === 'dark'
-  
-  // Estado adicional para verificar el rol directamente desde la sesión si el perfil no está disponible
-  const [directRole, setDirectRole] = useState<string | null>(null)
-  
-  useEffect(() => {
-    // Si el perfil no se carga pero hay un usuario, intentar obtener el rol directamente
-    if (!profile && user && !loading) {
-      const checkRoleDirectly = async () => {
-        try {
-          const response = await fetch('/api/auth/profile', { cache: 'no-store' })
-          if (response.ok) {
-            const result = await response.json()
-            if (result.profile?.role) setDirectRole(result.profile.role)
-          }
-        } catch (error) {
-          console.error('Error obteniendo rol directamente:', error)
-        }
-      }
-      checkRoleDirectly()
-    } else if (profile) {
-      queueMicrotask(() => setDirectRole(null)) // Limpiar si el perfil se carga
-    }
-  }, [profile, user, loading])
 
   // Evitar error de hidratación
   useEffect(() => {
@@ -149,7 +124,6 @@ function Navbar() {
   // 7. Tu JSX original (menús, links, etc.)
   // Renderizado condicional dentro del JSX, no early return
 
-  // Mostrar navbar incluso si está cargando, pero sin el panel admin hasta que se cargue
   // No renderizar hasta que el componente esté montado en el cliente
   if (typeof window === 'undefined' || !mounted) {
     return (
@@ -206,15 +180,6 @@ function Navbar() {
           <Link href={Routes.SEGURIDAD} className={getNavButtonClass(Routes.SEGURIDAD)}>
             Seguridad
           </Link>
-          {/* Panel administración: admin por perfil o permiso de módulo */}
-          {(() => {
-            const effectiveRole = profile?.role || directRole
-            return effectiveRole === 'admin' || (!permissionsLoading && canView(Routes.ADMIN))
-          })() && (
-            <Link href={Routes.ADMIN} className={getNavButtonClass(Routes.ADMIN)}>
-              Administración
-            </Link>
-          )}
           <Link href={Routes.NOTIFICACIONES} className={getNavButtonClass(Routes.NOTIFICACIONES)}>
             Notificaciones
           </Link>
@@ -288,7 +253,6 @@ function Navbar() {
           >
             Atenciones
           </Link>
-          {/* Panel Admin - Mostrar si es admin (inmediato, sin esperar permisos) */}
           <Link
             href={Routes.SEGURIDAD}
             className={`block px-4 py-2.5 rounded-lg font-medium text-base transition-all border-2 ${getMobileNavButtonClass(Routes.SEGURIDAD)}`}
@@ -296,18 +260,6 @@ function Navbar() {
           >
             Seguridad
           </Link>
-          {(() => {
-            const effectiveRole = profile?.role || directRole
-            return effectiveRole === 'admin' || (!permissionsLoading && canView(Routes.ADMIN))
-          })() && (
-            <Link
-              href={Routes.ADMIN}
-              className={`block px-4 py-2.5 rounded-lg font-medium text-base transition-all border-2 ${getMobileNavButtonClass(Routes.ADMIN)}`}
-              onClick={() => setIsOpen(false)}
-            >
-              Administración
-            </Link>
-          )}
 <Link 
 			  href={Routes.NOTIFICACIONES} 
 			  className={`block px-4 py-2.5 rounded-lg font-medium text-base transition-all border-2 ${getMobileNavButtonClass(Routes.NOTIFICACIONES)}`}
