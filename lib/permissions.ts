@@ -34,6 +34,12 @@ export interface ModulePermission {
   puede_eliminar: boolean
 }
 
+function normalizeRoute(route: string) {
+  if (!route) return route
+  if (route === '/') return '/'
+  return route.replace(/\/+$/, '')
+}
+
 /**
  * Obtener permisos de un usuario basándose en sus roles
  * Con retry automático y timeout
@@ -104,7 +110,9 @@ export async function getUserPermissions(userId?: string, retries = 1): Promise<
  */
 export async function canViewModule(moduleRoute: string, userId?: string): Promise<boolean> {
   const permissions = await getUserPermissions(userId)
-  const permission = permissions.find(p => p.modulo.ruta === moduleRoute)
+  const permission = permissions.find(
+    (p) => normalizeRoute(p.modulo.ruta) === normalizeRoute(moduleRoute)
+  )
   return permission?.puede_ver || false
 }
 
@@ -113,7 +121,9 @@ export async function canViewModule(moduleRoute: string, userId?: string): Promi
  */
 export async function canCreateInModule(moduleRoute: string, userId?: string): Promise<boolean> {
   const permissions = await getUserPermissions(userId)
-  const permission = permissions.find(p => p.modulo.ruta === moduleRoute)
+  const permission = permissions.find(
+    (p) => normalizeRoute(p.modulo.ruta) === normalizeRoute(moduleRoute)
+  )
   return permission?.puede_crear || false
 }
 
@@ -122,7 +132,9 @@ export async function canCreateInModule(moduleRoute: string, userId?: string): P
  */
 export async function canEditInModule(moduleRoute: string, userId?: string): Promise<boolean> {
   const permissions = await getUserPermissions(userId)
-  const permission = permissions.find(p => p.modulo.ruta === moduleRoute)
+  const permission = permissions.find(
+    (p) => normalizeRoute(p.modulo.ruta) === normalizeRoute(moduleRoute)
+  )
   return permission?.puede_editar || false
 }
 
@@ -131,7 +143,9 @@ export async function canEditInModule(moduleRoute: string, userId?: string): Pro
  */
 export async function canDeleteInModule(moduleRoute: string, userId?: string): Promise<boolean> {
   const permissions = await getUserPermissions(userId)
-  const permission = permissions.find(p => p.modulo.ruta === moduleRoute)
+  const permission = permissions.find(
+    (p) => normalizeRoute(p.modulo.ruta) === normalizeRoute(moduleRoute)
+  )
   return permission?.puede_eliminar || false
 }
 

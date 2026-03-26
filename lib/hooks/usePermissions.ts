@@ -5,6 +5,12 @@ import { useState, useEffect, useCallback } from 'react'
 import { getUserPermissions, type ModulePermission } from '@/lib/permissions'
 import { useAuth } from '@/lib/auth'
 
+function normalizeRoute(route: string) {
+  if (!route) return route
+  if (route === '/') return '/'
+  return route.replace(/\/+$/, '')
+}
+
 export function usePermissions() {
   const { profile } = useAuth()
   const [permissions, setPermissions] = useState<ModulePermission[]>([])
@@ -63,7 +69,9 @@ export function usePermissions() {
 
   // Memoizar las funciones de verificación para evitar recrearlas en cada render
   const canView = useCallback((moduleRoute: string): boolean => {
-    const permission = permissions.find(p => p.modulo.ruta === moduleRoute)
+    const permission = permissions.find(
+      (p) => normalizeRoute(p.modulo.ruta) === normalizeRoute(moduleRoute)
+    )
     const result = permission?.puede_ver || false
     // Debug: solo loguear para admin panel (solo en desarrollo)
     if (process.env.NODE_ENV === 'development' && moduleRoute === '/dashboard/admin') {
@@ -78,17 +86,23 @@ export function usePermissions() {
   }, [permissions])
 
   const canCreate = useCallback((moduleRoute: string): boolean => {
-    const permission = permissions.find(p => p.modulo.ruta === moduleRoute)
+    const permission = permissions.find(
+      (p) => normalizeRoute(p.modulo.ruta) === normalizeRoute(moduleRoute)
+    )
     return permission?.puede_crear || false
   }, [permissions])
 
   const canEdit = useCallback((moduleRoute: string): boolean => {
-    const permission = permissions.find(p => p.modulo.ruta === moduleRoute)
+    const permission = permissions.find(
+      (p) => normalizeRoute(p.modulo.ruta) === normalizeRoute(moduleRoute)
+    )
     return permission?.puede_editar || false
   }, [permissions])
 
   const canDelete = useCallback((moduleRoute: string): boolean => {
-    const permission = permissions.find(p => p.modulo.ruta === moduleRoute)
+    const permission = permissions.find(
+      (p) => normalizeRoute(p.modulo.ruta) === normalizeRoute(moduleRoute)
+    )
     return permission?.puede_eliminar || false
   }, [permissions])
 

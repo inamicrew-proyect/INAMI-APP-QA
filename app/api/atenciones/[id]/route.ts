@@ -2,10 +2,45 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createSupabaseRouteHandlerClient } from '@/lib/supabase-route-handler'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
+import { Routes } from '@/lib/routes'
 
 export const dynamic = 'force-dynamic'
 export const fetchCache = 'force-no-store'
 export const revalidate = 0
+
+async function userCanDeleteAtencionesByPermission(adminClient: ReturnType<typeof getSupabaseAdmin>, userId: string) {
+  if (!adminClient) return false
+
+  const { data: moduleRow } = await adminClient
+    .from('modulos')
+    .select('id')
+    .eq('ruta', Routes.ATENCIONES)
+    .maybeSingle()
+
+  const moduleId = moduleRow?.id
+  if (!moduleId) return false
+
+  const { data: userRoles, error: rolesError } = await adminClient
+    .from('user_roles')
+    .select('role_id')
+    .eq('user_id', userId)
+
+  if (rolesError || !userRoles || userRoles.length === 0) return false
+
+  const roleIds = userRoles.map((ur: any) => ur.role_id)
+  if (roleIds.length === 0) return false
+
+  const { data: permisoRow } = await adminClient
+    .from('role_module_permissions')
+    .select('id')
+    .in('role_id', roleIds)
+    .eq('modulo_id', moduleId)
+    .eq('puede_eliminar', true)
+    .limit(1)
+    .maybeSingle()
+
+  return !!permisoRow
+}
 
 async function requireAdminOrProfesional(_request: NextRequest, atencionId: string) {
   const supabase = await createSupabaseRouteHandlerClient()
@@ -53,6 +88,70 @@ async function requireAdminOrProfesional(_request: NextRequest, atencionId: stri
   return { supabase, profile, userId, isAdmin: false } as const
 }
 
+async function requireAdminOrProfesionalOrModuloDelete(_request: NextRequest, atencionId: string) {
+  const supabase = await createSupabaseRouteHandlerClient()
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+
+  if (!session) {
+    return { error: 'No autenticado', status: 401 } as const
+  }
+
+  const userId = session.user.id
+
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('id, role')
+    .eq('id', userId)
+    .single()
+
+  if (profileError || !profile) {
+    return { error: 'Perfil no encontrado', status: 401 } as const
+  }
+
+  if (profile.role === 'admin') {
+    return { supabase, profile, userId, isAdmin: true } as const
+  }
+
+  const { data: atencion, error: atencionError } = await supabase
+    .from('atenciones')
+    .select('profesional_id')
+    .eq('id', atencionId)
+    .single()
+
+  if (atencionError || !atencion) {
+    return { error: 'Atención no encontrada', status: 404 } as const
+  }
+
+  // Creador => permitido
+  if (atencion.profesional_id === userId) {
+    return { supabase, profile, userId, isAdmin: false } as const
+  }
+
+  // No es creador => permitir si tiene permiso de módulo "Atenciones" (puede_eliminar)
+  let adminClient: ReturnType<typeof getSupabaseAdmin> | null = null
+  try {
+    adminClient = getSupabaseAdmin()
+  } catch (err) {
+    console.error('Error obteniendo cliente admin (permiso delete atenciones):', err)
+  }
+
+  if (adminClient) {
+    const canDelete = await userCanDeleteAtencionesByPermission(adminClient, userId)
+    if (canDelete) {
+      // Usar adminClient en el DELETE para evitar RLS que no contemple role_module_permissions
+      return { supabase, profile, userId, isAdmin: true } as const
+    }
+  }
+
+  return {
+    error:
+      'No autorizado. Solo puedes eliminar las atenciones que creaste (o si tu rol tiene permiso de eliminación).',
+    status: 403,
+  } as const
+}
+
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const resolvedParams = await params
@@ -68,7 +167,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       return NextResponse.json({ error: 'ID inválido' }, { status: 400 })
     }
 
-    const authCheck = await requireAdminOrProfesional(request, id)
+    const authCheck = await requireAdminOrProfesionalOrModuloDelete(request, id)
     if ('error' in authCheck) {
       return NextResponse.json({ error: authCheck.error }, { status: authCheck.status })
     }
