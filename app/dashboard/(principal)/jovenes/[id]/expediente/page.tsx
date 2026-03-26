@@ -19,10 +19,15 @@ import { createClientComponentClient } from '@/lib/supabase-browser'
 import type { Joven, Centro } from '@/lib/supabase'
 import { format } from 'date-fns'
 import { exportExpedientePDF, type PDFData } from '@/lib/pdf-generator'
+import { useIsAdmin } from '@/lib/auth'
+import { usePermissions } from '@/lib/hooks/usePermissions'
+import { Routes } from '@/lib/routes'
 
 export default function ExpedienteJovenPage() {
   const router = useRouter()
   const params = useParams()
+  const { isAdmin } = useIsAdmin()
+  const { canEdit, loading: permissionsLoading } = usePermissions()
 
   const jovenIdParam = (params as any)?.id
   const jovenId = Array.isArray(jovenIdParam) ? jovenIdParam[0] : (jovenIdParam as string | undefined)
@@ -291,10 +296,15 @@ export default function ExpedienteJovenPage() {
                 {exportingPDF ? 'Exportando...' : 'Exportar PDF'}
               </button>
 
-              <button onClick={() => router.push(`/dashboard/jovenes/${jovenId}/editar`)} className="btn-primary flex items-center gap-2">
-                <Edit className="w-4 h-4" />
-                Editar Expediente
-              </button>
+              {(isAdmin || (!permissionsLoading && canEdit(Routes.JOVENES))) && (
+                <button
+                  onClick={() => router.push(`/dashboard/jovenes/${jovenId}/editar`)}
+                  className="btn-primary flex items-center gap-2"
+                >
+                  <Edit className="w-4 h-4" />
+                  Editar Expediente
+                </button>
+              )}
             </div>
           </div>
         </div>

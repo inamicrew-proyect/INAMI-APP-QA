@@ -29,6 +29,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Error de configuración del servidor' }, { status: 500 })
     }
 
+    const ipAddress =
+      request.headers.get('x-forwarded-for') ||
+      request.headers.get('x-real-ip') ||
+      'unknown'
+    const userAgent = request.headers.get('user-agent') || 'unknown'
+
     // Buscar usuario por email
     const { data: profile, error: profileError } = await adminClient
       .from('profiles')
@@ -87,6 +93,21 @@ export async function POST(request: NextRequest) {
       }
       
       return NextResponse.json({ error: errorMessage }, { status: 500 })
+    }
+
+    // Registrar bitácora: cambio de contraseña (best-effort)
+    try {
+      await adminClient.from('system_logs').insert({
+        usuario_id: profile.id,
+        accion: 'password_changed',
+        entidad: 'usuarios',
+        entidad_id: profile.id,
+        detalles: { email, source: 'security_questions' },
+        ip_address: ipAddress,
+        user_agent: userAgent,
+      })
+    } catch (logError) {
+      console.warn('No se pudo registrar log de cambio de contraseña:', logError)
     }
 
     return NextResponse.json({ 

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Save, Shield, Check, X } from 'lucide-react'
+import { supabaseCache } from '@/lib/optimization'
 
 interface Modulo {
   id: string
@@ -46,7 +47,7 @@ export default function PermisosUsuarioPage() {
       setLoading(true)
 
       // Cargar usuario
-      const userResponse = await fetch(`/api/users/${id}`)
+      const userResponse = await fetch(`/api/users/${id}`, { cache: 'no-store', credentials: 'include' })
       if (!userResponse.ok) {
         throw new Error('Usuario no encontrado')
       }
@@ -54,7 +55,7 @@ export default function PermisosUsuarioPage() {
       setUsuario(userData.user)
 
       // Cargar módulos
-      const modulesResponse = await fetch('/api/admin/modules')
+      const modulesResponse = await fetch('/api/admin/modules', { cache: 'no-store', credentials: 'include' })
       if (!modulesResponse.ok) {
         throw new Error('Error al cargar módulos')
       }
@@ -62,7 +63,7 @@ export default function PermisosUsuarioPage() {
       setModulos(modulesData.modulos || [])
 
       // Cargar permisos existentes
-      const permissionsResponse = await fetch(`/api/admin/permissions?userId=${id}`)
+      const permissionsResponse = await fetch(`/api/admin/permissions?userId=${id}`, { cache: 'no-store', credentials: 'include' })
       if (permissionsResponse.ok) {
         const permissionsData = await permissionsResponse.json()
         const permisosMap: Record<string, Permiso> = {}
@@ -111,8 +112,10 @@ export default function PermisosUsuarioPage() {
       setSuccess(null)
 
       // Guardar permisos para cada módulo
-      const promises = Object.values(permisos).map(permiso =>
-        fetch('/api/admin/permissions', {
+      const items = Object.values(permisos)
+
+      for (const permiso of items) {
+        const res = await fetch('/api/admin/permissions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -124,13 +127,20 @@ export default function PermisosUsuarioPage() {
             puedeEliminar: permiso.puede_eliminar,
           }),
         })
-      )
 
-      await Promise.all(promises)
+        if (!res.ok) {
+          const body = await res.json().catch(() => null)
+          const details = body?.details || body?.error || `HTTP ${res.status}`
+          throw new Error(details)
+        }
+      }
+
+      await loadData()
+      supabaseCache.clear()
       setSuccess('Permisos guardados correctamente')
       setTimeout(() => {
         router.push(`/dashboard/admin/usuarios/${id}`)
-      }, 1500)
+      }, 1200)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al guardar permisos')
     } finally {

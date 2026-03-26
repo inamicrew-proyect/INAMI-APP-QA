@@ -38,6 +38,12 @@ export async function POST(request: NextRequest) {
 
     console.log('Intentando cambiar contraseña para usuario:', { userId, userEmail })
 
+    const ipAddress =
+      request.headers.get('x-forwarded-for') ||
+      request.headers.get('x-real-ip') ||
+      'unknown'
+    const userAgent = request.headers.get('user-agent') || 'unknown'
+
     // Intentar cambiar la contraseña usando updateUser primero
     const { error: updateError } = await supabase.auth.updateUser({
       password: newPassword
@@ -106,6 +112,22 @@ export async function POST(request: NextRequest) {
       }
 
       console.log('✅ Contraseña cambiada exitosamente usando admin client')
+
+      // Registrar bitácora: cambio de contraseña (best-effort)
+      try {
+        await adminClient.from('system_logs').insert({
+          usuario_id: userId,
+          accion: 'password_changed',
+          entidad: 'usuarios',
+          entidad_id: userId,
+          detalles: { email: userEmail, source: 'reset_password' },
+          ip_address: ipAddress,
+          user_agent: userAgent,
+        })
+      } catch (logError) {
+        console.warn('No se pudo registrar log de cambio de contraseña:', logError)
+      }
+
       return NextResponse.json({ 
         success: true,
         message: 'Contraseña cambiada correctamente'
@@ -139,6 +161,25 @@ export async function POST(request: NextRequest) {
 
     // Si no hay error, la contraseña se cambió exitosamente
     console.log('✅ Contraseña cambiada exitosamente usando updateUser')
+
+    // Registrar bitácora: cambio de contraseña (best-effort)
+    try {
+      const adminClient = getSupabaseAdmin()
+      if (adminClient) {
+        await adminClient.from('system_logs').insert({
+          usuario_id: userId,
+          accion: 'password_changed',
+          entidad: 'usuarios',
+          entidad_id: userId,
+          detalles: { email: userEmail, source: 'reset_password' },
+          ip_address: ipAddress,
+          user_agent: userAgent,
+        })
+      }
+    } catch (logError) {
+      console.warn('No se pudo registrar log de cambio de contraseña:', logError)
+    }
+
     return NextResponse.json({ 
       success: true,
       message: 'Contraseña cambiada correctamente'

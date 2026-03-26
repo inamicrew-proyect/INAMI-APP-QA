@@ -169,31 +169,6 @@ function LoginPageContent() {
         await new Promise(resolve => setTimeout(resolve, 500))
         const { data: { session } } = await supabase.auth.getSession()
         if (session) {
-          const logPayload = {
-            accion: 'login',
-            entidad: 'usuarios',
-            entidad_id: session.user.id,
-            detalles: { email: session.user.email },
-            usuario_id: session.user.id,
-          }
-          try {
-            let res = await fetch('/api/admin/security/log-action', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(logPayload),
-              credentials: 'include',
-            })
-            if (res.status === 401) {
-              await new Promise((r) => setTimeout(r, 400))
-              await fetch('/api/admin/security/log-action', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(logPayload),
-                credentials: 'include',
-              })
-            }
-          } catch (_) {}
-
           try {
             const profileResponse = await fetch('/api/auth/profile', { cache: 'no-store', credentials: 'include' })
             if (profileResponse.ok) {

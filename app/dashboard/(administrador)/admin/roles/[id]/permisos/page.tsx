@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Save, Shield, Check, X } from 'lucide-react'
+import { supabaseCache } from '@/lib/optimization'
 
 interface Modulo {
   id: string
@@ -52,7 +53,7 @@ export default function PermisosRolPage() {
       setLoading(true)
 
       // Cargar rol
-      const rolesResponse = await fetch('/api/admin/roles')
+      const rolesResponse = await fetch('/api/admin/roles', { cache: 'no-store', credentials: 'include' })
       if (!rolesResponse.ok) {
         throw new Error('Error al cargar roles')
       }
@@ -64,7 +65,7 @@ export default function PermisosRolPage() {
       setRol(foundRol)
 
       // Cargar módulos
-      const modulesResponse = await fetch('/api/admin/modules')
+      const modulesResponse = await fetch('/api/admin/modules', { cache: 'no-store', credentials: 'include' })
       if (!modulesResponse.ok) {
         throw new Error('Error al cargar módulos')
       }
@@ -72,7 +73,7 @@ export default function PermisosRolPage() {
       setModulos(modulesData.modulos || [])
 
       // Cargar permisos existentes
-      const permissionsResponse = await fetch(`/api/admin/roles/${id}/permissions`)
+      const permissionsResponse = await fetch(`/api/admin/roles/${id}/permissions`, { cache: 'no-store', credentials: 'include' })
       if (permissionsResponse.ok) {
         const permissionsData = await permissionsResponse.json()
         const permisosMap: Record<string, Permiso> = {}
@@ -121,8 +122,10 @@ export default function PermisosRolPage() {
       setSuccess(null)
 
       // Guardar permisos para cada módulo
-      const promises = Object.values(permisos).map((permiso) =>
-        fetch(`/api/admin/roles/${id}/permissions`, {
+      const items = Object.values(permisos)
+
+      for (const permiso of items) {
+        const res = await fetch(`/api/admin/roles/${id}/permissions`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -133,13 +136,23 @@ export default function PermisosRolPage() {
             puedeEliminar: permiso.puede_eliminar,
           }),
         })
-      )
 
-      await Promise.all(promises)
+        if (!res.ok) {
+          const body = await res.json().catch(() => null)
+          const details = body?.details || body?.error || `HTTP ${res.status}`
+          throw new Error(details)
+        }
+      }
+
+      // Recargar para que la tabla refleje el estado real desde BD
+      await loadData()
+      // Invalidar cache de permisos en el cliente para que Navbar/acciones usen el estado nuevo
+      supabaseCache.clear()
       setSuccess('Permisos guardados correctamente')
+
       setTimeout(() => {
         router.push(`/dashboard/admin/roles`)
-      }, 1500)
+      }, 1200)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al guardar permisos')
     } finally {

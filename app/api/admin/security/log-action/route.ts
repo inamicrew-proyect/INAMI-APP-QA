@@ -43,12 +43,10 @@ export async function POST(request: NextRequest) {
     const userAgent = request.headers.get('user-agent') || 'unknown'
 
     const accionNorm = String(accion).toLowerCase()
+
+    // No registrar login/logout en la bitácora; solo auditoría de acciones relevantes.
     if (accionNorm === 'login' || accionNorm === 'logout') {
-      await adminClient
-        .from('system_logs')
-        .delete()
-        .eq('usuario_id', userId)
-        .eq('accion', accionNorm)
+      return NextResponse.json({ success: true, ignored: true })
     }
 
     // Insertar log
@@ -56,7 +54,7 @@ export async function POST(request: NextRequest) {
       .from('system_logs')
       .insert({
         usuario_id: userId,
-        accion: accionNorm === 'login' || accionNorm === 'logout' ? accionNorm : accion,
+        accion: accion,
         entidad: entidad || null,
         entidad_id: entidad_id || null,
         detalles: detalles ? JSON.stringify(detalles) : null,

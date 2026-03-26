@@ -6,18 +6,24 @@ import { Search, Plus, Edit, Trash2, Eye, ChevronLeft, ChevronRight, Filter } fr
 import type { Joven, Centro } from '@/lib/supabase'
 import { format } from 'date-fns'
 import { useIsAdmin, useCanCreate } from '@/lib/auth'
+import { usePermissions } from '@/lib/hooks/usePermissions'
+import { Routes } from '@/lib/routes'
 
 const ITEMS_PER_PAGE = 20
 
 export default function JovenesPage() {
   const { isAdmin, loading: authLoading } = useIsAdmin()
   const { loading: canCreateLoading } = useCanCreate()
+  const { canEdit, canDelete, loading: permissionsLoading } = usePermissions()
 
   const [jovenes, setJovenes] = useState<(Joven & { centros?: Centro })[]>([])
   const [loading, setLoading] = useState(true)
 
   // No bloquear la UI si los hooks de auth aún están cargando
   const isAuthReady = !authLoading && !canCreateLoading
+
+  const canEditJoven = !permissionsLoading && canEdit(Routes.JOVENES)
+  const canDeleteJoven = !permissionsLoading && canDelete(Routes.JOVENES)
 
   const [searchTerm, setSearchTerm] = useState('')
   const [filterEstado, setFilterEstado] = useState<string>('todos')
@@ -251,7 +257,7 @@ export default function JovenesPage() {
                 placeholder="Nombre, apellido, identidad..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="input-field w-full pl-[3.25rem] py-2.5 min-h-[44px]"
+                className="input-field w-full !pl-12 py-2.5 min-h-[44px]"
               />
             </div>
           </div>
@@ -265,7 +271,7 @@ export default function JovenesPage() {
                 id="jovenes-estado"
                 value={filterEstado}
                 onChange={(e) => setFilterEstado(e.target.value)}
-                className="input-field w-full pl-[3.25rem] py-2.5 min-h-[44px] appearance-none"
+                className="input-field w-full !pl-12 py-2.5 min-h-[44px] appearance-none"
               >
                 <option value="todos">Todos los estados</option>
                 <option value="activo">Activos</option>
@@ -414,17 +420,18 @@ export default function JovenesPage() {
                             <Eye className="w-4 h-4" />
                           </Link>
 
-                          {/* Mantengo tu lógica de permisos aquí tal cual */}
-                          {(isAdmin || !isAuthReady) && (
+                          {(!permissionsLoading && (isAdmin || canEditJoven || canDeleteJoven)) && (
                             <>
-                              <Link
-                                href={`/dashboard/jovenes/${joven.id}/editar`}
-                                className="p-2 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors"
-                                title="Editar"
-                              >
-                                <Edit className="w-4 h-4" />
-                              </Link>
-                              {isAdmin && (
+                              {(isAdmin || canEditJoven) && (
+                                <Link
+                                  href={`/dashboard/jovenes/${joven.id}/editar`}
+                                  className="p-2 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors"
+                                  title="Editar"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </Link>
+                              )}
+                              {(isAdmin || canDeleteJoven) && (
                                 <button
                                   onClick={() => setConfirmDeleteId(joven.id)}
                                   className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"

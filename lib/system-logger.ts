@@ -53,13 +53,10 @@ export async function logSystemAction(
     }
 
     const accionNorm = String(action.accion).toLowerCase()
-    // Solo conservar el último login y el último logout por usuario (no llenar la bitácora)
+
+    // No registrar login/logout en la bitácora; solo auditoría de acciones relevantes.
     if (accionNorm === 'login' || accionNorm === 'logout') {
-      await adminClient
-        .from('system_logs')
-        .delete()
-        .eq('usuario_id', finalUserId)
-        .eq('accion', accionNorm)
+      return
     }
 
     // Obtener IP y User Agent si están disponibles
@@ -77,7 +74,7 @@ export async function logSystemAction(
       .from('system_logs')
       .insert({
         usuario_id: finalUserId,
-        accion: accionNorm === 'login' || accionNorm === 'logout' ? accionNorm : action.accion,
+        accion: action.accion,
         entidad: action.entidad || null,
         entidad_id: action.entidad_id || null,
         detalles: action.detalles ? JSON.stringify(action.detalles) : null,

@@ -255,6 +255,14 @@ export async function POST(request: NextRequest) {
       console.warn('Error asignando rol al usuario (no crítico):', roleError)
     }
 
+    // Registrar bitácora (best-effort): creación de usuario
+    try {
+      const { SystemLogger } = await import('@/lib/system-logger')
+      await SystemLogger.createUser(adminCheck.profile.id, authUser.user.id, email)
+    } catch (logError) {
+      console.warn('No se pudo registrar log de creación de usuario:', logError)
+    }
+
     return NextResponse.json({
       user: {
         id: authUser.user.id,

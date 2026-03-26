@@ -17,6 +17,8 @@ import { exportAtencionPDF, type PDFData } from '@/lib/pdf-generator'
 import ReadonlyFormView from '@/components/ReadonlyFormView'
 import { pruneFormularioData } from '@/lib/formulario-utils'
 import { useAuth } from '@/lib/auth'
+import { usePermissions } from '@/lib/hooks/usePermissions'
+import { Routes } from '@/lib/routes'
 
 export default function DetallesAtencionPage() {
   const router = useRouter()
@@ -33,11 +35,15 @@ export default function DetallesAtencionPage() {
   const [formularioEspecifico, setFormularioEspecifico] = useState<any>(null)
   const [exportingPDF, setExportingPDF] = useState(false)
   
-  // Verificar si el usuario puede editar esta atención
-  const canEdit = currentUserProfile && (
-    currentUserProfile.role === 'admin' || 
-    (atencion && atencion.profesional_id === currentUserProfile.id)
-  )
+  const { canEdit: canEditByPermission, loading: permissionsLoading } = usePermissions()
+
+  // Verificar si el usuario puede editar esta atención (por pertenencia o por módulo)
+  const canEditByProfile =
+    currentUserProfile &&
+    (currentUserProfile.role === 'admin' || (atencion && atencion.profesional_id === currentUserProfile.id))
+
+  const canEdit =
+    !!canEditByProfile || (!permissionsLoading && canEditByPermission(Routes.ATENCIONES))
 
   useEffect(() => {
     if (atencionId) {

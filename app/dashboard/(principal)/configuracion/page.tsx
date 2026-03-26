@@ -232,6 +232,27 @@ export default function ConfiguracionPage() {
         return
       }
 
+      // Registrar bitácora: cambio de contraseña (best-effort)
+      try {
+        await fetch('/api/admin/security/log-action', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            accion: 'password_changed',
+            entidad: 'usuarios',
+            entidad_id: user.id,
+            detalles: {
+              email: user.email,
+              source: 'configuracion',
+            },
+            usuario_id: user.id,
+          }),
+          credentials: 'include',
+        })
+      } catch (logError) {
+        console.warn('No se pudo registrar log de cambio de contraseña:', logError)
+      }
+
       setPasswordData({
         currentPassword: '',
         newPassword: '',

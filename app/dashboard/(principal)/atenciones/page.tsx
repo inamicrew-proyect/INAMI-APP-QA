@@ -7,6 +7,8 @@ import { createClientComponentClient } from '@/lib/supabase-browser'
 import type { Atencion } from '@/lib/supabase'
 import { format } from 'date-fns'
 import { useIsAdmin, useCanCreate } from '@/lib/auth'
+import { usePermissions } from '@/lib/hooks/usePermissions'
+import { Routes } from '@/lib/routes'
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100] as const
 
@@ -21,11 +23,15 @@ export default function AtencionesPage() {
   const supabase = createClientComponentClient()
   const { isAdmin, loading: authLoading } = useIsAdmin()
   const { loading: canCreateLoading } = useCanCreate()
+  const { canEdit, canDelete, loading: permissionsLoading } = usePermissions()
   
   const [atenciones, setAtenciones] = useState<AtencionExtendida[]>([])
   const [loading, setLoading] = useState(true)
   
   const isAuthReady = !authLoading && !canCreateLoading
+
+  const canEditAtenciones = !permissionsLoading && canEdit(Routes.ATENCIONES)
+  const canDeleteAtenciones = !permissionsLoading && canDelete(Routes.ATENCIONES)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterEstado, setFilterEstado] = useState<string>('todos')
   const [fechaDesde, setFechaDesde] = useState('')
@@ -410,7 +416,7 @@ export default function AtencionesPage() {
                 placeholder="Joven, tipo de atención, profesional..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="input-field w-full pl-12 py-2.5 min-h-[44px]"
+                className="input-field w-full !pl-12 py-2.5 min-h-[44px]"
               />
             </div>
           </div>
@@ -424,7 +430,7 @@ export default function AtencionesPage() {
                 id="filter-estado"
                 value={filterEstado}
                 onChange={(e) => setFilterEstado(e.target.value)}
-                className="input-field w-full pl-12 py-2.5 min-h-[44px] appearance-none"
+                className="input-field w-full !pl-12 py-2.5 min-h-[44px] appearance-none"
               >
                 <option value="todos">Todos los estados</option>
                 <option value="pendiente">Pendientes</option>
@@ -563,16 +569,18 @@ export default function AtencionesPage() {
                           >
                             <Eye className="w-4 h-4" />
                           </Link>
-                          {mounted && (isAdmin || !isAuthReady) && (
+                          {mounted && !permissionsLoading && (
                             <>
-                              <Link
-                                href={`/dashboard/atenciones/${atencion.id}/editar`}
-                                className="p-2 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors"
-                                title="Editar"
-                              >
-                                <Edit className="w-4 h-4" />
-                              </Link>
-                              {isAdmin && (
+                              {(isAdmin || canEditAtenciones) && (
+                                <Link
+                                  href={`/dashboard/atenciones/${atencion.id}/editar`}
+                                  className="p-2 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors"
+                                  title="Editar"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </Link>
+                              )}
+                              {(isAdmin || canDeleteAtenciones) && (
                                 <button
                                   onClick={() => requestDelete(atencion.id)}
                                   className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"

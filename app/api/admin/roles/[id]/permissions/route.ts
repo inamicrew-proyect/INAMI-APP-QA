@@ -145,6 +145,35 @@ export async function POST(
       return NextResponse.json({ error: 'Error al actualizar permisos del rol' }, { status: 500 })
     }
 
+    // Registrar bitácora: cambio de permisos del rol (para que aparezca en Seguridad)
+    try {
+      const ipAddress = request.headers.get('x-forwarded-for') ||
+        request.headers.get('x-real-ip') ||
+        'unknown'
+      const userAgent = request.headers.get('user-agent') || 'unknown'
+
+      await adminClient.from('system_logs').insert({
+        usuario_id: adminCheck.userId,
+        accion: 'update_permissions',
+        entidad: 'role_module_permissions',
+        entidad_id: roleId,
+        detalles: {
+          module_id: moduloId,
+          permissions: {
+            puede_ver: puedeVer || false,
+            puede_crear: puedeCrear || false,
+            puede_editar: puedeEditar || false,
+            puede_eliminar: puedeEliminar || false,
+          },
+          updated_by: adminCheck.userId,
+        },
+        ip_address: ipAddress,
+        user_agent: userAgent,
+      })
+    } catch (logError) {
+      console.warn('No se pudo registrar log de cambio de permisos del rol:', logError)
+    }
+
     return NextResponse.json({ permiso })
   } catch (error) {
     console.error('Unexpected error:', error)
@@ -187,6 +216,35 @@ export async function DELETE(
     if (error) {
       console.error('Error deleting role permissions:', error)
       return NextResponse.json({ error: 'Error al eliminar permisos del rol' }, { status: 500 })
+    }
+
+    // Registrar bitácora: eliminación de permisos del rol (en ese módulo)
+    try {
+      const ipAddress = request.headers.get('x-forwarded-for') ||
+        request.headers.get('x-real-ip') ||
+        'unknown'
+      const userAgent = request.headers.get('user-agent') || 'unknown'
+
+      await adminClient.from('system_logs').insert({
+        usuario_id: adminCheck.userId,
+        accion: 'update_permissions',
+        entidad: 'role_module_permissions',
+        entidad_id: roleId,
+        detalles: {
+          module_id: moduloId,
+          permissions: {
+            puede_ver: false,
+            puede_crear: false,
+            puede_editar: false,
+            puede_eliminar: false,
+          },
+          updated_by: adminCheck.userId,
+        },
+        ip_address: ipAddress,
+        user_agent: userAgent,
+      })
+    } catch (logError) {
+      console.warn('No se pudo registrar log de eliminación de permisos del rol:', logError)
     }
 
     return NextResponse.json({ success: true })

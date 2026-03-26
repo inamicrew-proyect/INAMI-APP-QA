@@ -9,21 +9,24 @@ export function useNotifications() {
   const [notificaciones, setNotificaciones] = useState<Notificacion[]>([])
   const [notificacionesNoLeidas, setNotificacionesNoLeidas] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false)
 
   useEffect(() => {
     if (user?.id) {
-      loadNotificaciones()
+      loadNotificaciones({ toggleLoading: true })
       // Recargar notificaciones cada 30 segundos
       const interval = setInterval(loadNotificaciones, 30000)
       return () => clearInterval(interval)
     }
   }, [user?.id])
 
-  const loadNotificaciones = async () => {
+  const loadNotificaciones = async (opts?: { toggleLoading?: boolean }) => {
     if (!user?.id) return
 
     try {
-      setLoading(true)
+      if (opts?.toggleLoading) {
+        setLoading(true)
+      }
       const [todas, noLeidas] = await Promise.all([
         NotificationService.getNotificaciones(user.id, 10),
         NotificationService.getNotificacionesNoLeidas(user.id)
@@ -34,7 +37,13 @@ export function useNotifications() {
     } catch (error) {
       console.error('Error loading notifications:', error)
     } finally {
-      setLoading(false)
+      setHasLoadedOnce(true)
+      if (opts?.toggleLoading) {
+        setLoading(false)
+      } else {
+        // Evitar que la UI vuelva a mostrar "Cargando..." en cada polling.
+        setLoading(false)
+      }
     }
   }
 
@@ -102,7 +111,7 @@ export function useNotifications() {
       )
       
       // Recargar notificaciones para mostrar la nueva
-      loadNotificaciones()
+      loadNotificaciones({ toggleLoading: false })
       return id
     } catch (error) {
       console.error('Error creating notification:', error)

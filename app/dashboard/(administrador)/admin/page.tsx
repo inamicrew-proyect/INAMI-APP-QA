@@ -102,21 +102,6 @@ export default function AdminPanelPage() {
           </div>
         </Link>
 
-        <div className="card opacity-50">
-          <div className="flex items-start gap-4">
-            <div className="p-3 bg-gray-100 dark:bg-gray-700 rounded-lg">
-              <Settings className="w-6 h-6 text-gray-400" />
-            </div>
-            <div className="flex-1">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
-                Configuración del Sistema
-              </h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Próximamente: Configuración avanzada del sistema
-              </p>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   )

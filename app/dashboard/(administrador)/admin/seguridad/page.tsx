@@ -81,8 +81,6 @@ export default function SeguridadPage() {
   useEffect(() => {
     if (hasAccess) {
       loadData()
-      const interval = setInterval(loadData, 180000) // Cada 3 minutos
-      return () => clearInterval(interval)
     }
   }, [hasAccess])
 
@@ -155,7 +153,13 @@ export default function SeguridadPage() {
       const response = await fetch(`/api/admin/security/logs?${params.toString()}`)
       if (response.ok) {
         const data = await response.json()
-        setLogs(data.logs || [])
+        const fetchedLogs: SystemLog[] = data.logs || []
+        // Ocultar login/logout en la bitácora (no se registran para nuevas acciones)
+        const visibleLogs = fetchedLogs.filter(l => {
+          const a = String(l.accion || '').toLowerCase()
+          return a !== 'login' && a !== 'logout'
+        })
+        setLogs(visibleLogs)
         setTotalLogs(data.total || 0)
       }
     } catch (error) {

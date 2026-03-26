@@ -70,6 +70,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Tu cuenta no tiene correo asociado.' }, { status: 400 })
     }
 
+    const ipAddress =
+      request.headers.get('x-forwarded-for') ||
+      request.headers.get('x-real-ip') ||
+      'unknown'
+    const userAgent = request.headers.get('user-agent') || 'unknown'
+
     const { error: verifyCurrentError } = await supabase.auth.signInWithPassword({
       email,
       password: currentPassword,
@@ -110,6 +116,24 @@ export async function POST(request: NextRequest) {
         msg = 'La contraseña es demasiado débil. Usa una contraseña más segura.'
       }
       return NextResponse.json({ error: msg }, { status: 400 })
+    }
+
+    // Registrar bitácora: cambio de contraseña (best-effort)
+    try {
+      const adminClient = getSupabaseAdmin()
+      if (adminClient) {
+        await adminClient.from('system_logs').insert({
+          usuario_id: userId,
+          accion: 'password_changed',
+          entidad: 'usuarios',
+          entidad_id: userId,
+          detalles: { email, source: 'first_password_change' },
+          ip_address: ipAddress,
+          user_agent: userAgent,
+        })
+      }
+    } catch (logError) {
+      console.warn('No se pudo registrar log de cambio de contraseña:', logError)
     }
 
     return NextResponse.json({ success: true, message: 'Contraseña actualizada. Vuelve a iniciar sesión.' })
