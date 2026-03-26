@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, memo } from 'react'
-import { useRouter, usePathname } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { LogOut, Menu, X, User } from 'lucide-react'
 
@@ -19,7 +19,6 @@ import { Routes } from '@/lib/routes'
 
 function Navbar() {
   // TODOS LOS HOOKS DEBEN ESTAR AQUÍ AL INICIO, ANTES DE CUALQUIER LÓGICA
-  const router = useRouter()
   const pathname = usePathname()
   const supabase = getSupabaseClient()
   const [isOpen, setIsOpen] = useState(false)
@@ -204,27 +203,17 @@ function Navbar() {
           <Link href={Routes.ATENCIONES} className={getNavButtonClass(Routes.ATENCIONES)}>
             Atenciones
           </Link>
-          {/* Panel Admin - Mostrar si es admin (inmediato, sin esperar permisos) */}
-          {/* FORZAR VISIBILIDAD: Si profile existe y role es 'admin', mostrar SIEMPRE */}
+          <Link href={Routes.SEGURIDAD} className={getNavButtonClass(Routes.SEGURIDAD)}>
+            Seguridad
+          </Link>
+          {/* Panel administración: admin por perfil o permiso de módulo */}
           {(() => {
-            // Usar effectiveRole (profile.role o directRole) para verificar admin
             const effectiveRole = profile?.role || directRole
-            const showAdmin = effectiveRole === 'admin' || (!permissionsLoading && canView(Routes.ADMIN))
-            return showAdmin
+            return effectiveRole === 'admin' || (!permissionsLoading && canView(Routes.ADMIN))
           })() && (
-            <button
-              onClick={() => {
-                console.log('Panel Admin clicked:', { 
-                  profileRole: profile?.role, 
-                  isAdmin: profile?.role === 'admin',
-                  profileExists: !!profile
-                })
-                router.push(Routes.ADMIN)
-              }}
-              className={getNavButtonClass(Routes.ADMIN)}
-            >
-              Seguridad
-            </button>
+            <Link href={Routes.ADMIN} className={getNavButtonClass(Routes.ADMIN)}>
+              Administración
+            </Link>
           )}
           <Link href={Routes.NOTIFICACIONES} className={getNavButtonClass(Routes.NOTIFICACIONES)}>
             Notificaciones
@@ -300,22 +289,24 @@ function Navbar() {
             Atenciones
           </Link>
           {/* Panel Admin - Mostrar si es admin (inmediato, sin esperar permisos) */}
+          <Link
+            href={Routes.SEGURIDAD}
+            className={`block px-4 py-2.5 rounded-lg font-medium text-base transition-all border-2 ${getMobileNavButtonClass(Routes.SEGURIDAD)}`}
+            onClick={() => setIsOpen(false)}
+          >
+            Seguridad
+          </Link>
           {(() => {
             const effectiveRole = profile?.role || directRole
             return effectiveRole === 'admin' || (!permissionsLoading && canView(Routes.ADMIN))
           })() && (
-            <button
-              onClick={() => {
-                setIsOpen(false)
-                const effectiveRole = profile?.role || directRole
-                if (effectiveRole === 'admin' || canView(Routes.ADMIN)) {
-                  router.push(Routes.ADMIN)
-                }
-              }}
-              className={`block w-full text-left px-4 py-2.5 rounded-lg font-medium text-base transition-all border-2 ${getMobileNavButtonClass(Routes.ADMIN)}`}
+            <Link
+              href={Routes.ADMIN}
+              className={`block px-4 py-2.5 rounded-lg font-medium text-base transition-all border-2 ${getMobileNavButtonClass(Routes.ADMIN)}`}
+              onClick={() => setIsOpen(false)}
             >
-              Seguridad
-            </button>
+              Administración
+            </Link>
           )}
 <Link 
 			  href={Routes.NOTIFICACIONES} 

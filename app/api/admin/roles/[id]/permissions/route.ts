@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseRouteHandlerClient } from '@/lib/supabase-route-handler'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
+import { supabaseCache } from '@/lib/optimization'
 
 export const dynamic = 'force-dynamic'
 export const fetchCache = 'force-no-store'
@@ -145,6 +146,9 @@ export async function POST(
       return NextResponse.json({ error: 'Error al actualizar permisos del rol' }, { status: 500 })
     }
 
+    // Los permisos efectivos de usuarios se cachean en /api/admin/user-permissions
+    supabaseCache.clearKeysWithPrefix('permissions_')
+
     // Registrar bitácora: cambio de permisos del rol (para que aparezca en Seguridad)
     try {
       const ipAddress = request.headers.get('x-forwarded-for') ||
@@ -217,6 +221,8 @@ export async function DELETE(
       console.error('Error deleting role permissions:', error)
       return NextResponse.json({ error: 'Error al eliminar permisos del rol' }, { status: 500 })
     }
+
+    supabaseCache.clearKeysWithPrefix('permissions_')
 
     // Registrar bitácora: eliminación de permisos del rol (en ese módulo)
     try {

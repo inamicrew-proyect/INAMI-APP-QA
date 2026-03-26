@@ -127,6 +127,7 @@ export default function PermisosRolPage() {
       for (const permiso of items) {
         const res = await fetch(`/api/admin/roles/${id}/permissions`, {
           method: 'POST',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             moduloId: permiso.modulo_id,

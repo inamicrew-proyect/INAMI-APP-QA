@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Save, Shield, Check, X } from 'lucide-react'
+import { supabaseCache } from '@/lib/optimization'
 
 interface Rol {
   id: string
@@ -167,12 +168,12 @@ export default function EditarRolPage() {
         throw new Error(roleResult.error || 'Error al actualizar el rol')
       }
 
-      // Guardar permisos para cada módulo (incluyendo los que no tienen permisos previos)
-      // Asegurarse de guardar permisos para TODOS los módulos, no solo los que ya existían
-      const permissionPromises = modulos.map((modulo) => {
+      // Guardar permisos para cada módulo; fallar si alguna petición no es OK (allSettled ocultaba errores HTTP)
+      for (const modulo of modulos) {
         const permiso = permisos[modulo.id]
-        return fetch(`/api/admin/roles/${id}/permissions`, {
+        const res = await fetch(`/api/admin/roles/${id}/permissions`, {
           method: 'POST',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             moduloId: modulo.id,
@@ -182,23 +183,14 @@ export default function EditarRolPage() {
             puedeEliminar: permiso?.puede_eliminar || false,
           }),
         })
-      })
-
-      const permissionResults = await Promise.allSettled(permissionPromises)
-      
-      // Verificar si hubo errores
-      const errors = permissionResults
-        .map((result, index) => {
-          if (result.status === 'rejected') {
-            return `Error guardando permisos para módulo ${modulos[index]?.nombre}`
-          }
-          return null
-        })
-        .filter(Boolean)
-
-      if (errors.length > 0) {
-        console.warn('Algunos permisos no se guardaron correctamente:', errors)
+        if (!res.ok) {
+          const body = await res.json().catch(() => null)
+          const msg = body?.error || body?.details || `HTTP ${res.status}`
+          throw new Error(`${modulo.nombre}: ${msg}`)
+        }
       }
+
+      supabaseCache.clear()
       setSuccess('Rol y permisos guardados correctamente')
       setTimeout(() => {
         router.push('/dashboard/admin/roles')

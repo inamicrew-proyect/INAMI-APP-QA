@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { getPublicSupabaseAnonKey, getPublicSupabaseUrl } from '@/lib/env/public-supabase'
 import { userMustChangePassword } from '@/lib/auth-must-change-password'
+import { getRoleIdsForUser } from '@/lib/user-role-resolution'
 
 export async function proxy(req: NextRequest) {
   let res = NextResponse.next({ request: req })
@@ -145,13 +146,9 @@ export async function proxy(req: NextRequest) {
         if (profile?.role === 'admin') {
           // Continuar
         } else {
-          const { data: userRoles } = await supabase
-            .from('user_roles')
-            .select('role_id')
-            .eq('user_id', user.id)
+          const roleIds = await getRoleIdsForUser(supabase, user.id)
 
-          if (userRoles && userRoles.length > 0) {
-            const roleIds = userRoles.map((ur) => ur.role_id)
+          if (roleIds.length > 0) {
             const { data: adminModule } = await supabase
               .from('modulos')
               .select('id')
@@ -174,7 +171,7 @@ export async function proxy(req: NextRequest) {
               return passCookies(NextResponse.redirect(new URL('/dashboard', req.url)))
             }
           } else {
-            console.warn('Middleware: Usuario no tiene roles asignados, redirigiendo')
+            console.warn('Middleware: Usuario sin roles resueltos (user_roles / profiles.role), redirigiendo')
             return passCookies(NextResponse.redirect(new URL('/dashboard', req.url)))
           }
         }

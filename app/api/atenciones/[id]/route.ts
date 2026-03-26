@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { createSupabaseRouteHandlerClient } from '@/lib/supabase-route-handler'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { Routes } from '@/lib/routes'
+import { getRoleIdsForUser } from '@/lib/user-role-resolution'
 
 export const dynamic = 'force-dynamic'
 export const fetchCache = 'force-no-store'
@@ -20,14 +21,7 @@ async function userCanDeleteAtencionesByPermission(adminClient: ReturnType<typeo
   const moduleId = moduleRow?.id
   if (!moduleId) return false
 
-  const { data: userRoles, error: rolesError } = await adminClient
-    .from('user_roles')
-    .select('role_id')
-    .eq('user_id', userId)
-
-  if (rolesError || !userRoles || userRoles.length === 0) return false
-
-  const roleIds = userRoles.map((ur: any) => ur.role_id)
+  const roleIds = await getRoleIdsForUser(adminClient, userId)
   if (roleIds.length === 0) return false
 
   const { data: permisoRow } = await adminClient

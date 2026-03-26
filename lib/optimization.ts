@@ -24,6 +24,16 @@ export class SupabaseCache {
     this.cache.clear()
     this.ttl.clear()
   }
+
+  /** Invalida entradas cuyo key empieza por prefix (p. ej. permisos de API en servidor). */
+  clearKeysWithPrefix(prefix: string) {
+    for (const key of this.cache.keys()) {
+      if (key.startsWith(prefix)) {
+        this.cache.delete(key)
+        this.ttl.delete(key)
+      }
+    }
+  }
 }
 
 export const supabaseCache = new SupabaseCache()

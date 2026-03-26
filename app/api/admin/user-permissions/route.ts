@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseRouteHandlerClient } from '@/lib/supabase-route-handler'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { supabaseCache } from '@/lib/optimization'
+import { getRoleIdsForUser } from '@/lib/user-role-resolution'
 
 // Cache de permisos en memoria (5 minutos)
 const PERMISSIONS_CACHE_TTL = 5 * 60 * 1000
@@ -48,23 +49,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Error de configuración del servidor' }, { status: 500 })
     }
 
-    // Obtener los roles asignados al usuario
-    const { data: userRoles, error: userRolesError } = await adminClient
-      .from('user_roles')
-      .select('role_id')
-      .eq('user_id', userId)
+    const roleIds = await getRoleIdsForUser(adminClient, userId)
 
-    if (userRolesError) {
-      console.error('Error fetching user roles:', userRolesError)
-      return NextResponse.json({ error: 'Error al obtener roles del usuario' }, { status: 500 })
+    if (roleIds.length === 0) {
+      const empty = { permisos: [], roles: [] as string[] }
+      return NextResponse.json(empty)
     }
-
-    // Si no tiene roles asignados, retornar permisos vacíos
-    if (!userRoles || userRoles.length === 0) {
-      return NextResponse.json({ permisos: [] })
-    }
-
-    const roleIds = userRoles.map(ur => ur.role_id)
 
     // Obtener permisos de módulos para todos los roles del usuario
     const { data: permisos, error: permisosError } = await adminClient
