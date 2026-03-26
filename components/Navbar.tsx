@@ -177,9 +177,11 @@ function Navbar() {
           <Link href={Routes.ATENCIONES} className={getNavButtonClass(Routes.ATENCIONES)}>
             Atenciones
           </Link>
-          <Link href={Routes.SEGURIDAD} className={getNavButtonClass(Routes.SEGURIDAD)}>
-            Seguridad
-          </Link>
+          {profile?.role === 'admin' && (
+            <Link href={Routes.SEGURIDAD} className={getNavButtonClass(Routes.SEGURIDAD)}>
+              Seguridad
+            </Link>
+          )}
           <Link href={Routes.NOTIFICACIONES} className={getNavButtonClass(Routes.NOTIFICACIONES)}>
             Notificaciones
           </Link>
@@ -253,13 +255,15 @@ function Navbar() {
           >
             Atenciones
           </Link>
-          <Link
-            href={Routes.SEGURIDAD}
-            className={`block px-4 py-2.5 rounded-lg font-medium text-base transition-all border-2 ${getMobileNavButtonClass(Routes.SEGURIDAD)}`}
-            onClick={() => setIsOpen(false)}
-          >
-            Seguridad
-          </Link>
+          {profile?.role === 'admin' && (
+            <Link
+              href={Routes.SEGURIDAD}
+              className={`block px-4 py-2.5 rounded-lg font-medium text-base transition-all border-2 ${getMobileNavButtonClass(Routes.SEGURIDAD)}`}
+              onClick={() => setIsOpen(false)}
+            >
+              Seguridad
+            </Link>
+          )}
 <Link 
 			  href={Routes.NOTIFICACIONES} 
 			  className={`block px-4 py-2.5 rounded-lg font-medium text-base transition-all border-2 ${getMobileNavButtonClass(Routes.NOTIFICACIONES)}`}

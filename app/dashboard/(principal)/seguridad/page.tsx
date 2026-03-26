@@ -1,20 +1,18 @@
-// app/dashboard/seguridad/page.tsx — Acceso a administración del sistema (2FA vive en Configuración)
+// Panel Seguridad: solo administradores (perfil role === 'admin'). 2FA y cuenta → Configuración.
 'use client'
 
 import Link from 'next/link'
 import { ArrowLeft, LayoutDashboard, Users, ChevronRight } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
-import { usePermissions } from '@/lib/hooks/usePermissions'
 import { Routes } from '@/lib/routes'
 
 export default function SeguridadPage() {
-  const { profile } = useAuth()
-  const { canView, loading: permissionsLoading } = usePermissions()
+  const { profile, loading } = useAuth()
 
-  const isAdminByProfile = profile?.role === 'admin'
-  const hasAdminModule = !permissionsLoading && canView(Routes.ADMIN)
-  const showAdminPanel = isAdminByProfile || hasAdminModule
-  const checkingAccess = permissionsLoading && !isAdminByProfile
+  const isAdmin = profile?.role === 'admin'
+  const showAdminPanel = !loading && isAdmin
+  const showNoAccess = !loading && profile != null && !isAdmin
+  const showFallbackSinPerfil = !loading && profile == null
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
@@ -31,7 +29,7 @@ export default function SeguridadPage() {
         Administración del sistema: usuarios, roles, permisos y bitácora.
       </p>
 
-      {checkingAccess && (
+      {loading && (
         <div className="card mb-6 animate-pulse">
           <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-2/3 mb-3" />
           <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full mb-2" />
@@ -39,7 +37,7 @@ export default function SeguridadPage() {
         </div>
       )}
 
-      {showAdminPanel && !checkingAccess && (
+      {showAdminPanel && (
         <div className="card border-2 border-sky-200 dark:border-sky-800 bg-sky-50/80 dark:bg-sky-950/40">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-1 flex items-center gap-2">
             <LayoutDashboard className="w-5 h-5 text-sky-600 dark:text-sky-400" />
@@ -78,11 +76,23 @@ export default function SeguridadPage() {
         </div>
       )}
 
-      {!checkingAccess && !showAdminPanel && (
+      {showNoAccess && (
         <div className="card border border-amber-200 dark:border-amber-900/50 bg-amber-50/60 dark:bg-amber-950/20">
           <p className="text-gray-800 dark:text-gray-200 text-sm mb-3">
-            No tienes permisos de administración. Para 2FA, contraseña y datos de tu cuenta, usa{' '}
+            Esta sección es solo para <strong>administradores</strong>. Para 2FA, contraseña y datos de tu cuenta, usa{' '}
             <strong>Configuración</strong>.
+          </p>
+          <Link href={Routes.CONFIGURACION} className="btn-secondary inline-flex items-center gap-2">
+            Ir a Configuración
+            <ChevronRight className="w-4 h-4" />
+          </Link>
+        </div>
+      )}
+
+      {showFallbackSinPerfil && (
+        <div className="card border border-amber-200 dark:border-amber-900/50 bg-amber-50/60 dark:bg-amber-950/20">
+          <p className="text-gray-800 dark:text-gray-200 text-sm mb-3">
+            No se pudo cargar tu perfil. Si necesitas ajustes de cuenta, ve a <strong>Configuración</strong>.
           </p>
           <Link href={Routes.CONFIGURACION} className="btn-secondary inline-flex items-center gap-2">
             Ir a Configuración
