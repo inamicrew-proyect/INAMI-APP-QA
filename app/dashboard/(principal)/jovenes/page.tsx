@@ -5,22 +5,18 @@ import Link from 'next/link'
 import { Search, Plus, Edit, Trash2, Eye, ChevronLeft, ChevronRight, Filter } from 'lucide-react'
 import type { Joven, Centro } from '@/lib/supabase'
 import { format } from 'date-fns'
-import { useIsAdmin, useCanCreate } from '@/lib/auth'
+import { useIsAdmin } from '@/lib/auth'
 import { usePermissions } from '@/lib/hooks/usePermissions'
 import { Routes } from '@/lib/routes'
 
 const ITEMS_PER_PAGE = 20
 
 export default function JovenesPage() {
-  const { isAdmin, loading: authLoading } = useIsAdmin()
-  const { loading: canCreateLoading } = useCanCreate()
+  const { isAdmin } = useIsAdmin()
   const { canEdit, canDelete, loading: permissionsLoading } = usePermissions()
 
   const [jovenes, setJovenes] = useState<(Joven & { centros?: Centro })[]>([])
   const [loading, setLoading] = useState(true)
-
-  // No bloquear la UI si los hooks de auth aún están cargando
-  const isAuthReady = !authLoading && !canCreateLoading
 
   const canEditJoven = !permissionsLoading && canEdit(Routes.JOVENES)
   const canDeleteJoven = !permissionsLoading && canDelete(Routes.JOVENES)

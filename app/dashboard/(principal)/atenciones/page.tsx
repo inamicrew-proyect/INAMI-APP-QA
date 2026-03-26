@@ -6,7 +6,7 @@ import { Search, Plus, Edit, Trash2, Eye, Filter, FileText, CheckCircle2, AlertT
 import { createClientComponentClient } from '@/lib/supabase-browser'
 import type { Atencion } from '@/lib/supabase'
 import { format } from 'date-fns'
-import { useIsAdmin, useCanCreate } from '@/lib/auth'
+import { useIsAdmin } from '@/lib/auth'
 import { usePermissions } from '@/lib/hooks/usePermissions'
 import { Routes } from '@/lib/routes'
 
@@ -21,15 +21,12 @@ type AtencionExtendida = Atencion & {
 
 export default function AtencionesPage() {
   const supabase = createClientComponentClient()
-  const { isAdmin, loading: authLoading } = useIsAdmin()
-  const { loading: canCreateLoading } = useCanCreate()
+  const { isAdmin } = useIsAdmin()
   const { canEdit, canDelete, loading: permissionsLoading } = usePermissions()
   
   const [atenciones, setAtenciones] = useState<AtencionExtendida[]>([])
   const [loading, setLoading] = useState(true)
   
-  const isAuthReady = !authLoading && !canCreateLoading
-
   const canEditAtenciones = !permissionsLoading && canEdit(Routes.ATENCIONES)
   const canDeleteAtenciones = !permissionsLoading && canDelete(Routes.ATENCIONES)
   const [searchTerm, setSearchTerm] = useState('')

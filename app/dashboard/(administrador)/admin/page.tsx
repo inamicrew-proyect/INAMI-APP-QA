@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Shield, Users, Settings, Lock, UserCog } from 'lucide-react'
+import { Shield, Users, Lock, UserCog } from 'lucide-react'
 import { useAdminAccess } from '@/lib/hooks/useAdminAccess'
 
 export default function AdminPanelPage() {

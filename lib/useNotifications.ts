@@ -9,7 +9,6 @@ export function useNotifications() {
   const [notificaciones, setNotificaciones] = useState<Notificacion[]>([])
   const [notificacionesNoLeidas, setNotificacionesNoLeidas] = useState(0)
   const [loading, setLoading] = useState(true)
-  const [hasLoadedOnce, setHasLoadedOnce] = useState(false)
 
   useEffect(() => {
     if (user?.id) {
@@ -37,7 +36,6 @@ export function useNotifications() {
     } catch (error) {
       console.error('Error loading notifications:', error)
     } finally {
-      setHasLoadedOnce(true)
       if (opts?.toggleLoading) {
         setLoading(false)
       } else {
