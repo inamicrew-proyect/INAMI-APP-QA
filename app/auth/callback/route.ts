@@ -11,9 +11,20 @@ export async function GET(request: NextRequest) {
   const type = requestUrl.searchParams.get('type')
   const next = requestUrl.searchParams.get('next')
   
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://qa.inamiunah.online'
-  // Usar el origen de la petición para que la redirección mantenga las cookies (mismo dominio)
-  const requestOrigin = requestUrl.origin || siteUrl
+  const QA_ORIGIN = 'https://qa.inamiunah.online'
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || QA_ORIGIN
+  const forwardedProto = request.headers.get('x-forwarded-proto')
+  const forwardedHost = request.headers.get('x-forwarded-host')
+  const forwardedOrigin =
+    forwardedHost && forwardedProto ? `${forwardedProto}://${forwardedHost}` : null
+  const candidateOrigin = forwardedOrigin || requestUrl.origin || siteUrl
+
+  // En algunos despliegues request.url llega con origen interno (0.0.0.0/localhost).
+  // Para QA forzamos el dominio público y evitamos redirigir al host interno.
+  const shouldForceSiteUrl =
+    /:\/\/(0\.0\.0\.0|127\.0\.0\.1|localhost)(:\d+)?/i.test(candidateOrigin) ||
+    /:\/\/(0\.0\.0\.0|127\.0\.0\.1|localhost)(:\d+)?/i.test(requestUrl.origin)
+  const requestOrigin = shouldForceSiteUrl ? QA_ORIGIN : candidateOrigin
 
   // Si no hay código ni token_hash, Supabase puede haber enviado el token en el fragmento (#access_token=...).
   // El servidor no recibe el hash, así que devolvemos una página que lo lee y llama a /api/auth/set-session (cookies).
@@ -28,7 +39,10 @@ export async function GET(request: NextRequest) {
   <p>Completando recuperación de contraseña...</p>
   <script>
     (function() {
-      var origin = window.location.origin;
+      var fallbackOrigin = ${JSON.stringify(requestOrigin)};
+      var rawOrigin = window.location.origin || '';
+      var isInternalOrigin = /:\/\/(0\\.0\\.0\\.0|127\\.0\\.0\\.1|localhost)(:\\d+)?/i.test(rawOrigin);
+      var origin = isInternalOrigin ? fallbackOrigin : rawOrigin;
       var hash = window.location.hash || '';
       var params = new URLSearchParams(hash.replace(/^#/, ''));
       var access_token = params.get('access_token');
