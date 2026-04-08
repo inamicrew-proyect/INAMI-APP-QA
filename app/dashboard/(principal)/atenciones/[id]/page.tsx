@@ -407,42 +407,6 @@ export default function DetallesAtencionPage() {
         {/* Formulario Específico */}
         {renderFormularioEspecifico()}
 
-        {/* Historial de Atenciones del Joven */}
-        <div className="card mt-8">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-              Historial de Atenciones - {joven.nombres} {joven.apellidos}
-            </h3>
-            <button
-              onClick={() => router.push(`/dashboard/atenciones/nueva?joven_id=${joven.id}`)}
-              className="btn-primary flex items-center gap-2"
-            >
-              <FileText className="w-4 h-4" />
-              Nueva Atención
-            </button>
-          </div>
-
-          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
-            <div className="flex items-center gap-2">
-              <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-              <p className="text-sm text-blue-800 dark:text-blue-300">
-                <strong>Atención actual:</strong> Esta es la atención que estás viendo actualmente.
-              </p>
-            </div>
-          </div>
-
-          <div className="text-center py-8">
-            <FileText className="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Ver Historial Completo</h3>
-            <p className="text-gray-500 dark:text-gray-400 mb-4">Para ver el historial completo de atenciones de este joven, ve a su expediente.</p>
-            <button
-              onClick={() => router.push(`/dashboard/jovenes/${joven.id}/expediente`)}
-              className="btn-primary"
-            >
-              Ver Expediente Completo
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   )

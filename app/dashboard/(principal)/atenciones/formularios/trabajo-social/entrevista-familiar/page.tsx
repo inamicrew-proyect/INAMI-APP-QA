@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClientComponentClient } from '@/lib/supabase-browser'
 import { Save, ArrowLeft, User, Users } from 'lucide-react'
 import Link from 'next/link'
@@ -94,9 +94,13 @@ interface FormData {
 
 export default function EntrevistaFamiliarPMSPLPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const supabase = createClientComponentClient()
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [loadingExisting, setLoadingExisting] = useState(false)
+  const atencionId = searchParams.get('atencion_id')
+  const isEditMode = !!atencionId
 
   const [formData, setFormData] = useState<FormData>({
     joven_id: '',
@@ -161,6 +165,46 @@ export default function EntrevistaFamiliarPMSPLPage() {
     observaciones_generales: '',
     trabajador_social: ''
   })
+
+  useEffect(() => {
+    const loadExistingData = async () => {
+      if (!isEditMode || !atencionId) return
+
+      try {
+        setLoadingExisting(true)
+        const { data: formularioData, error: formularioError } = await supabase
+          .from('formularios_atencion')
+          .select('datos_json, joven_id')
+          .eq('atencion_id', atencionId)
+          .eq('tipo_formulario', 'entrevista_familiar_pmspl')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+
+        if (formularioError) {
+          throw new Error(formularioError.message)
+        }
+
+        if (!formularioData?.datos_json) {
+          throw new Error('No se encontró la ficha de entrevista familiar para esta atención.')
+        }
+
+        const datos = formularioData.datos_json as Partial<FormData>
+        setFormData((prev) => ({
+          ...prev,
+          ...datos,
+          joven_id: (datos.joven_id || formularioData.joven_id || prev.joven_id) as string
+        }))
+      } catch (error: any) {
+        alert(`Error al cargar la ficha para edición: ${error?.message || 'Error desconocido'}`)
+        router.push(`/dashboard/atenciones/${atencionId}`)
+      } finally {
+        setLoadingExisting(false)
+      }
+    }
+
+    loadExistingData()
+  }, [isEditMode, atencionId, supabase, router])
 
   const handleJovenSelect = (joven: Joven) => {
     setFormData(prev => ({
@@ -249,58 +293,95 @@ export default function EntrevistaFamiliarPMSPLPage() {
         throw new Error('Tu usuario no tiene un perfil configurado.')
       }
 
-      // Crear una nueva atención
-      const fechaAtencion = new Date().toISOString()
-      
-      const { data: nuevaAtencion, error: atencionError } = await supabase
-        .from('atenciones')
-        .insert({
-          joven_id: formData.joven_id,
-          tipo_atencion_id: tipoAtencionId,
-          profesional_id: user.id,
-          fecha_atencion: fechaAtencion,
-          motivo: 'Entrevista Familiar PMSPL',
-          estado: 'completada'
-        })
-        .select()
-        .single()
-
-      if (atencionError) {
-        throw new Error(`Error al crear la atención: ${atencionError.message}`)
-      }
-
-      const atencionId = nuevaAtencion.id
-
       // Preparar datos para guardar
       const datosJson = {
         ...formData
       }
 
-      // Guardar en formularios_atencion
-      const { error: insertError } = await supabase
-        .from('formularios_atencion')
-        .insert({
-          tipo_formulario: 'entrevista_familiar_pmspl',
-          joven_id: formData.joven_id,
-          atencion_id: atencionId,
-          datos_json: datosJson,
-          created_at: new Date().toISOString()
-        })
-        .select()
-        .single()
+      if (isEditMode && atencionId) {
+        const { error: updateAtencionError } = await supabase
+          .from('atenciones')
+          .update({
+            joven_id: formData.joven_id,
+            tipo_atencion_id: tipoAtencionId
+          })
+          .eq('id', atencionId)
 
-      if (insertError) {
-        throw new Error(`Error al guardar el formulario: ${insertError.message}`)
+        if (updateAtencionError) {
+          throw new Error(`Error al actualizar la atención: ${updateAtencionError.message}`)
+        }
+
+        const { error: updateFormularioError } = await supabase
+          .from('formularios_atencion')
+          .update({
+            joven_id: formData.joven_id,
+            datos_json: datosJson
+          })
+          .eq('atencion_id', atencionId)
+          .eq('tipo_formulario', 'entrevista_familiar_pmspl')
+
+        if (updateFormularioError) {
+          throw new Error(`Error al actualizar la ficha: ${updateFormularioError.message}`)
+        }
+
+        alert('Entrevista Familiar PMSPL actualizada exitosamente')
+        router.push(`/dashboard/atenciones/${atencionId}`)
+      } else {
+        // Crear una nueva atención
+        const fechaAtencion = new Date().toISOString()
+        const { data: nuevaAtencion, error: atencionError } = await supabase
+          .from('atenciones')
+          .insert({
+            joven_id: formData.joven_id,
+            tipo_atencion_id: tipoAtencionId,
+            profesional_id: user.id,
+            fecha_atencion: fechaAtencion,
+            motivo: 'Entrevista Familiar PMSPL',
+            estado: 'completada'
+          })
+          .select()
+          .single()
+
+        if (atencionError) {
+          throw new Error(`Error al crear la atención: ${atencionError.message}`)
+        }
+
+        const newAtencionId = nuevaAtencion.id
+        const { error: insertError } = await supabase
+          .from('formularios_atencion')
+          .insert({
+            tipo_formulario: 'entrevista_familiar_pmspl',
+            joven_id: formData.joven_id,
+            atencion_id: newAtencionId,
+            datos_json: datosJson,
+            created_at: new Date().toISOString()
+          })
+          .select()
+          .single()
+
+        if (insertError) {
+          throw new Error(`Error al guardar el formulario: ${insertError.message}`)
+        }
+
+        alert('Entrevista Familiar PMSPL guardada exitosamente')
+        router.push('/dashboard/atenciones')
       }
-
-      alert('Entrevista Familiar PMSPL guardada exitosamente')
-      router.push('/dashboard/atenciones')
     } catch (error: any) {
       console.error('Error saving form:', error)
       alert(`Error al guardar la entrevista: ${error.message || 'Error desconocido'}`)
     } finally {
       setSaving(false)
     }
+  }
+
+  if (loadingExisting) {
+    return (
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -311,7 +392,7 @@ export default function EntrevistaFamiliarPMSPLPage() {
         </Link>
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Ficha de Entrevista Familiar
+            {isEditMode ? 'Editar Ficha de Entrevista Familiar' : 'Ficha de Entrevista Familiar'}
           </h1>
           <p className="text-gray-600 dark:text-gray-300 mt-2">
             Programa de Atención a Medidas Sustitutivas a la Privación de Libertad

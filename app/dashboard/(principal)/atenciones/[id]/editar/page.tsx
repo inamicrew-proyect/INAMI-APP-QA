@@ -10,6 +10,83 @@ import DynamicForm from '@/components/DynamicForm'
 import { formularioFieldsByRole, type RoleKey } from '@/lib/formulario-utils'
 import { useAuth } from '@/lib/auth'
 
+const FORMULARIO_ROUTE_BY_TIPO: Record<string, string> = {
+  // Trabajo social
+  entrevista_familiar_pmspl: '/dashboard/atenciones/formularios/trabajo-social/entrevista-familiar',
+  entrevista_familiar_cpi: '/dashboard/atenciones/formularios/trabajo-social/entrevista-familiar-cpi',
+  entrevista_evaluacion_seguimiento: '/dashboard/atenciones/formularios/trabajo-social/entrevista-evaluacion-seguimiento',
+  entrevista_evaluacion_seguimiento_cpi: '/dashboard/atenciones/formularios/trabajo-social/entrevista-evaluacion-seguimiento-cpi',
+  ficha_entrevista_egreso_cpi: '/dashboard/atenciones/formularios/trabajo-social/ficha-entrevista-egreso-cpi',
+  ficha_entrevista_final_cierre: '/dashboard/atenciones/formularios/trabajo-social/ficha-entrevista-final-cierre',
+  ficha_intervencion: '/dashboard/atenciones/formularios/trabajo-social/ficha-intervencion',
+  ficha_intervencion_cpi: '/dashboard/atenciones/formularios/trabajo-social/ficha-intervencion-cpi',
+  ficha_remision_interna_cpi: '/dashboard/atenciones/formularios/trabajo-social/ficha-remision-interna-cpi',
+  ficha_social: '/dashboard/atenciones/formularios/trabajo-social/ficha-social',
+  ficha_social_area_trabajo_social: '/dashboard/atenciones/formularios/trabajo-social/ficha-social-area-trabajo-social',
+  ficha_social_fase_diagnostico: '/dashboard/atenciones/formularios/trabajo-social/ficha-social-fase-diagnostico',
+  ficha_social_fase_ingreso: '/dashboard/atenciones/formularios/trabajo-social/ficha-social-fase-ingreso',
+  ficha_visita_domiciliaria_cpi: '/dashboard/atenciones/formularios/trabajo-social/ficha-visita-domiciliaria-cpi',
+  informe_evaluacion_seguimiento_cpi: '/dashboard/atenciones/formularios/trabajo-social/informe-evaluacion-seguimiento-cpi',
+  informe_incidencias: '/dashboard/atenciones/formularios/trabajo-social/informe-incidencias',
+  informe_servicio_comunitario: '/dashboard/atenciones/formularios/trabajo-social/informe-servicio-comunitario',
+  informe_social_egreso_cierre: '/dashboard/atenciones/formularios/trabajo-social/informe-social-egreso-cierre',
+  informe_social_egreso_cpi: '/dashboard/atenciones/formularios/trabajo-social/informe-social-egreso-cpi',
+  informe_social_evaluacion_seguimiento: '/dashboard/atenciones/formularios/trabajo-social/informe-social-evaluacion-seguimiento',
+  informe_social_fase_diagnostico: '/dashboard/atenciones/formularios/trabajo-social/informe-social-fase-diagnostico',
+  informe_social_inicial: '/dashboard/atenciones/formularios/trabajo-social/informe-social-inicial',
+  informe_socioeconomico: '/dashboard/atenciones/formularios/trabajo-social/informe-socioeconomico',
+  plan_atencion_cautelar_cpi: '/dashboard/atenciones/formularios/trabajo-social/plan-atencion-cautelar-cpi',
+  plan_atencion_individual: '/dashboard/atenciones/formularios/trabajo-social/plan-atencion-individual',
+  visita_domiciliaria: '/dashboard/atenciones/formularios/trabajo-social/visita-domiciliaria',
+  platin_cpi: '/dashboard/atenciones/formularios/trabajo-social/platin-cpi',
+  estudio_socioeconomico: '/dashboard/atenciones/formularios/trabajo-social/estudio-socioeconomico',
+
+  // Psicologia
+  entrevista_inicial_adolescente_cpi: '/dashboard/atenciones/formularios/psicologia/cpi/entrevista-inicial-adolescente',
+  entrevista_inicial_familia_cpi: '/dashboard/atenciones/formularios/psicologia/cpi/entrevista-inicial-familia',
+  entrevista_preeliminar: '/dashboard/atenciones/formularios/psicologia/cpi/entrevista-preeliminar',
+  entrevista_seguimiento_familia: '/dashboard/atenciones/formularios/psicologia/cpi/entrevista-seguimiento-familia',
+  informe_final_cpi: '/dashboard/atenciones/formularios/psicologia/cpi/informe-final',
+  informe_preliminar_cpi: '/dashboard/atenciones/formularios/psicologia/cpi/informe-preliminar',
+  informe_seguimiento_post_sancion_cpi: '/dashboard/atenciones/formularios/psicologia/cpi/informe-seguimiento-post-sancion',
+  intervencion_crisis_cpi: '/dashboard/atenciones/formularios/psicologia/cpi/intervencion-crisis',
+  remision_cpi_pmspl: '/dashboard/atenciones/formularios/psicologia/cpi/remision',
+  remision_interna_cpi: '/dashboard/atenciones/formularios/psicologia/cpi/remision-interna',
+  seguimiento_terapeutico_familiar_cpi: '/dashboard/atenciones/formularios/psicologia/cpi/seguimiento-terapeutico-familiar',
+  seguimiento_terapeutico_grupal_adolescentes_cpi: '/dashboard/atenciones/formularios/psicologia/cpi/seguimiento-terapeutico-grupal-adolescentes',
+  seguimiento_terapeutico_grupal_padres: '/dashboard/atenciones/formularios/psicologia/cpi/seguimiento-terapeutico-grupal-padres',
+  seguimiento_terapeutico_individual_adolescentes_cpi: '/dashboard/atenciones/formularios/psicologia/cpi/seguimiento-terapeutico-individual-adolescentes',
+
+  // Seguridad
+  ficha_ingreso_seguridad: '/dashboard/atenciones/formularios/seguridad/ficha-ingreso',
+  datos_aprehension: '/dashboard/atenciones/formularios/seguridad/datos-aprehension',
+  estado_fisico: '/dashboard/atenciones/formularios/seguridad/estado-fisico',
+
+  // Legal
+  asesoria_legal: '/dashboard/atenciones/formularios/legal/asesoria-legal',
+  datos_judiciales: '/dashboard/atenciones/formularios/legal/datos-judiciales',
+  resumen_causas: '/dashboard/atenciones/formularios/legal/resumen-causas',
+
+  // Medicos / salud
+  historia_clinica: '/dashboard/atenciones/formularios/medicos/historia-clinica',
+  examen_fisico: '/dashboard/atenciones/formularios/medicos/examen-fisico',
+  hoja_egreso: '/dashboard/atenciones/formularios/medicos/hoja-egreso',
+  informe_seguimiento: '/dashboard/atenciones/formularios/medicos/informe-seguimiento',
+  informe_seguimiento_salud: '/dashboard/atenciones/formularios/salud/informe-seguimiento',
+
+  // Pedagogia / educacion
+  cierre: '/dashboard/atenciones/formularios/pedagogia/cierre',
+  especial: '/dashboard/atenciones/formularios/pedagogia/especial',
+  seguimiento: '/dashboard/atenciones/formularios/pedagogia/seguimiento',
+  informe_inicial: '/dashboard/atenciones/formularios/pedagogia/informe-inicial',
+  informe_inicial_educativo: '/dashboard/atenciones/formularios/educacion/informe-inicial'
+}
+
+// Solo redirigir cuando la ficha ya soporta cargar/actualizar por ?atencion_id=
+const FORMULARIOS_CON_EDICION_SOPORTADA = new Set<string>([
+  'entrevista_familiar_pmspl'
+])
+
 export default function EditarAtencionPage() {
   const router = useRouter()
   const params = useParams()
@@ -26,6 +103,8 @@ export default function EditarAtencionPage() {
   const [creatorRole, setCreatorRole] = useState('Sin rol registrado')
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [unauthorized, setUnauthorized] = useState(false)
+  const [formularioTipo, setFormularioTipo] = useState<string | null>(null)
+  const [redirectingToSpecificForm, setRedirectingToSpecificForm] = useState(false)
 
   // Map global reusado por nuevos formularios (importado)
 
@@ -44,6 +123,18 @@ export default function EditarAtencionPage() {
       loadData()
     }
   }, [atencionId, currentUserProfile])
+
+  useEffect(() => {
+    if (!atencionId || !formularioTipo) return
+
+    if (!FORMULARIOS_CON_EDICION_SOPORTADA.has(formularioTipo)) return
+
+    const route = FORMULARIO_ROUTE_BY_TIPO[formularioTipo]
+    if (!route) return
+
+    setRedirectingToSpecificForm(true)
+    router.replace(`${route}?atencion_id=${atencionId}`)
+  }, [atencionId, formularioTipo, router])
 
   const loadData = async () => {
     try {
@@ -155,7 +246,7 @@ export default function EditarAtencionPage() {
         let formularioEspecificoCompleto: any = atencionRow.formulario_especifico || {}
         const { data: formularioData, error: formularioError } = await supabase
           .from('formularios_atencion')
-          .select('datos_json')
+          .select('datos_json, tipo_formulario')
           .eq('atencion_id', atencionRow.id)
           .order('created_at', { ascending: false })
           .limit(1)
@@ -164,6 +255,7 @@ export default function EditarAtencionPage() {
         if (!formularioError && formularioData?.datos_json) {
           formularioEspecificoCompleto = formularioData.datos_json
         }
+        setFormularioTipo(formularioData?.tipo_formulario || null)
 
         const roleKey = atencionRow.tipos_atencion?.profesional_responsable as RoleKey | undefined
         const allowedFields =
@@ -217,172 +309,126 @@ export default function EditarAtencionPage() {
     }
   }
 
-  const formatFieldLabel = (key: string) =>
-    key
-      .replace(/_/g, ' ')
-      .replace(/\b\w/g, (l) => l.toUpperCase())
-
-  const updateFormularioField = (path: Array<string | number>, value: any) => {
-    setFormData((prev) => {
-      const current = prev.formulario_especifico || {}
-      const next = structuredClone(current)
-
-      let ref: any = next
-      for (let i = 0; i < path.length - 1; i++) {
-        const key = path[i]
-        if (typeof ref[key] !== 'object' || ref[key] === null) {
-          ref[key] = typeof path[i + 1] === 'number' ? [] : {}
-        }
-        ref = ref[key]
+  const handleFormularioEspecificoChange = (field: string, value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      formulario_especifico: {
+        ...(prev.formulario_especifico || {}),
+        [field]: value
       }
-      ref[path[path.length - 1]] = value
-
-      return { ...prev, formulario_especifico: next }
-    })
+    }))
   }
 
-  const renderFormularioFields = (data: any, path: Array<string | number> = []): React.ReactNode => {
-    if (!data || typeof data !== 'object' || Array.isArray(data)) {
-      return null
-    }
+  const renderFormularioEspecifico = () => {
+    const profesional = tipoAtencion?.profesional_responsable
+    if (!profesional) return null
 
-    return Object.entries(data).map(([key, rawValue]) => {
-      const value = rawValue as any
-      const fieldPath = [...path, key]
-      const fieldId = fieldPath.join('.')
-      const label = formatFieldLabel(key)
-
-      if (value && typeof value === 'object' && !Array.isArray(value)) {
+    switch (profesional) {
+      case 'medico':
         return (
-          <div key={fieldId} className="rounded-lg border border-gray-200 p-4 space-y-4">
-            <h4 className="text-sm font-semibold text-gray-800">{label}</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {renderFormularioFields(value, fieldPath)}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Historia Clínica</label>
+              <textarea value={formData.formulario_especifico.historia_clinica || ''} onChange={(e) => handleFormularioEspecificoChange('historia_clinica', e.target.value)} className="input-field w-full" rows={3} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Examen Físico</label>
+              <textarea value={formData.formulario_especifico.examen_fisico || ''} onChange={(e) => handleFormularioEspecificoChange('examen_fisico', e.target.value)} className="input-field w-full" rows={3} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Diagnóstico</label>
+              <input type="text" value={formData.formulario_especifico.diagnostico || ''} onChange={(e) => handleFormularioEspecificoChange('diagnostico', e.target.value)} className="input-field w-full" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Tratamiento</label>
+              <textarea value={formData.formulario_especifico.tratamiento || ''} onChange={(e) => handleFormularioEspecificoChange('tratamiento', e.target.value)} className="input-field w-full" rows={3} />
             </div>
           </div>
         )
-      }
-
-      if (typeof value === 'boolean') {
+      case 'psicologo':
         return (
-          <div key={fieldId} className="flex items-center gap-3">
-            <input
-              id={fieldId}
-              type="checkbox"
-              checked={value}
-              onChange={(e) => updateFormularioField(fieldPath, e.target.checked)}
-              className="h-4 w-4"
-            />
-            <label htmlFor={fieldId} className="text-sm font-medium text-gray-700">
-              {label}
-            </label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Evaluación Psicológica</label>
+              <textarea value={formData.formulario_especifico.evaluacion_psicologica || ''} onChange={(e) => handleFormularioEspecificoChange('evaluacion_psicologica', e.target.value)} className="input-field w-full" rows={3} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Diagnóstico Psicológico</label>
+              <input type="text" value={formData.formulario_especifico.diagnostico_psicologico || ''} onChange={(e) => handleFormularioEspecificoChange('diagnostico_psicologico', e.target.value)} className="input-field w-full" />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Recomendaciones Terapéuticas</label>
+              <textarea value={formData.formulario_especifico.recomendaciones_terapeuticas || ''} onChange={(e) => handleFormularioEspecificoChange('recomendaciones_terapeuticas', e.target.value)} className="input-field w-full" rows={3} />
+            </div>
           </div>
         )
-      }
-
-      if (Array.isArray(value)) {
-        const hasObjectItems = value.some((item) => item && typeof item === 'object' && !Array.isArray(item))
-        const hasPrimitiveItems = value.every((item) => item === null || ['string', 'number', 'boolean'].includes(typeof item))
-
+      case 'trabajador_social':
         return (
-          <div key={fieldId} className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              {label}
-            </label>
-
-            {value.length === 0 && (
-              <p className="text-sm text-gray-500">Sin elementos.</p>
-            )}
-
-            {hasObjectItems && (
-              <div className="space-y-3">
-                {value.map((item, index) => (
-                  <div key={`${fieldId}-${index}`} className="rounded-lg border border-gray-200 p-3">
-                    <p className="text-xs font-semibold text-gray-500 mb-2">Elemento {index + 1}</p>
-                    {item && typeof item === 'object' && !Array.isArray(item) ? (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {renderFormularioFields(item, [...fieldPath, index])}
-                      </div>
-                    ) : (
-                      <input
-                        type="text"
-                        value={item ?? ''}
-                        onChange={(e) => updateFormularioField([...fieldPath, index], e.target.value)}
-                        className="input-field"
-                      />
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {!hasObjectItems && hasPrimitiveItems && (
-              <textarea
-                id={fieldId}
-                value={value.map((item) => (item ?? '').toString()).join('\n')}
-                onChange={(e) => {
-                  const lines = e.target.value
-                    .split('\n')
-                    .map((line) => line.trim())
-                    .filter((line) => line.length > 0)
-                  updateFormularioField(fieldPath, lines)
-                }}
-                className="input-field"
-                rows={4}
-                placeholder="Un valor por línea"
-              />
-            )}
-
-            {!hasObjectItems && !hasPrimitiveItems && (
-              <p className="text-sm text-gray-500">
-                Este campo contiene una estructura compleja no editable en modo visual.
-              </p>
-            )}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Evaluación Social</label>
+              <textarea value={formData.formulario_especifico.evaluacion_social || ''} onChange={(e) => handleFormularioEspecificoChange('evaluacion_social', e.target.value)} className="input-field w-full" rows={3} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Situación Familiar</label>
+              <textarea value={formData.formulario_especifico.situacion_familiar || ''} onChange={(e) => handleFormularioEspecificoChange('situacion_familiar', e.target.value)} className="input-field w-full" rows={3} />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Recursos Disponibles</label>
+              <textarea value={formData.formulario_especifico.recursos_disponibles || ''} onChange={(e) => handleFormularioEspecificoChange('recursos_disponibles', e.target.value)} className="input-field w-full" rows={3} />
+            </div>
           </div>
         )
-      }
-
-      const isLongText =
-        typeof value === 'string' &&
-        (value.length > 120 || value.includes('\n') || key.includes('observ') || key.includes('descripcion'))
-
-      if (isLongText) {
+      case 'abogado':
         return (
-          <div key={fieldId} className="md:col-span-2">
-            <label htmlFor={fieldId} className="block text-sm font-medium text-gray-700 mb-2">
-              {label}
-            </label>
-            <textarea
-              id={fieldId}
-              value={value ?? ''}
-              onChange={(e) => updateFormularioField(fieldPath, e.target.value)}
-              className="input-field"
-              rows={4}
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Situación Legal</label>
+              <textarea value={formData.formulario_especifico.situacion_legal || ''} onChange={(e) => handleFormularioEspecificoChange('situacion_legal', e.target.value)} className="input-field w-full" rows={3} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Proceso Judicial</label>
+              <textarea value={formData.formulario_especifico.proceso_judicial || ''} onChange={(e) => handleFormularioEspecificoChange('proceso_judicial', e.target.value)} className="input-field w-full" rows={3} />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Derechos del Menor</label>
+              <textarea value={formData.formulario_especifico.derechos_menor || ''} onChange={(e) => handleFormularioEspecificoChange('derechos_menor', e.target.value)} className="input-field w-full" rows={3} />
+            </div>
           </div>
         )
-      }
-
-      return (
-        <div key={fieldId}>
-          <label htmlFor={fieldId} className="block text-sm font-medium text-gray-700 mb-2">
-            {label}
-          </label>
-          <input
-            id={fieldId}
-            type={typeof value === 'number' ? 'number' : 'text'}
-            value={value ?? ''}
-            onChange={(e) =>
-              updateFormularioField(
-                fieldPath,
-                typeof value === 'number' ? Number(e.target.value || 0) : e.target.value
-              )
-            }
-            className="input-field"
-          />
-        </div>
-      )
-    })
+      case 'pedagogo':
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Evaluación Educativa</label>
+              <textarea value={formData.formulario_especifico.evaluacion_educativa || ''} onChange={(e) => handleFormularioEspecificoChange('evaluacion_educativa', e.target.value)} className="input-field w-full" rows={3} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Plan de Estudios</label>
+              <textarea value={formData.formulario_especifico.plan_estudios || ''} onChange={(e) => handleFormularioEspecificoChange('plan_estudios', e.target.value)} className="input-field w-full" rows={3} />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Necesidades Educativas</label>
+              <textarea value={formData.formulario_especifico.necesidades_educativas || ''} onChange={(e) => handleFormularioEspecificoChange('necesidades_educativas', e.target.value)} className="input-field w-full" rows={3} />
+            </div>
+          </div>
+        )
+      case 'seguridad':
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Registro de Ingreso</label>
+              <textarea value={formData.formulario_especifico.registro_ingreso || ''} onChange={(e) => handleFormularioEspecificoChange('registro_ingreso', e.target.value)} className="input-field w-full" rows={3} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Medidas de Seguridad</label>
+              <textarea value={formData.formulario_especifico.medidas_seguridad || ''} onChange={(e) => handleFormularioEspecificoChange('medidas_seguridad', e.target.value)} className="input-field w-full" rows={3} />
+            </div>
+          </div>
+        )
+      default:
+        return null
+    }
   }
 
   const validateForm = () => {
@@ -474,6 +520,19 @@ export default function EditarAtencionPage() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        </div>
+      </div>
+    )
+  }
+
+  if (redirectingToSpecificForm) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Abriendo ficha específica para edición...</p>
+          </div>
         </div>
       </div>
     )
@@ -657,11 +716,13 @@ export default function EditarAtencionPage() {
             </h2>
             
             <div className="space-y-4">
-              <DynamicForm
-                value={formData.formulario_especifico}
-                onChange={(next) => handleInputChange('formulario_especifico', next)}
-                hideEmpty={false}
-              />
+              {renderFormularioEspecifico() || (
+                <DynamicForm
+                  value={formData.formulario_especifico}
+                  onChange={(next) => handleInputChange('formulario_especifico', next)}
+                  hideEmpty={false}
+                />
+              )}
             </div>
           </div>
 

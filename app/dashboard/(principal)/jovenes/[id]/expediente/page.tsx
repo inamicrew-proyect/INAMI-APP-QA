@@ -595,12 +595,8 @@ export default function ExpedienteJovenPage() {
             </div>
 
             <div className="card">
-              <div className="flex items-center justify-between mb-6">
+              <div className="mb-6">
                 <h3 className="text-xl font-semibold text-gray-900">Historial de Atenciones</h3>
-                <button onClick={() => router.push(`/dashboard/atenciones/nueva?joven_id=${jovenId}`)} className="btn-primary flex items-center gap-2">
-                  <FileText className="w-4 h-4" />
-                  Nueva Atención
-                </button>
               </div>
 
               {atenciones.length > 0 ? (

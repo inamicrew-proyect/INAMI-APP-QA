@@ -34,10 +34,44 @@ export default function ReadonlyFormView({ value, hideEmpty = true }: ReadonlyFo
     if (cleaned === null || cleaned === undefined) return null
 
     if (typeof cleaned === 'string' || typeof cleaned === 'number') {
-      return <p className="text-gray-900 dark:text-gray-100">{String(cleaned)}</p>
+      const currentKey = String(path[path.length - 1] ?? '').toLowerCase()
+      const textValue = String(cleaned)
+      const isLongText =
+        textValue.length > 120 ||
+        textValue.includes('\n') ||
+        currentKey.includes('observ') ||
+        currentKey.includes('descripcion') ||
+        currentKey.includes('motivo') ||
+        currentKey.includes('recomend')
+
+      if (isLongText) {
+        return (
+          <textarea
+            value={textValue}
+            readOnly
+            className="input-field min-h-[120px] resize-y bg-gray-50 dark:bg-gray-800"
+            rows={4}
+          />
+        )
+      }
+
+      return (
+        <input
+          type={typeof cleaned === 'number' ? 'number' : 'text'}
+          value={textValue}
+          readOnly
+          className="input-field bg-gray-50 dark:bg-gray-800"
+        />
+      )
     }
+
     if (typeof cleaned === 'boolean') {
-      return <p className="text-gray-900 dark:text-gray-100">{cleaned ? 'Sí' : 'No'}</p>
+      return (
+        <div className="flex items-center gap-3 h-10">
+          <input type="checkbox" checked={cleaned} readOnly className="h-4 w-4 accent-primary-600" />
+          <span className="text-sm text-gray-700 dark:text-gray-300">{cleaned ? 'Sí' : 'No'}</span>
+        </div>
+      )
     }
 
     if (Array.isArray(cleaned)) {
@@ -47,18 +81,20 @@ export default function ReadonlyFormView({ value, hideEmpty = true }: ReadonlyFo
       )
       if (allPrimitives) {
         return (
-          <ul className="list-disc list-inside text-gray-900 dark:text-gray-100 space-y-1">
-            {cleaned.map((v, idx) => (
-              <li key={`${path.join('.')}-${idx}`}>{String(v)}</li>
-            ))}
-          </ul>
+          <textarea
+            readOnly
+            value={cleaned.map((v) => (v === null ? '' : String(v))).join('\n')}
+            className="input-field min-h-[120px] resize-y bg-gray-50 dark:bg-gray-800"
+            rows={Math.min(8, Math.max(3, cleaned.length))}
+          />
         )
       }
       // Objetos
       return (
         <div className="space-y-3">
           {cleaned.map((item, idx) => (
-            <div key={`${path.join('.')}-${idx}`} className="rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+            <div key={`${path.join('.')}-${idx}`} className="rounded-lg border border-gray-200 dark:border-gray-700 p-3 bg-white dark:bg-gray-900">
+              <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">Elemento {idx + 1}</p>
               {renderValue(item, [...path, idx])}
             </div>
           ))}
@@ -74,13 +110,24 @@ export default function ReadonlyFormView({ value, hideEmpty = true }: ReadonlyFo
           {entries.map(([k, v]) => {
             const rendered = renderValue(v, [...path, k])
             if (!rendered) return null
+            const isGroup = typeof v === 'object' && v !== null && !Array.isArray(v)
             return (
-              <div key={[...path, k].join('.')}>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  {labelFromKey(k)}
-                </label>
-                {rendered}
-              </div>
+              isGroup ? (
+                <div
+                  key={[...path, k].join('.')}
+                  className="md:col-span-2 rounded-lg border border-gray-200 dark:border-gray-700 p-4 bg-gray-50/60 dark:bg-gray-800/30 space-y-4"
+                >
+                  <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200">{labelFromKey(k)}</h4>
+                  {rendered}
+                </div>
+              ) : (
+                <div key={[...path, k].join('.')}>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    {labelFromKey(k)}
+                  </label>
+                  {rendered}
+                </div>
+              )
             )
           })}
         </div>
