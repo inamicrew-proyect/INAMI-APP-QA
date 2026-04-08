@@ -113,6 +113,10 @@ function DashboardNavigationLoadingInner({ children }: { children: ReactNode }) 
   useEffect(() => {
     const origPush = history.pushState.bind(history)
     const origReplace = history.replaceState.bind(history)
+    const deferNav = () => {
+      // Deferir para evitar que React detecte actualización durante efectos de inserción
+      queueMicrotask(() => setNavigating(true))
+    }
 
     const destinationChangesRoute = (url: string | URL | null | undefined) => {
       if (url == null || url === '') return false
@@ -127,19 +131,19 @@ function DashboardNavigationLoadingInner({ children }: { children: ReactNode }) 
 
     history.pushState = function (state, title, url) {
       if (readyRef.current && destinationChangesRoute(url ?? undefined)) {
-        setNavigating(true)
+        deferNav()
       }
       return origPush(state, title, url)
     }
 
     history.replaceState = function (state, title, url) {
       if (readyRef.current && destinationChangesRoute(url ?? undefined)) {
-        setNavigating(true)
+        deferNav()
       }
       return origReplace(state, title, url)
     }
 
-    const onPopState = () => setNavigating(true)
+    const onPopState = () => deferNav()
     window.addEventListener('popstate', onPopState)
 
     return () => {

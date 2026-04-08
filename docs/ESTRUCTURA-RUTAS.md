@@ -21,6 +21,7 @@ Inicio (Dashboard)
 ├── Inicio          → /dashboard
 ├── Jóvenes         → /dashboard/jovenes
 ├── Atenciones      → /dashboard/atenciones
+├── Citas           → /dashboard/citas
 ├── Notificaciones  → /dashboard/notificaciones
 ├── Configuración   → /dashboard/configuracion
 │   └── Preguntas secretas → /dashboard/configuracion/preguntas-secretas
@@ -39,6 +40,7 @@ Inicio (Dashboard)
 | `dashboard/page.tsx` | Inicio | `/dashboard` |
 | `dashboard/jovenes/` | Jóvenes | `/dashboard/jovenes` |
 | `dashboard/atenciones/` | Atenciones | `/dashboard/atenciones` |
+| `dashboard/citas/` | Citas | `/dashboard/citas` |
 | `dashboard/notificaciones/` | Notificaciones | `/dashboard/notificaciones` |
 | `dashboard/configuracion/` | Configuración | `/dashboard/configuracion` |
 | `dashboard/seguridad/` | Seguridad | `/dashboard/seguridad` |
@@ -66,6 +68,7 @@ La tabla `modulos` almacena las rutas para permisos. Los valores actuales deben 
 - `/dashboard` (Dashboard)
 - `/dashboard/jovenes` (Jóvenes)
 - `/dashboard/atenciones` (Atenciones)
+- `/dashboard/citas` (Citas)
 - `/dashboard/notificaciones` (Notificaciones)
 - `/dashboard/admin` (Panel Administrador)
 

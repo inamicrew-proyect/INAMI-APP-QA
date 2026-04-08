@@ -71,6 +71,9 @@ export default function SeguridadPage() {
   const [exportingPdf, setExportingPdf] = useState(false)
   const [criticalNotifs, setCriticalNotifs] = useState<NotificacionCritica[]>([])
   const [criticalUnread, setCriticalUnread] = useState(0)
+  const [diasNotificacionVisible, setDiasNotificacionVisible] = useState(7)
+  const [guardandoDiasNotificacion, setGuardandoDiasNotificacion] = useState(false)
+  const [msgDiasNotificacion, setMsgDiasNotificacion] = useState<string | null>(null)
 
   useEffect(() => {
     if (!authLoading && !hasAccess) {
@@ -88,9 +91,10 @@ export default function SeguridadPage() {
     try {
       setLoading(true)
 
-      const [metricasResponse, criticalResponse] = await Promise.all([
+      const [metricasResponse, criticalResponse, diasNotificacionResponse] = await Promise.all([
         fetch('/api/admin/security/metrics'),
         fetch('/api/admin/security/critical-notifications'),
+        fetch('/api/admin/maintenance/notifications-lifetime'),
       ])
 
       if (metricasResponse.ok) {
@@ -113,11 +117,39 @@ export default function SeguridadPage() {
         setCriticalUnread(0)
       }
 
+      if (diasNotificacionResponse.ok) {
+        const cfg = await diasNotificacionResponse.json()
+        setDiasNotificacionVisible(typeof cfg.diasVisibles === 'number' ? cfg.diasVisibles : 7)
+      }
+
       loadLogs()
     } catch (error) {
       console.error('Error loading data:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const guardarDiasNotificacion = async () => {
+    try {
+      setGuardandoDiasNotificacion(true)
+      setMsgDiasNotificacion(null)
+      const res = await fetch('/api/admin/maintenance/notifications-lifetime', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ diasVisibles: diasNotificacionVisible }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        throw new Error(data?.error || 'No se pudo guardar el parámetro')
+      }
+      setDiasNotificacionVisible(data.diasVisibles)
+      setMsgDiasNotificacion(`Guardado. Las notificaciones durarán ${data.diasVisibles} día(s).`)
+    } catch (error) {
+      setMsgDiasNotificacion(error instanceof Error ? error.message : 'Error al guardar parámetro')
+    } finally {
+      setGuardandoDiasNotificacion(false)
     }
   }
 
@@ -413,6 +445,39 @@ export default function SeguridadPage() {
           </div>
         </div>
       )}
+
+      {/* Mantenimiento de parámetros */}
+      <div className="card mb-6">
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Mantenimiento de parámetros</h2>
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-4 items-end">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Días visibles de notificaciones (máximo 7)
+            </label>
+            <input
+              type="number"
+              min={1}
+              max={7}
+              value={diasNotificacionVisible}
+              onChange={(e) => setDiasNotificacionVisible(Math.min(7, Math.max(1, Number(e.target.value) || 1)))}
+              className="input-field w-full md:max-w-xs"
+            />
+            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+              Define cuántos días permanece visible una notificación para los usuarios.
+            </p>
+          </div>
+          <button
+            onClick={guardarDiasNotificacion}
+            disabled={guardandoDiasNotificacion}
+            className="btn-primary disabled:opacity-50"
+          >
+            {guardandoDiasNotificacion ? 'Guardando...' : 'Guardar parámetro'}
+          </button>
+        </div>
+        {msgDiasNotificacion && (
+          <p className="mt-3 text-sm text-gray-700 dark:text-gray-300">{msgDiasNotificacion}</p>
+        )}
+      </div>
 
       {/* Bitácora del Sistema */}
       <div className="card mb-6">

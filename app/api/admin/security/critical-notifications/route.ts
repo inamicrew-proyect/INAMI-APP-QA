@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createSupabaseRouteHandlerClient } from '@/lib/supabase-route-handler'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
+import { esNotificacionCambioRol } from '@/lib/notifications'
 
 export const dynamic = 'force-dynamic'
 export const fetchCache = 'force-no-store'
@@ -56,7 +57,9 @@ export async function GET() {
       return NextResponse.json({ error: 'Error al cargar notificaciones' }, { status: 500 })
     }
 
-    const list = rows || []
+    const list = (rows || []).filter(
+      (r) => !esNotificacionCambioRol({ titulo: r.titulo, datos_adicionales: r.datos_adicionales })
+    )
     const unreadCount = list.filter((r) => !r.leida).length
 
     return NextResponse.json({

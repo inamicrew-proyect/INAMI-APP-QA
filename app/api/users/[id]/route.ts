@@ -447,29 +447,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         console.error('Error registrando log de cambio de rol:', logError)
         // No fallar la operación si el log falla
       }
-      try {
-        const { notifyAdminsCriticalSecurity } = await import('@/lib/admin-notifications')
-        const { data: actor } = await adminClient
-          .from('profiles')
-          .select('full_name, email')
-          .eq('id', userId)
-          .maybeSingle()
-        const por = actor?.full_name || actor?.email || userId
-        const nombreUsuario = existingProfile.full_name || existingProfile.email || id
-        await notifyAdminsCriticalSecurity({
-          titulo: 'Cambio de rol de usuario',
-          mensaje: `El usuario ${nombreUsuario} pasó de «${existingProfile.role}» a «${role}». Realizado por ${por}.`,
-          datos_adicionales: {
-            tipo: 'cambio_rol',
-            usuario_afectado_id: id,
-            rol_anterior: existingProfile.role,
-            rol_nuevo: role,
-            modificado_por_id: userId,
-          },
-        })
-      } catch (notifyErr) {
-        console.error('Error enviando notificaciones por cambio de rol:', notifyErr)
-      }
+      // No crear filas en `notificaciones` por cambio de rol (la UI no las muestra; el log de sistema ya queda registrado arriba).
     } catch (roleError) {
       console.error('Error actualizando roles del usuario:', roleError)
       // Retornar error en lugar de solo loguear, para que el usuario sepa qué pasó

@@ -18,6 +18,38 @@ type AtencionExtendida = Atencion & {
   profesional?: { full_name: string; role: string }
 }
 
+type AreaAtencion = 'psicologia' | 'trabajo_social' | 'educacion' | 'salud' | 'seguridad' | 'legal' | 'otros'
+
+function getAreaFromTipo(tipoNombre: string): AreaAtencion {
+  const t = (tipoNombre || '').toLowerCase()
+  if (t.includes('psicol')) return 'psicologia'
+  if (t.includes('social')) return 'trabajo_social'
+  if (t.includes('educ')) return 'educacion'
+  if (t.includes('salud') || t.includes('médic') || t.includes('medic')) return 'salud'
+  if (t.includes('segurid')) return 'seguridad'
+  if (t.includes('legal') || t.includes('abog')) return 'legal'
+  return 'otros'
+}
+
+function getAreaBgClass(tipoNombre: string) {
+  const area = getAreaFromTipo(tipoNombre)
+  switch (area) {
+    case 'psicologia':
+      return 'bg-purple-50 dark:bg-purple-900/20'
+    case 'trabajo_social':
+      return 'bg-yellow-50 dark:bg-yellow-900/20'
+    case 'educacion':
+      return 'bg-green-50 dark:bg-green-900/20'
+    case 'salud':
+      return 'bg-red-50 dark:bg-red-900/20'
+    case 'seguridad':
+      return 'bg-amber-50 dark:bg-amber-900/20'
+    case 'legal':
+      return 'bg-blue-50 dark:bg-blue-900/20'
+    default:
+      return ''
+  }
+}
 
 export default function AtencionesPage() {
   const supabase = createClientComponentClient()
@@ -31,6 +63,7 @@ export default function AtencionesPage() {
   const canDeleteAtenciones = !permissionsLoading && canDelete(Routes.ATENCIONES)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterEstado, setFilterEstado] = useState<string>('todos')
+  const [filterArea, setFilterArea] = useState<string>('todas')
   const [fechaDesde, setFechaDesde] = useState('')
   const [fechaHasta, setFechaHasta] = useState('')
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
@@ -295,17 +328,19 @@ export default function AtencionesPage() {
     setConfirmDeleteId(null)
   }, [])
 
-  // Filtrado solo por búsqueda (estado se aplica en la API)
+  // Filtrado local: área/tipo + búsqueda (estado y fechas en la API)
   const filteredAtenciones = useMemo(() => {
-    if (!searchTerm.trim()) return atenciones
-    const term = searchTerm.toLowerCase().trim()
-    return atenciones.filter(atencion => {
+    const term = searchTerm.trim().toLowerCase()
+    return atenciones.filter((atencion) => {
+      const area = getAreaFromTipo(atencion.tipos_atencion?.nombre || '')
+      const areaOk = filterArea === 'todas' || area === filterArea
+      if (!areaOk) return false
+      if (!term) return true
       const jovenNombre = atencion.jovenes
         ? `${atencion.jovenes.nombres} ${atencion.jovenes.apellidos}`.toLowerCase()
         : ''
       const tipoAtencion = atencion.tipos_atencion?.nombre.toLowerCase() || ''
       const profesional = atencion.profesional?.full_name.toLowerCase() || ''
-
       return (
         jovenNombre.includes(term) ||
         tipoAtencion.includes(term) ||
@@ -313,7 +348,7 @@ export default function AtencionesPage() {
         (atencion.motivo && atencion.motivo.toLowerCase().includes(term))
       )
     })
-  }, [atenciones, searchTerm])
+  }, [atenciones, searchTerm, filterArea])
 
   // Paginación (total desde API)
   const totalPages = Math.max(1, Math.ceil(totalFromApi / itemsPerPage))
@@ -324,7 +359,7 @@ export default function AtencionesPage() {
   // Resetear página cuando cambian filtros o tamaño de página
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchTerm, filterEstado, fechaDesde, fechaHasta])
+  }, [searchTerm, filterEstado, filterArea, fechaDesde, fechaHasta])
 
   const getEstadoBadge = useCallback((estado: string) => {
     const badges = {
@@ -400,7 +435,7 @@ export default function AtencionesPage() {
 
       {/* Filters: más altura, búsqueda/estado un poco más cortos y con espacio para icono */}
       <div className="card mb-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1.5fr_1.2fr_150px_150px] gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1.5fr_1.2fr_1.2fr_150px_150px] gap-4">
           <div className="flex flex-col min-w-0">
             <label htmlFor="filter-busqueda" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Búsqueda
@@ -434,6 +469,28 @@ export default function AtencionesPage() {
                 <option value="en_proceso">En Proceso</option>
                 <option value="completada">Completadas</option>
                 <option value="cancelada">Canceladas</option>
+              </select>
+            </div>
+          </div>
+          <div className="flex flex-col min-w-0">
+            <label htmlFor="filter-area" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Área / Tipo
+            </label>
+            <div className="relative flex-1">
+              <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 w-5 h-5 pointer-events-none shrink-0" />
+              <select
+                id="filter-area"
+                value={filterArea}
+                onChange={(e) => setFilterArea(e.target.value)}
+                className="input-field w-full !pl-12 py-2.5 min-h-[44px] appearance-none"
+              >
+                <option value="todas">Todas las áreas</option>
+                <option value="psicologia">Psicología</option>
+                <option value="trabajo_social">Trabajo Social</option>
+                <option value="educacion">Educación</option>
+                <option value="salud">Salud</option>
+                <option value="seguridad">Seguridad</option>
+                <option value="legal">Legal</option>
               </select>
             </div>
           </div>
@@ -512,6 +569,7 @@ export default function AtencionesPage() {
             onClick={() => {
               setSearchTerm('')
               setFilterEstado('todos')
+              setFilterArea('todas')
               setFechaDesde('')
               setFechaHasta('')
             }}
@@ -537,7 +595,10 @@ export default function AtencionesPage() {
                 </thead>
                 <tbody>
                   {filteredAtenciones.map((atencion) => (
-                    <tr key={atencion.id} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                    <tr
+                      key={atencion.id}
+                      className={`hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${getAreaBgClass(atencion.tipos_atencion?.nombre || '')}`}
+                    >
                       <td className="font-medium text-gray-900 dark:text-white">
                         {atencion.jovenes
                           ? `${atencion.jovenes.nombres} ${atencion.jovenes.apellidos}`

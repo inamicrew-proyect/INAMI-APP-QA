@@ -10,6 +10,7 @@
  *   /dashboard                 → INICIO (panel principal)
  *   /dashboard/jovenes        → JÓVENES (gestión de menores)
  *   /dashboard/atenciones     → ATENCIONES (gestión de atenciones)
+ *   /dashboard/citas          → CITAS (agenda de citas para jóvenes)
  *   /dashboard/notificaciones → NOTIFICACIONES
  *   /dashboard/configuracion  → CONFIGURACIÓN (y preguntas secretas)
  *   /dashboard/seguridad      → SEGURIDAD (usuario)
@@ -46,6 +47,9 @@ export const Routes = {
   atencionId: (id: string) => `/dashboard/atenciones/${id}` as const,
   atencionEditar: (id: string) => `/dashboard/atenciones/${id}/editar` as const,
   ATENCIONES_FORMULARIOS: '/dashboard/atenciones/formularios',
+
+  // Dashboard - Citas (menú "Citas")
+  CITAS: '/dashboard/citas',
 
   // Dashboard - Notificaciones (menú "Notificaciones")
   NOTIFICACIONES: '/dashboard/notificaciones',

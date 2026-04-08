@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { NotificationService, type Notificacion } from './notifications'
 import { useAuth } from './auth'
 
@@ -10,16 +10,7 @@ export function useNotifications() {
   const [notificacionesNoLeidas, setNotificacionesNoLeidas] = useState(0)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    if (user?.id) {
-      loadNotificaciones({ toggleLoading: true })
-      // Recargar notificaciones cada 30 segundos
-      const interval = setInterval(loadNotificaciones, 30000)
-      return () => clearInterval(interval)
-    }
-  }, [user?.id])
-
-  const loadNotificaciones = async (opts?: { toggleLoading?: boolean }) => {
+  const loadNotificaciones = useCallback(async (opts?: { toggleLoading?: boolean }) => {
     if (!user?.id) return
 
     try {
@@ -43,7 +34,19 @@ export function useNotifications() {
         setLoading(false)
       }
     }
-  }
+  }, [user?.id])
+
+  useEffect(() => {
+    if (!user?.id) {
+      setNotificaciones([])
+      setNotificacionesNoLeidas(0)
+      setLoading(false)
+      return
+    }
+    loadNotificaciones({ toggleLoading: true })
+    const interval = setInterval(() => loadNotificaciones(), 30000)
+    return () => clearInterval(interval)
+  }, [user?.id, loadNotificaciones])
 
   const marcarComoLeida = async (notificacionId: string) => {
     try {

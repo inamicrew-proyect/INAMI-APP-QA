@@ -11,7 +11,6 @@ import { getSupabaseClient } from '@/lib/supabase-client'
 // ---
 
 import NotificationCenter from './NotificationCenter'
-import NotificationSettings from './NotificationSettings'
 import UserProfileDropdown from './UserProfileDropdown'
 import { useTheme } from '@/lib/useTheme'
 import { Routes } from '@/lib/routes'
@@ -177,6 +176,9 @@ function Navbar() {
           <Link href={Routes.ATENCIONES} className={getNavButtonClass(Routes.ATENCIONES)}>
             Atenciones
           </Link>
+          <Link href={Routes.CITAS} className={getNavButtonClass(Routes.CITAS)}>
+            Citas
+          </Link>
           {profile?.role === 'admin' && (
             <Link href={Routes.SEGURIDAD} className={getNavButtonClass(Routes.SEGURIDAD)}>
               Seguridad
@@ -188,7 +190,6 @@ function Navbar() {
   			
   			<div className="flex items-center gap-3 ml-4 pl-4 border-l border-white/30">
   			  <NotificationCenter />
-  			  <NotificationSettings />
   			  <UserProfileDropdown />
   			</div>
   		  </div>
@@ -254,6 +255,13 @@ function Navbar() {
             onClick={() => setIsOpen(false)}
           >
             Atenciones
+          </Link>
+          <Link
+            href={Routes.CITAS}
+            className={`block px-4 py-2.5 rounded-lg font-medium text-base transition-all border-2 ${getMobileNavButtonClass(Routes.CITAS)}`}
+            onClick={() => setIsOpen(false)}
+          >
+            Citas
           </Link>
           {profile?.role === 'admin' && (
             <Link

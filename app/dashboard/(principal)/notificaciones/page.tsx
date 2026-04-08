@@ -1,10 +1,9 @@
 'use client'
 
-import { useState } from 'react'
-import { Bell, Calendar, Clock, AlertCircle, Check, Trash2, Settings, Filter } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Bell, Calendar, Clock, AlertCircle, Check, Trash2, Filter } from 'lucide-react'
 import { useNotifications } from '@/lib/useNotifications'
 import { useAuth } from '@/lib/auth'
-import NotificationSettings from '@/components/NotificationSettings'
 
 export default function NotificacionesPage() {
   const { user, loading: authLoading } = useAuth()
@@ -12,13 +11,39 @@ export default function NotificacionesPage() {
     notificaciones,
     notificacionesNoLeidas,
     loading,
+    loadNotificaciones,
     marcarComoLeida,
     marcarTodasComoLeidas,
     eliminarNotificacion
   } = useNotifications()
 
-  const [filtro, setFiltro] = useState<'todas' | 'no_leidas' | 'cita_proxima' | 'seguimiento_pendiente' | 'sistema'>('todas')
-  const [showSettings, setShowSettings] = useState(false)
+  const [filtro, setFiltro] = useState<'todas' | 'no_leidas' | 'cita_proxima' | 'seguimiento_pendiente' | 'canceladas' | 'sistema'>('todas')
+  const [syncing, setSyncing] = useState(false)
+
+  const syncReminderNotifications = async () => {
+    if (!user?.id) return
+    try {
+      setSyncing(true)
+      const res = await fetch('/api/citas/notificar-proximas', {
+        method: 'POST',
+        credentials: 'include',
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        throw new Error(data?.error || 'No se pudieron generar recordatorios')
+      }
+      await loadNotificaciones({ toggleLoading: false })
+    } catch (_error) {
+      // Silencioso en UI: el centro de notificaciones refleja el estado actual.
+    } finally {
+      setSyncing(false)
+    }
+  }
+
+  useEffect(() => {
+    syncReminderNotifications()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id])
 
   const getIconoTipo = (tipo: string) => {
     switch (tipo) {
@@ -67,9 +92,10 @@ export default function NotificacionesPage() {
     }
   }
 
-  const notificacionesFiltradas = notificaciones.filter(notif => {
+  const notificacionesFiltradas = notificaciones.filter((notif) => {
     if (filtro === 'todas') return true
     if (filtro === 'no_leidas') return !notif.leida
+    if (filtro === 'canceladas') return notif.datos_adicionales?.categoria === 'cita_cancelada'
     return notif.tipo_notificacion === filtro
   })
 
@@ -113,11 +139,11 @@ export default function NotificacionesPage() {
           
           <div className="flex items-center gap-3">
             <button
-              onClick={() => setShowSettings(true)}
-              className="btn-secondary flex items-center gap-2"
+              onClick={syncReminderNotifications}
+              disabled={syncing}
+              className="btn-secondary flex items-center gap-2 disabled:opacity-60"
             >
-              <Settings className="w-4 h-4" />
-              Configuración
+              {syncing ? 'Sincronizando...' : 'Generar recordatorios ahora'}
             </button>
             {notificacionesNoLeidas > 0 && (
               <button
@@ -131,7 +157,6 @@ export default function NotificacionesPage() {
           </div>
         </div>
       </div>
-
       {/* Filtros */}
       <div className="mb-6">
         <div className="flex items-center gap-4">
@@ -139,9 +164,10 @@ export default function NotificacionesPage() {
           <div className="flex gap-2">
             {[
               { key: 'todas', label: 'Todas', count: notificaciones.length },
-              { key: 'no_leidas', label: 'No leídas', count: notificacionesNoLeidas },
+              { key: 'no_leidas', label: 'No leídas', count: notificaciones.filter(n => !n.leida).length },
               { key: 'cita_proxima', label: 'Citas', count: notificaciones.filter(n => n.tipo_notificacion === 'cita_proxima').length },
               { key: 'seguimiento_pendiente', label: 'Seguimientos', count: notificaciones.filter(n => n.tipo_notificacion === 'seguimiento_pendiente').length },
+              { key: 'canceladas', label: 'Canceladas', count: notificaciones.filter(n => n.datos_adicionales?.categoria === 'cita_cancelada').length },
               { key: 'sistema', label: 'Sistema', count: notificaciones.filter(n => n.tipo_notificacion === 'sistema').length }
             ].map(({ key, label, count }) => (
               <button
@@ -254,25 +280,6 @@ export default function NotificacionesPage() {
         )}
       </div>
 
-      {/* Modal de configuración */}
-      {showSettings && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50">
-          <div className="bg-stone-50 dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Configuración de Notificaciones</h2>
-                <button
-                  onClick={() => setShowSettings(false)}
-                  className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
-                >
-                  ×
-                </button>
-              </div>
-              <NotificationSettings />
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

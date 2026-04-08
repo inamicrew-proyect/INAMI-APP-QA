@@ -1,4 +1,8 @@
-import { supabase } from './supabase'
+import { createClientComponentClient } from './supabase-browser'
+
+function getClient() {
+  return createClientComponentClient()
+}
 
 export interface Notificacion {
   id: string
@@ -30,36 +34,52 @@ export interface ConfiguracionNotificaciones {
   updated_at: string
 }
 
+/** Cambios de rol: no deben mostrarse en ninguna UI de notificaciones (auditoría por otros medios). */
+export function esNotificacionCambioRol(n: Pick<Notificacion, 'titulo' | 'datos_adicionales'>): boolean {
+  const extra = n.datos_adicionales as { tipo?: string } | null | undefined
+  if (extra?.tipo === 'cambio_rol') return true
+  if (n.titulo?.trim().toLowerCase() === 'cambio de rol de usuario') return true
+  return false
+}
+
+export function excluirNotificacionesCambioRol<T extends Pick<Notificacion, 'titulo' | 'datos_adicionales'>>(lista: T[]): T[] {
+  return lista.filter((n) => !esNotificacionCambioRol(n))
+}
+
 export class NotificationService {
   // Obtener notificaciones del usuario
   static async getNotificaciones(usuarioId: string, limit: number = 50): Promise<Notificacion[]> {
-    const { data, error } = await supabase
+    const fetchCap = Math.min(Math.max(limit * 4, limit), 200)
+    const { data, error } = await getClient()
       .from('notificaciones')
       .select('*')
       .eq('usuario_id', usuarioId)
+      .or(`fecha_vencimiento.is.null,fecha_vencimiento.gte.${new Date().toISOString()}`)
       .order('fecha_creacion', { ascending: false })
-      .limit(limit)
+      .limit(fetchCap)
 
     if (error) throw error
-    return data || []
+    const filtradas = excluirNotificacionesCambioRol(data || [])
+    return filtradas.slice(0, limit)
   }
 
   // Obtener notificaciones no leídas
   static async getNotificacionesNoLeidas(usuarioId: string): Promise<Notificacion[]> {
-    const { data, error } = await supabase
+    const { data, error } = await getClient()
       .from('notificaciones')
       .select('*')
       .eq('usuario_id', usuarioId)
       .eq('leida', false)
+      .or(`fecha_vencimiento.is.null,fecha_vencimiento.gte.${new Date().toISOString()}`)
       .order('fecha_creacion', { ascending: false })
 
     if (error) throw error
-    return data || []
+    return excluirNotificacionesCambioRol(data || [])
   }
 
   // Marcar notificación como leída
   static async marcarComoLeida(notificacionId: string): Promise<boolean> {
-    const { data, error } = await supabase
+    const { data, error } = await getClient()
       .from('notificaciones')
       .update({ 
         leida: true, 
@@ -74,7 +94,7 @@ export class NotificationService {
 
   // Marcar todas las notificaciones como leídas
   static async marcarTodasComoLeidas(usuarioId: string): Promise<boolean> {
-    const { error } = await supabase
+    const { error } = await getClient()
       .from('notificaciones')
       .update({ 
         leida: true, 
@@ -98,7 +118,7 @@ export class NotificationService {
     prioridad: Notificacion['prioridad'] = 'media',
     fechaVencimiento?: string
   ): Promise<string> {
-    const { data, error } = await supabase
+    const { data, error } = await getClient()
       .from('notificaciones')
       .insert({
         usuario_id: usuarioId,
@@ -118,7 +138,7 @@ export class NotificationService {
 
   // Eliminar notificación
   static async eliminarNotificacion(notificacionId: string): Promise<boolean> {
-    const { error } = await supabase
+    const { error } = await getClient()
       .from('notificaciones')
       .delete()
       .eq('id', notificacionId)
@@ -129,7 +149,7 @@ export class NotificationService {
 
   // Eliminar notificaciones vencidas
   static async eliminarNotificacionesVencidas(usuarioId: string): Promise<boolean> {
-    const { error } = await supabase
+    const { error } = await getClient()
       .from('notificaciones')
       .delete()
       .eq('usuario_id', usuarioId)
@@ -141,7 +161,7 @@ export class NotificationService {
 
   // Obtener configuración de notificaciones del usuario
   static async getConfiguracion(usuarioId: string, supabaseClient?: any): Promise<ConfiguracionNotificaciones | null> {
-    const client = supabaseClient || supabase
+    const client = supabaseClient || getClient()
     try {
       const { data, error } = await client
         .from('configuraciones_notificaciones')
@@ -181,7 +201,7 @@ export class NotificationService {
     configuracion: Partial<Omit<ConfiguracionNotificaciones, 'id' | 'usuario_id' | 'created_at' | 'updated_at'>>,
     supabaseClient?: any
   ): Promise<ConfiguracionNotificaciones> {
-    const client = supabaseClient || supabase
+    const client = supabaseClient || getClient()
     const { data, error } = await client
       .from('configuraciones_notificaciones')
       .upsert({
@@ -204,7 +224,7 @@ export class NotificationService {
 
   // Crear recordatorios automáticos
   static async crearRecordatoriosAutomaticos(): Promise<void> {
-    const { error } = await supabase.rpc('crear_recordatorios_automaticos')
+    const { error } = await getClient().rpc('crear_recordatorios_automaticos')
     if (error) throw error
   }
 
