@@ -1,9 +1,9 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { CalendarDays, Plus, Clock3, Pencil, Trash2, FileDown, Search } from 'lucide-react'
+import { CalendarDays, Plus, Clock3, Pencil, Trash2, FileDown, Search, Users } from 'lucide-react'
 import jsPDF from 'jspdf'
-import { useIsAdmin } from '@/lib/auth'
+import { useAuth, useIsAdmin } from '@/lib/auth'
 import { usePermissions } from '@/lib/hooks/usePermissions'
 import { Routes } from '@/lib/routes'
 
@@ -86,7 +86,244 @@ function loadPdfLogo(): Promise<{ dataUrl: string; widthMm: number; heightMm: nu
   })
 }
 
+type PdfCitasSemanaOpts = {
+  titulo: string
+  nombreArchivo: string
+  incluirSolicitante?: boolean
+}
+
+async function exportarPdfCitasSemana(
+  citasSemana: Cita[],
+  start: Date,
+  end: Date,
+  opts: PdfCitasSemanaOpts
+) {
+  const logo = await loadPdfLogo()
+  const incluirSolicitante = Boolean(opts.incluirSolicitante)
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  const pageW = doc.internal.pageSize.getWidth()
+  const pageH = doc.internal.pageSize.getHeight()
+  const margin = 14
+  const contentW = pageW - margin * 2
+  const lineH = 5
+  let y = 0
+  let pageCount = 1
+
+  const ensureSpace = (needed: number) => {
+    if (y + needed > pageH - margin) {
+      doc.addPage()
+      pageCount += 1
+      y = margin
+    }
+  }
+
+  const headerH = 34
+  const drawHeader = () => {
+    doc.setFillColor(PDF_BLUE.r, PDF_BLUE.g, PDF_BLUE.b)
+    doc.rect(0, 0, pageW, headerH, 'F')
+
+    const textX = logo ? margin + logo.widthMm + 5 : margin
+    const titleMaxW = pageW - textX - margin
+
+    if (logo) {
+      const yLogo = Math.max(2, (headerH - logo.heightMm) / 2)
+      doc.addImage(logo.dataUrl, 'PNG', margin, yLogo, logo.widthMm, logo.heightMm)
+    }
+
+    doc.setTextColor(255, 255, 255)
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(15)
+    const titleLines = doc.splitTextToSize(opts.titulo, titleMaxW)
+    let yHead = 12
+    doc.text(titleLines, textX, yHead)
+    yHead += titleLines.length * 5.5
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(9.5)
+    const sub = `Semana del ${start.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })} al ${end.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}`
+    const subLines = doc.splitTextToSize(sub, titleMaxW)
+    doc.text(subLines, textX, yHead + 4)
+    doc.setTextColor(0, 0, 0)
+    y = headerH + 6
+  }
+
+  drawHeader()
+
+  const porRealizar = citasSemana.filter((c) => c.estado === 'pendiente' || c.estado === 'en_proceso')
+  const boxGap = 4
+  const boxW = (contentW - boxGap) / 2
+  const boxH = 18
+
+  ensureSpace(boxH + 12)
+  doc.setFillColor(PDF_BLUE_SOFT_BG.r, PDF_BLUE_SOFT_BG.g, PDF_BLUE_SOFT_BG.b)
+  doc.roundedRect(margin, y, boxW, boxH, 2, 2, 'F')
+  doc.setDrawColor(PDF_BLUE_BORDER.r, PDF_BLUE_BORDER.g, PDF_BLUE_BORDER.b)
+  doc.setLineWidth(0.3)
+  doc.roundedRect(margin, y, boxW, boxH, 2, 2, 'S')
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(9)
+  doc.setTextColor(71, 85, 105)
+  doc.text('Total en la semana', margin + 3, y + 6)
+  doc.setFontSize(14)
+  doc.setTextColor(15, 23, 42)
+  doc.text(String(citasSemana.length), margin + 3, y + 14)
+
+  const x2 = margin + boxW + boxGap
+  doc.setFillColor(PDF_BLUE_SOFT_BG.r, PDF_BLUE_SOFT_BG.g, PDF_BLUE_SOFT_BG.b)
+  doc.roundedRect(x2, y, boxW, boxH, 2, 2, 'F')
+  doc.setDrawColor(PDF_BLUE_BORDER.r, PDF_BLUE_BORDER.g, PDF_BLUE_BORDER.b)
+  doc.roundedRect(x2, y, boxW, boxH, 2, 2, 'S')
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(9)
+  doc.setTextColor(71, 85, 105)
+  doc.text('Por realizar (pendiente / en proceso)', x2 + 3, y + 6)
+  doc.setFontSize(14)
+  doc.setTextColor(15, 23, 42)
+  doc.text(String(porRealizar.length), x2 + 3, y + 14)
+  doc.setTextColor(0, 0, 0)
+  doc.setFont('helvetica', 'normal')
+  y += boxH + 10
+
+  if (citasSemana.length === 0) {
+    ensureSpace(20)
+    doc.setFontSize(11)
+    doc.setTextColor(100, 116, 139)
+    doc.text('No hay citas registradas para esta semana.', margin, y)
+    doc.setTextColor(0, 0, 0)
+  } else {
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(11)
+    doc.setTextColor(PDF_BLUE.r, PDF_BLUE.g, PDF_BLUE.b)
+    doc.text('Detalle de citas', margin, y)
+    doc.setTextColor(0, 0, 0)
+    y += 8
+
+    citasSemana.forEach((cita, index) => {
+      const fechaStr = new Date(cita.fecha_cita).toLocaleString('es-ES', {
+        dateStyle: 'short',
+        timeStyle: 'short',
+      })
+      const jovenNombre = cita.joven ? `${cita.joven.nombres} ${cita.joven.apellidos}` : 'Sin joven asignado'
+      const encargado = cita.profesional?.full_name || 'Sin asignar'
+      const cardPadding = 5
+      const innerW = contentW - cardPadding * 2
+      const motivoLines = doc.splitTextToSize(cita.motivo || '—', contentW - 14)
+      const jovenLines = doc.splitTextToSize(jovenNombre, innerW - 28)
+      const encLines = doc.splitTextToSize(encargado, innerW - 32)
+      const solLines = incluirSolicitante
+        ? doc.splitTextToSize(cita.solicitante?.full_name || '—', innerW - 36)
+        : []
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(8)
+      const badgeW = doc.getTextWidth(estadoPdfLabel(cita.estado)) + 6
+      doc.setFontSize(10)
+      doc.setFont('helvetica', 'normal')
+      const extraSolic =
+        incluirSolicitante ? lineH + Math.max(lineH, solLines.length * lineH) : 0
+      const cardH =
+        cardPadding +
+        7 +
+        lineH +
+        Math.max(lineH, jovenLines.length * lineH) +
+        Math.max(lineH, encLines.length * lineH) +
+        extraSolic +
+        4 +
+        4 +
+        motivoLines.length * lineH +
+        cardPadding
+
+      ensureSpace(cardH + 4)
+
+      doc.setFillColor(PDF_BLUE_SOFT_BG.r, PDF_BLUE_SOFT_BG.g, PDF_BLUE_SOFT_BG.b)
+      doc.roundedRect(margin, y, contentW, cardH, 2, 2, 'F')
+      doc.setDrawColor(PDF_BLUE_BORDER.r, PDF_BLUE_BORDER.g, PDF_BLUE_BORDER.b)
+      doc.setLineWidth(0.25)
+      doc.roundedRect(margin, y, contentW, cardH, 2, 2, 'S')
+
+      let cy = y + cardPadding + 5
+      const ix = margin + cardPadding
+
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(10)
+      doc.setTextColor(15, 23, 42)
+      doc.text(`Cita ${index + 1}`, ix, cy)
+
+      const [r, g, b] = estadoPdfRgb(cita.estado)
+      doc.setFillColor(r, g, b)
+      const bx = margin + contentW - cardPadding - badgeW
+      doc.roundedRect(bx, cy - 4, badgeW, 6, 1, 1, 'F')
+      doc.setTextColor(255, 255, 255)
+      doc.setFontSize(8)
+      doc.setFont('helvetica', 'bold')
+      doc.text(estadoPdfLabel(cita.estado), bx + 3, cy)
+      doc.setTextColor(0, 0, 0)
+      doc.setFont('helvetica', 'normal')
+      cy += 8
+
+      doc.setFontSize(9)
+      doc.setTextColor(71, 85, 105)
+      doc.text('Fecha y hora', ix, cy)
+      doc.setTextColor(15, 23, 42)
+      doc.setFont('helvetica', 'bold')
+      doc.text(fechaStr, ix + 28, cy)
+      doc.setFont('helvetica', 'normal')
+      cy += lineH
+
+      doc.setTextColor(71, 85, 105)
+      doc.text('Joven', ix, cy)
+      doc.setTextColor(15, 23, 42)
+      doc.text(jovenLines, ix + 28, cy)
+      cy += Math.max(lineH, jovenLines.length * lineH)
+
+      doc.setTextColor(71, 85, 105)
+      doc.text('Encargado', ix, cy)
+      doc.setTextColor(15, 23, 42)
+      doc.text(encLines, ix + 32, cy)
+      cy += Math.max(lineH, encLines.length * lineH)
+
+      if (incluirSolicitante) {
+        doc.setTextColor(71, 85, 105)
+        doc.text('Solicitado por', ix, cy)
+        doc.setTextColor(15, 23, 42)
+        doc.text(solLines, ix + 36, cy)
+        cy += Math.max(lineH, solLines.length * lineH)
+      }
+
+      cy += 2
+      doc.setDrawColor(PDF_BLUE_BORDER.r, PDF_BLUE_BORDER.g, PDF_BLUE_BORDER.b)
+      doc.line(ix, cy, margin + contentW - cardPadding, cy)
+      cy += 5
+
+      doc.setFontSize(8)
+      doc.setTextColor(71, 85, 105)
+      doc.text('Motivo', ix, cy)
+      cy += 4
+      doc.setFontSize(9)
+      doc.setTextColor(51, 65, 85)
+      doc.text(motivoLines, ix, cy)
+      cy += motivoLines.length * lineH
+
+      y += cardH + 5
+    })
+  }
+
+  for (let p = 1; p <= pageCount; p++) {
+    doc.setPage(p)
+    doc.setFontSize(8)
+    doc.setTextColor(148, 163, 184)
+    doc.setFont('helvetica', 'normal')
+    doc.text(
+      `Generado el ${new Date().toLocaleString('es-ES')} · Página ${p} de ${pageCount}`,
+      margin,
+      pageH - 8
+    )
+    doc.setTextColor(0, 0, 0)
+  }
+
+  doc.save(opts.nombreArchivo)
+}
+
 export default function CitasPage() {
+  const { profile } = useAuth()
   const { isAdmin } = useIsAdmin()
   const { canView, canCreate, canEdit, canDelete, loading: permissionsLoading } = usePermissions()
   const [loading, setLoading] = useState(true)
@@ -337,217 +574,44 @@ export default function CitasPage() {
   }
 
   const descargarPdfSemanal = async () => {
-    const logo = await loadPdfLogo()
     const { start, end } = getWeekRange()
     const citasSemana = citasOrdenadas.filter((cita) => {
       const fecha = new Date(cita.fecha_cita)
-      return fecha >= start && fecha <= end
+      if (fecha < start || fecha > end) return false
+      if (!profile?.id) return true
+      return cita.profesional?.id === profile.id || cita.solicitante?.id === profile.id
     })
+    await exportarPdfCitasSemana(citasSemana, start, end, {
+      titulo: 'Listado semanal de citas (mis citas)',
+      nombreArchivo: 'citas-semana.pdf',
+    })
+  }
 
-    const doc = new jsPDF({ unit: 'mm', format: 'a4' })
-    const pageW = doc.internal.pageSize.getWidth()
-    const pageH = doc.internal.pageSize.getHeight()
-    const margin = 14
-    const contentW = pageW - margin * 2
-    const lineH = 5
-    let y = 0
-    let pageCount = 1
-
-    const ensureSpace = (needed: number) => {
-      if (y + needed > pageH - margin) {
-        doc.addPage()
-        pageCount += 1
-        y = margin
-      }
-    }
-
-    const headerH = 34
-    const drawHeader = () => {
-      doc.setFillColor(PDF_BLUE.r, PDF_BLUE.g, PDF_BLUE.b)
-      doc.rect(0, 0, pageW, headerH, 'F')
-
-      const textX = logo ? margin + logo.widthMm + 5 : margin
-      const titleMaxW = pageW - textX - margin
-
-      if (logo) {
-        const yLogo = Math.max(2, (headerH - logo.heightMm) / 2)
-        doc.addImage(logo.dataUrl, 'PNG', margin, yLogo, logo.widthMm, logo.heightMm)
-      }
-
-      doc.setTextColor(255, 255, 255)
-      doc.setFont('helvetica', 'bold')
-      doc.setFontSize(15)
-      const titleLines = doc.splitTextToSize('Listado semanal de citas', titleMaxW)
-      let yHead = 12
-      doc.text(titleLines, textX, yHead)
-      yHead += titleLines.length * 5.5
-      doc.setFont('helvetica', 'normal')
-      doc.setFontSize(9.5)
-      const sub = `Semana del ${start.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })} al ${end.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}`
-      const subLines = doc.splitTextToSize(sub, titleMaxW)
-      doc.text(subLines, textX, yHead + 4)
-      doc.setTextColor(0, 0, 0)
-      y = headerH + 6
-    }
-
-    drawHeader()
-
-    const porRealizar = citasSemana.filter((c) => c.estado === 'pendiente' || c.estado === 'en_proceso')
-    const boxGap = 4
-    const boxW = (contentW - boxGap) / 2
-    const boxH = 18
-
-    ensureSpace(boxH + 12)
-    doc.setFillColor(PDF_BLUE_SOFT_BG.r, PDF_BLUE_SOFT_BG.g, PDF_BLUE_SOFT_BG.b)
-    doc.roundedRect(margin, y, boxW, boxH, 2, 2, 'F')
-    doc.setDrawColor(PDF_BLUE_BORDER.r, PDF_BLUE_BORDER.g, PDF_BLUE_BORDER.b)
-    doc.setLineWidth(0.3)
-    doc.roundedRect(margin, y, boxW, boxH, 2, 2, 'S')
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(9)
-    doc.setTextColor(71, 85, 105)
-    doc.text('Total en la semana', margin + 3, y + 6)
-    doc.setFontSize(14)
-    doc.setTextColor(15, 23, 42)
-    doc.text(String(citasSemana.length), margin + 3, y + 14)
-
-    const x2 = margin + boxW + boxGap
-    doc.setFillColor(PDF_BLUE_SOFT_BG.r, PDF_BLUE_SOFT_BG.g, PDF_BLUE_SOFT_BG.b)
-    doc.roundedRect(x2, y, boxW, boxH, 2, 2, 'F')
-    doc.setDrawColor(PDF_BLUE_BORDER.r, PDF_BLUE_BORDER.g, PDF_BLUE_BORDER.b)
-    doc.roundedRect(x2, y, boxW, boxH, 2, 2, 'S')
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(9)
-    doc.setTextColor(71, 85, 105)
-    doc.text('Por realizar (pendiente / en proceso)', x2 + 3, y + 6)
-    doc.setFontSize(14)
-    doc.setTextColor(15, 23, 42)
-    doc.text(String(porRealizar.length), x2 + 3, y + 14)
-    doc.setTextColor(0, 0, 0)
-    doc.setFont('helvetica', 'normal')
-    y += boxH + 10
-
-    if (citasSemana.length === 0) {
-      ensureSpace(20)
-      doc.setFontSize(11)
-      doc.setTextColor(100, 116, 139)
-      doc.text('No hay citas registradas para esta semana.', margin, y)
-      doc.setTextColor(0, 0, 0)
-    } else {
-      doc.setFont('helvetica', 'bold')
-      doc.setFontSize(11)
-      doc.text('Detalle de citas', margin, y)
-      y += 8
-
-      citasSemana.forEach((cita, index) => {
-        const fechaStr = new Date(cita.fecha_cita).toLocaleString('es-ES', {
-          dateStyle: 'short',
-          timeStyle: 'short',
-        })
-        const jovenNombre = cita.joven ? `${cita.joven.nombres} ${cita.joven.apellidos}` : 'Sin joven asignado'
-        const encargado = cita.profesional?.full_name || 'Sin asignar'
-        const cardPadding = 5
-        const innerW = contentW - cardPadding * 2
-        const motivoLines = doc.splitTextToSize(cita.motivo || '—', contentW - 14)
-        const jovenLines = doc.splitTextToSize(jovenNombre, innerW - 28)
-        const encLines = doc.splitTextToSize(encargado, innerW - 32)
-        doc.setFont('helvetica', 'bold')
-        doc.setFontSize(8)
-        const badgeW = doc.getTextWidth(estadoPdfLabel(cita.estado)) + 6
-        doc.setFontSize(10)
-        doc.setFont('helvetica', 'normal')
-        const cardH =
-          cardPadding +
-          7 +
-          lineH +
-          Math.max(lineH, jovenLines.length * lineH) +
-          Math.max(lineH, encLines.length * lineH) +
-          4 +
-          4 +
-          motivoLines.length * lineH +
-          cardPadding
-
-        ensureSpace(cardH + 4)
-
-        doc.setFillColor(PDF_BLUE_SOFT_BG.r, PDF_BLUE_SOFT_BG.g, PDF_BLUE_SOFT_BG.b)
-        doc.roundedRect(margin, y, contentW, cardH, 2, 2, 'F')
-        doc.setDrawColor(PDF_BLUE_BORDER.r, PDF_BLUE_BORDER.g, PDF_BLUE_BORDER.b)
-        doc.setLineWidth(0.25)
-        doc.roundedRect(margin, y, contentW, cardH, 2, 2, 'S')
-
-        let cy = y + cardPadding + 5
-        const ix = margin + cardPadding
-
-        doc.setFont('helvetica', 'bold')
-        doc.setFontSize(10)
-        doc.setTextColor(15, 23, 42)
-        doc.text(`Cita ${index + 1}`, ix, cy)
-
-        const [r, g, b] = estadoPdfRgb(cita.estado)
-        doc.setFillColor(r, g, b)
-        const bx = margin + contentW - cardPadding - badgeW
-        doc.roundedRect(bx, cy - 4, badgeW, 6, 1, 1, 'F')
-        doc.setTextColor(255, 255, 255)
-        doc.setFontSize(8)
-        doc.setFont('helvetica', 'bold')
-        doc.text(estadoPdfLabel(cita.estado), bx + 3, cy)
-        doc.setTextColor(0, 0, 0)
-        doc.setFont('helvetica', 'normal')
-        cy += 8
-
-        doc.setFontSize(9)
-        doc.setTextColor(71, 85, 105)
-        doc.text('Fecha y hora', ix, cy)
-        doc.setTextColor(15, 23, 42)
-        doc.setFont('helvetica', 'bold')
-        doc.text(fechaStr, ix + 28, cy)
-        doc.setFont('helvetica', 'normal')
-        cy += lineH
-
-        doc.setTextColor(71, 85, 105)
-        doc.text('Joven', ix, cy)
-        doc.setTextColor(15, 23, 42)
-        doc.text(jovenLines, ix + 28, cy)
-        cy += Math.max(lineH, jovenLines.length * lineH)
-
-        doc.setTextColor(71, 85, 105)
-        doc.text('Encargado', ix, cy)
-        doc.setTextColor(15, 23, 42)
-        doc.text(encLines, ix + 32, cy)
-        cy += Math.max(lineH, encLines.length * lineH)
-
-        cy += 2
-        doc.setDrawColor(PDF_BLUE_BORDER.r, PDF_BLUE_BORDER.g, PDF_BLUE_BORDER.b)
-        doc.line(ix, cy, margin + contentW - cardPadding, cy)
-        cy += 5
-
-        doc.setFontSize(8)
-        doc.setTextColor(71, 85, 105)
-        doc.text('Motivo', ix, cy)
-        cy += 4
-        doc.setFontSize(9)
-        doc.setTextColor(51, 65, 85)
-        doc.text(motivoLines, ix, cy)
-        cy += motivoLines.length * lineH
-
-        y += cardH + 5
+  const descargarPdfSemanalTodos = async () => {
+    const { start, end } = getWeekRange()
+    try {
+      setError(null)
+      const res = await fetch('/api/citas?vista=agenda_completa', {
+        credentials: 'include',
+        cache: 'no-store',
       })
+      const data = await res.json()
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'No se pudieron cargar las citas para el PDF')
+      }
+      const todas: Cita[] = data.citas || []
+      const citasSemana = todas.filter((cita) => {
+        const fecha = new Date(cita.fecha_cita)
+        return fecha >= start && fecha <= end
+      })
+      await exportarPdfCitasSemana(citasSemana, start, end, {
+        titulo: 'Listado semanal — Vista general (todos los usuarios)',
+        nombreArchivo: 'citas-semana-vista-general.pdf',
+        incluirSolicitante: true,
+      })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al generar el PDF de vista general')
     }
-
-    for (let p = 1; p <= pageCount; p++) {
-      doc.setPage(p)
-      doc.setFontSize(8)
-      doc.setTextColor(148, 163, 184)
-      doc.setFont('helvetica', 'normal')
-      doc.text(
-        `Generado el ${new Date().toLocaleString('es-ES')} · Página ${p} de ${pageCount}`,
-        margin,
-        pageH - 8
-      )
-      doc.setTextColor(0, 0, 0)
-    }
-
-    doc.save('citas-semana.pdf')
   }
 
   const badgeClass = (estado: Cita['estado']) => {
@@ -582,20 +646,33 @@ export default function CitasPage() {
           </h1>
           <p className="text-gray-600 dark:text-gray-300 mt-2">
             {isAdmin
-              ? 'Vista global de la agenda. Usa los filtros y la paginación para localizar citas.'
-              : 'Ves las citas donde eres solicitante o encargado. Las notificaciones de recordatorio van al encargado y a administración.'}
+              ? 'Vista global de la agenda en la tabla. Puedes descargar un PDF con tus citas de la semana u otro con la vista general de todas las citas. Usa filtros y paginación en la tabla.'
+              : 'En la tabla ves las citas donde participas. Puedes descargar un PDF con solo tus citas de la semana u otro con la vista general de toda la agenda.'}
           </p>
         </div>
-        <button
-          type="button"
-          className="btn-secondary flex items-center gap-2"
-          onClick={() => {
-            void descargarPdfSemanal()
-          }}
-        >
-          <FileDown className="w-4 h-4" />
-          Descargar PDF semanal
-        </button>
+        <div className="flex flex-wrap items-center justify-end gap-2 shrink-0">
+          <button
+            type="button"
+            className="btn-secondary flex items-center gap-2"
+            onClick={() => {
+              void descargarPdfSemanal()
+            }}
+          >
+            <FileDown className="w-4 h-4" />
+            PDF semanal (mis citas)
+          </button>
+          <button
+            type="button"
+            className="btn-secondary flex items-center gap-2"
+            onClick={() => {
+              void descargarPdfSemanalTodos()
+            }}
+            title="PDF con todas las citas de la semana (agenda completa)"
+          >
+            <Users className="w-4 h-4" />
+            PDF semanal (vista general)
+          </button>
+        </div>
       </div>
 
       <div className="card mb-6">

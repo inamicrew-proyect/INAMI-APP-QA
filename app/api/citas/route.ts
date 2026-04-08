@@ -65,7 +65,7 @@ async function hasModulePermission(
   return !!permissionRow
 }
 
-export async function GET(_request: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
     const authCheck = await requireAuth()
     if ('error' in authCheck) {
@@ -83,6 +83,9 @@ export async function GET(_request: NextRequest) {
 
     const uid = authCheck.profile.id
     const esAdmin = authCheck.profile.role === 'admin'
+    /** Listado completo de la agenda (p. ej. PDF vista general). Misma regla que admin: solo quien puede ver el módulo Citas. */
+    const agendaCompleta =
+      request.nextUrl.searchParams.get('vista') === 'agenda_completa'
 
     let citasQuery = admin
       .from('citas')
@@ -94,7 +97,7 @@ export async function GET(_request: NextRequest) {
       `)
       .order('fecha_cita', { ascending: true })
 
-    if (!esAdmin) {
+    if (!esAdmin && !agendaCompleta) {
       citasQuery = citasQuery.or(`profesional_id.eq.${uid},solicitante_id.eq.${uid}`)
     }
 

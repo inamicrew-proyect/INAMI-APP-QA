@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Shield, Activity, Users, FileText, Clock, FileDown, Bell } from 'lucide-react'
+import { Activity, Users, FileText, Clock, FileDown, Bell } from 'lucide-react'
 import { useAdminAccess } from '@/lib/hooks/useAdminAccess'
 import { Routes } from '@/lib/routes'
 import { BitacoraLogDetalles } from '@/components/BitacoraLogDetalles'
@@ -358,8 +358,14 @@ export default function SeguridadPage() {
     <div className="max-w-7xl mx-auto px-4 py-8">
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
-          <div className="p-3 bg-primary-100 rounded-lg">
-            <Shield className="w-8 h-8 text-primary-600" />
+          <div className="p-2 bg-primary-100 dark:bg-primary-900/30 rounded-lg shrink-0 flex items-center">
+            <img
+              src="/inami-logo.png"
+              alt="INAMI — Instituto Nacional para la Atención a Menores Infractores"
+              width={140}
+              height={56}
+              className="h-11 w-auto max-w-[160px] object-contain object-left"
+            />
           </div>
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Seguridad</h1>
