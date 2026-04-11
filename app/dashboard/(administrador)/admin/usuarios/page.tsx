@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { Search, Plus, Edit, Trash2, Eye, RefreshCw, UserPlus, Filter, ChevronLeft, ChevronRight, ArrowLeft } from 'lucide-react'
 import { format } from 'date-fns'
 import { useAdminAccess } from '@/lib/hooks/useAdminAccess'
+import { isProfileAdminRole } from '@/lib/is-profile-admin'
 
 const ITEMS_PER_PAGE = 20
 
@@ -198,7 +199,7 @@ export default function UsuariosPage() {
 
   const stats = useMemo(() => ({
     total: usuarios.length,
-    admins: usuarios.filter(u => u.role === 'admin').length,
+    admins: usuarios.filter(u => isProfileAdminRole(u.role)).length,
     profesionales: usuarios.filter(u => ['psicologo', 'medico', 'trabajador_social'].includes(u.role)).length,
     seguridad: usuarios.filter(u => u.role === 'seguridad').length,
   }), [usuarios])

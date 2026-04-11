@@ -8,13 +8,14 @@ import { ArrowLeft, ChevronRight } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 import { Routes } from '@/lib/routes'
 import { usePermissions } from '@/lib/hooks/usePermissions'
+import { isProfileAdminRole } from '@/lib/is-profile-admin'
 
 export default function SeguridadPage() {
   const router = useRouter()
   const { profile, loading } = useAuth()
   const { canView, loading: permissionsLoading } = usePermissions()
 
-  const isProfileAdmin = profile?.role === 'admin'
+  const isProfileAdmin = isProfileAdminRole(profile?.role)
   const canAccessAdmin =
     !loading &&
     profile != null &&

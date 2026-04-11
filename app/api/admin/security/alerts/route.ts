@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseRouteHandlerClient } from '@/lib/supabase-route-handler'
+import { isProfileAdminRole } from '@/lib/is-profile-admin'
 
 export const dynamic = 'force-dynamic'
 export const fetchCache = 'force-no-store'
@@ -19,7 +20,7 @@ async function requireAdmin() {
     .eq('id', session.user.id)
     .single()
 
-  if (!profile || profile.role !== 'admin') {
+  if (!profile || !isProfileAdminRole(profile.role)) {
     return { error: 'No autorizado', status: 403 } as const
   }
 

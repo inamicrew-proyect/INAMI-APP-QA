@@ -4,12 +4,13 @@
 import { useAuth } from '@/lib/auth'
 import { usePermissions } from './usePermissions'
 import { Routes } from '@/lib/routes'
+import { isProfileAdminRole } from '@/lib/is-profile-admin'
 
 export function useAdminAccess() {
   const { profile, loading: authLoading } = useAuth()
   const { canView, loading: permissionsLoading } = usePermissions()
 
-  const isProfileAdmin = profile?.role === 'admin'
+  const isProfileAdmin = isProfileAdminRole(profile?.role)
 
   if (authLoading) {
     return { hasAccess: false, loading: true, isAdmin: false as const }

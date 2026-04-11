@@ -4,6 +4,7 @@ import { cookies } from 'next/headers'
 import { createSupabaseRouteHandlerClient } from '@/lib/supabase-route-handler'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { calculateAgeFromBirth } from '@/lib/validation/jovenes'
+import { isProfileAdminRole } from '@/lib/is-profile-admin'
 
 export const dynamic = 'force-dynamic'
 export const fetchCache = 'force-no-store'
@@ -32,7 +33,7 @@ async function requireAuth(_request: NextRequest) {
     return { error: 'Perfil no encontrado', status: 401 } as const
   }
 
-  return { supabase, profile, userId, isAdmin: profile.role === 'admin' } as const
+  return { supabase, profile, userId, isAdmin: isProfileAdminRole(profile.role) } as const
 }
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -154,7 +155,7 @@ async function requireAdminOrProfesionalForJoven(_request: NextRequest, jovenId:
   }
 
   // Si es admin, puede hacer todo
-  if (profile.role === 'admin') {
+  if (isProfileAdminRole(profile.role)) {
     return { supabase, profile, userId, isAdmin: true } as const
   }
 

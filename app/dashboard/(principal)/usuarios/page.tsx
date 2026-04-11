@@ -6,6 +6,8 @@ import { Search, Plus, Edit, Trash2, Eye, RefreshCw, UserPlus, Filter, ChevronLe
 import { createClientComponentClient } from '@/lib/supabase-browser' 
 import { format } from 'date-fns'
 
+import { isProfileAdminRole } from '@/lib/is-profile-admin'
+
 const ITEMS_PER_PAGE = 20
 
 type User = {
@@ -51,7 +53,7 @@ export default function UsuariosPage() {
         .select('role')
         .eq('id', user.id)
         .single()
-      setIsAdmin(profile?.role === 'admin' || false)
+      setIsAdmin(isProfileAdminRole(profile?.role))
     } catch (error) {
       console.error('Error verifying admin role:', error)
       setIsAdmin(false)
@@ -214,7 +216,7 @@ export default function UsuariosPage() {
   // Estadísticas memoizadas
   const stats = useMemo(() => ({
     total: usuarios.length,
-    admins: usuarios.filter(u => u.role === 'admin').length,
+    admins: usuarios.filter(u => isProfileAdminRole(u.role)).length,
     profesionales: usuarios.filter(u => ['psicologo', 'medico', 'trabajador_social'].includes(u.role)).length,
     seguridad: usuarios.filter(u => u.role === 'seguridad').length,
   }), [usuarios])

@@ -19,6 +19,7 @@ import { pruneFormularioData } from '@/lib/formulario-utils'
 import { useAuth } from '@/lib/auth'
 import { usePermissions } from '@/lib/hooks/usePermissions'
 import { Routes } from '@/lib/routes'
+import { isProfileAdminRole } from '@/lib/is-profile-admin'
 
 export default function DetallesAtencionPage() {
   const router = useRouter()
@@ -40,7 +41,7 @@ export default function DetallesAtencionPage() {
   // Verificar si el usuario puede editar esta atención (por pertenencia o por módulo)
   const canEditByProfile =
     currentUserProfile &&
-    (currentUserProfile.role === 'admin' || (atencion && atencion.profesional_id === currentUserProfile.id))
+    (isProfileAdminRole(currentUserProfile.role) || (atencion && atencion.profesional_id === currentUserProfile.id))
 
   const canEdit =
     !!canEditByProfile || (!permissionsLoading && canEditByPermission(Routes.ATENCIONES))

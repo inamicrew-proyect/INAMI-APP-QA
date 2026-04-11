@@ -9,6 +9,7 @@ import { format } from 'date-fns'
 import DynamicForm from '@/components/DynamicForm'
 import { formularioFieldsByRole, type RoleKey } from '@/lib/formulario-utils'
 import { useAuth } from '@/lib/auth'
+import { isProfileAdminRole } from '@/lib/is-profile-admin'
 
 const FORMULARIO_ROUTE_BY_TIPO: Record<string, string> = {
   // Trabajo social
@@ -163,7 +164,7 @@ export default function EditarAtencionPage() {
         const atencionRow: any = atencionData
         // Verificar permisos cuando el perfil ya está disponible:
         // si todavía no se hidrata, no bloquear la carga del formulario.
-        const isAdmin = currentUserProfile?.role === 'admin'
+        const isAdmin = isProfileAdminRole(currentUserProfile?.role)
         const isCreator = !!currentUserProfile?.id && atencionRow.profesional_id === currentUserProfile.id
 
         if (currentUserProfile && !isAdmin && !isCreator) {

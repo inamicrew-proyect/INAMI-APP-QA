@@ -5,6 +5,7 @@ import { createSupabaseRouteHandlerClient } from '@/lib/supabase-route-handler'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { userCreateSchema } from '@/lib/validation/users'
 import { formatZodErrors } from '@/lib/validation/utils'
+import { isProfileAdminRole } from '@/lib/is-profile-admin'
 
 // --- ESTA ES LA FUNCIÓN CORREGIDA ---
 // Ahora solo usa la cookie para obtener la sesión.
@@ -28,7 +29,7 @@ async function requireAdmin(_request: NextRequest) {
     return { error: 'Perfil no encontrado', status: 401 } as const
   }
 
-  if (profile.role !== 'admin') {
+  if (!isProfileAdminRole(profile.role)) {
     return { error: 'No autorizado', status: 403 } as const
   }
 

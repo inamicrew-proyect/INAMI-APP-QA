@@ -3,6 +3,7 @@ import { createSupabaseRouteHandlerClient } from '@/lib/supabase-route-handler'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { supabaseCache } from '@/lib/optimization'
 import { getRoleIdsForUser } from '@/lib/user-role-resolution'
+import { isProfileAdminRole } from '@/lib/is-profile-admin'
 
 // Cache de permisos en memoria (5 minutos)
 const PERMISSIONS_CACHE_TTL = 5 * 60 * 1000
@@ -39,7 +40,7 @@ export async function GET(request: NextRequest) {
         .eq('id', session.user.id)
         .single()
 
-      if (!profile || profile.role !== 'admin') {
+      if (!profile || !isProfileAdminRole(profile.role)) {
         return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
       }
     }

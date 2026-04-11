@@ -3,6 +3,7 @@ import { createSupabaseRouteHandlerClient } from '@/lib/supabase-route-handler'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { Routes } from '@/lib/routes'
 import { getRoleIdsForUser } from '@/lib/user-role-resolution'
+import { isProfileAdminRole } from '@/lib/is-profile-admin'
 
 export const dynamic = 'force-dynamic'
 export const fetchCache = 'force-no-store'
@@ -41,7 +42,7 @@ async function hasModulePermission(
     .select('role')
     .eq('id', userId)
     .maybeSingle()
-  if (profile?.role === 'admin') return true
+  if (isProfileAdminRole(profile?.role)) return true
 
   const { data: moduleRow } = await admin
     .from('modulos')
@@ -82,7 +83,7 @@ export async function GET(request: NextRequest) {
     }
 
     const uid = authCheck.profile.id
-    const esAdmin = authCheck.profile.role === 'admin'
+    const esAdmin = isProfileAdminRole(authCheck.profile.role)
     /** Listado completo de la agenda (p. ej. PDF vista general). Misma regla que admin: solo quien puede ver el módulo Citas. */
     const agendaCompleta =
       request.nextUrl.searchParams.get('vista') === 'agenda_completa'
