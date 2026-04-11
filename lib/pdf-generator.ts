@@ -5,15 +5,13 @@ export interface PDFData {
     nombres: string
     apellidos: string
     edad: number
-    expediente_administrativo?: string
-    expediente_judicial?: string
     direccion?: string
     telefono?: string
-    email?: string
     fecha_nacimiento?: string
     sexo?: string
-    estado_civil?: string
     foto_url?: string
+    /** Observaciones del expediente (columna observaciones u observaciones_generales) */
+    observaciones?: string
   }
   atencion?: {
     id: string
@@ -56,7 +54,7 @@ export class PDFGenerator {
     this.addHeader()
     
     // Información del joven
-    this.addJovenInfo(data.joven)
+    await this.addJovenInfo(data.joven)
     
     // Información de atenciones si existe
     if (data.atencion) {
@@ -91,7 +89,7 @@ export class PDFGenerator {
     this.addHeader()
     
     // Información del joven
-    this.addJovenInfo(data.joven)
+    await this.addJovenInfo(data.joven)
     
     // Información de la atención
     if (data.atencion) {
@@ -202,25 +200,69 @@ export class PDFGenerator {
 }
 
 
-  private addJovenInfo(joven: PDFData['joven']) {
+  private async embedImageFromUrl(url: string, x: number, y: number, w: number, h: number): Promise<boolean> {
+    try {
+      const res = await fetch(url)
+      if (!res.ok) return false
+      const blob = await res.blob()
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const fr = new FileReader()
+        fr.onload = () => resolve(fr.result as string)
+        fr.onerror = () => reject(new Error('read'))
+        fr.readAsDataURL(blob)
+      })
+      const mime = blob.type || ''
+      const fmt: 'PNG' | 'JPEG' = mime.includes('png') ? 'PNG' : 'JPEG'
+      this.doc.addImage(dataUrl, fmt, x, y, w, h)
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  private async addJovenInfo(joven: PDFData['joven']) {
     this.addSectionTitle('INFORMACIÓN DEL NNAJ')
 
-    const jovenData = [
+    const jovenData: [string, string][] = [
       ['Nombre Completo:', `${joven.nombres} ${joven.apellidos}`],
       ['Edad:', `${joven.edad} años`],
-      ['Expediente Administrativo:', joven.expediente_administrativo || 'No especificado'],
-      ['Expediente Judicial:', joven.expediente_judicial || 'No especificado'],
       ['Fecha de Nacimiento:', joven.fecha_nacimiento || 'No especificada'],
       ['Sexo:', joven.sexo || 'No especificado'],
-      ['Estado Civil:', joven.estado_civil || 'No especificado'],
       ['Dirección:', joven.direccion || 'No especificada'],
       ['Teléfono:', joven.telefono || 'No especificado'],
-      ['Email:', joven.email || 'No especificado']
     ]
 
     jovenData.forEach(([label, value]) => {
       this.addField(label, value)
     })
+
+    const fotoUrl = joven.foto_url?.trim()
+    if (fotoUrl) {
+      this.ensureSpace(62)
+      this.doc.setFontSize(10)
+      this.doc.setFont('helvetica', 'bold')
+      this.doc.text('Fotografía:', 20, this.cursorY)
+      this.cursorY += 5
+      const imgW = 42
+      const imgH = 52
+      this.ensureSpace(imgH + 6)
+      const placed = await this.embedImageFromUrl(fotoUrl, 20, this.cursorY, imgW, imgH)
+      if (placed) {
+        this.cursorY += imgH + 6
+      } else {
+        this.doc.setFont('helvetica', 'normal')
+        this.doc.setFontSize(10)
+        this.doc.text('No se pudo cargar la imagen.', 20, this.cursorY + 4)
+        this.cursorY += 12
+      }
+    }
+
+    const obs = joven.observaciones?.trim()
+    if (obs) {
+      this.cursorY += 2
+      this.addParagraphBlock('Observaciones:', obs)
+    }
+
     this.cursorY += 2
   }
 
@@ -241,7 +283,7 @@ export class PDFGenerator {
         this.addField(label, value)
       })
 
-      if (atencion.observaciones) {
+      if (atencion.observaciones && atencion.observaciones.trim() !== '') {
         this.cursorY += 2
         this.addParagraphBlock('Observaciones:', atencion.observaciones)
       }

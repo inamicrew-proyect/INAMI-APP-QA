@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { ArrowLeft, Save, User, Calendar, AlertTriangle } from 'lucide-react'
+import { ArrowLeft, Save, User, Calendar, AlertTriangle, Camera } from 'lucide-react'
+import { createClientComponentClient } from '@/lib/supabase-browser'
 import type { Joven, Centro } from '@/lib/supabase'
 import { jovenUpdateSchema, calculateAgeFromBirth } from '@/lib/validation/jovenes'
 import { zodErrorToFieldErrors } from '@/lib/validation/utils'
@@ -18,6 +19,7 @@ export default function EditarJovenPage() {
   const [centros, setCentros] = useState<Centro[]>([])
   const [loadingCentros, setLoadingCentros] = useState(true)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
 
   const [formData, setFormData] = useState({
     nombres: '',
@@ -169,6 +171,49 @@ export default function EditarJovenPage() {
     // Limpiar error del campo
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }))
+    }
+  }
+
+  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file || !jovenId) return
+
+    try {
+      setUploadingPhoto(true)
+      const supabase = createClientComponentClient()
+      const fileExt = file.name.split('.').pop() || 'jpg'
+      const filePath = `fotos-jovenes/${jovenId}.${fileExt}`
+
+      const { error: uploadError } = await supabase.storage.from('fotos-jovenes').upload(filePath, file, { upsert: true })
+      if (uploadError) throw uploadError
+
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from('fotos-jovenes').getPublicUrl(filePath)
+
+      const updateResponse = await fetch(`/api/jovenes/${jovenId}`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ foto_url: publicUrl }),
+        cache: 'no-store',
+      })
+      const updateResult = await updateResponse.json()
+      if (!updateResponse.ok || !updateResult.success) {
+        throw new Error(updateResult.error || 'Error al actualizar la foto')
+      }
+
+      setJoven((prev) => (prev ? { ...prev, foto_url: publicUrl } : null))
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('jovenes:updated'))
+      }
+      alert('Fotografía actualizada exitosamente')
+    } catch (error) {
+      console.error('Error uploading photo:', error)
+      alert('Error al subir la fotografía')
+    } finally {
+      setUploadingPhoto(false)
+      event.target.value = ''
     }
   }
 
@@ -375,6 +420,33 @@ export default function EditarJovenPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="card">
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">Fotografía del NNAJ</h2>
+            <p className="text-sm text-gray-600 mb-4">Opcional. Se usa en expediente e informes en PDF.</p>
+            <div className="flex flex-col sm:flex-row items-start gap-4">
+              <div className="relative shrink-0">
+                <div className="w-28 h-28 rounded-full overflow-hidden border-2 border-gray-200 bg-gray-100 flex items-center justify-center">
+                  {joven.foto_url ? (
+                    <img src={joven.foto_url} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <User className="w-12 h-12 text-gray-400" />
+                  )}
+                </div>
+                <label className="absolute bottom-0 right-0 bg-primary-600 text-white p-2 rounded-full cursor-pointer hover:bg-primary-700 transition-colors">
+                  <Camera className="w-4 h-4" />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handlePhotoUpload}
+                    disabled={uploadingPhoto}
+                  />
+                </label>
+              </div>
+              {uploadingPhoto && <span className="text-sm text-gray-500">Subiendo…</span>}
+            </div>
+          </div>
+
           {/* Información Personal */}
           <div className="card">
             <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">

@@ -14,6 +14,7 @@ import {
   AlertCircle,
   Download,
   Printer,
+  Building2,
 } from 'lucide-react'
 import { createClientComponentClient } from '@/lib/supabase-browser'
 import type { Joven, Centro } from '@/lib/supabase'
@@ -198,15 +199,12 @@ export default function ExpedienteJovenPage() {
           nombres: joven.nombres,
           apellidos: joven.apellidos,
           edad: joven.edad,
-          expediente_administrativo: joven.expediente_administrativo,
-          expediente_judicial: joven.expediente_judicial,
           direccion: joven.direccion,
           telefono: joven.telefono,
-          email: joven.email,
           fecha_nacimiento: joven.fecha_nacimiento,
           sexo: joven.sexo,
-          estado_civil: joven.estado_civil,
           foto_url: joven.foto_url,
+          observaciones: joven.observaciones ?? joven.observaciones_generales ?? undefined,
         },
       }
 
@@ -336,7 +334,7 @@ export default function ExpedienteJovenPage() {
               </div>
 
               <div className="print-section">
-                <div className="print-section-title">Ficha de Identificación</div>
+                <div className="print-section-title">Datos del NNAJ</div>
 
                 <div className="two-cols">
                   <div>
@@ -344,17 +342,14 @@ export default function ExpedienteJovenPage() {
                       <div className="field-label">Nombres</div>
                       <div className="field-value">{joven.nombres || ''}</div>
                     </div>
-
                     <div className="field-row">
                       <div className="field-label">Apellidos</div>
                       <div className="field-value">{joven.apellidos || ''}</div>
                     </div>
-
                     <div className="field-row">
                       <div className="field-label">Fecha Nacimiento</div>
                       <div className="field-value">{joven.fecha_nacimiento ? format(new Date(joven.fecha_nacimiento), 'dd/MM/yyyy') : ''}</div>
                     </div>
-
                     <div className="field-row">
                       <div className="field-label">Edad</div>
                       <div className="field-value">{joven.edad ?? ''}</div>
@@ -366,20 +361,21 @@ export default function ExpedienteJovenPage() {
                       <div className="field-label">Sexo</div>
                       <div className="field-value">{joven.sexo || ''}</div>
                     </div>
-
-                    <div className="field-row">
-                      <div className="field-label">Estado Civil</div>
-                      <div className="field-value">{joven.estado_civil || ''}</div>
-                    </div>
-
                     <div className="field-row">
                       <div className="field-label">Teléfono</div>
                       <div className="field-value">{joven.telefono || ''}</div>
                     </div>
-
                     <div className="field-row">
-                      <div className="field-label">Email</div>
-                      <div className="field-value">{joven.email || ''}</div>
+                      <div className="field-label">Centro</div>
+                      <div className="field-value">{centro?.nombre || ''}</div>
+                    </div>
+                    <div className="field-row">
+                      <div className="field-label">Fecha de Ingreso</div>
+                      <div className="field-value">{joven.fecha_ingreso ? format(new Date(joven.fecha_ingreso), 'dd/MM/yyyy') : ''}</div>
+                    </div>
+                    <div className="field-row">
+                      <div className="field-label">Estado</div>
+                      <div className="field-value">{joven.estado || ''}</div>
                     </div>
                   </div>
                 </div>
@@ -391,44 +387,9 @@ export default function ExpedienteJovenPage() {
               </div>
 
               <div className="print-section">
-                <div className="print-section-title">Datos Administrativos</div>
-
-                <div className="two-cols">
-                  <div>
-                    <div className="field-row">
-                      <div className="field-label">Exp. Administrativo</div>
-                      <div className="field-value">{joven.expediente_administrativo || ''}</div>
-                    </div>
-
-                    <div className="field-row">
-                      <div className="field-label">Exp. Judicial</div>
-                      <div className="field-value">{joven.expediente_judicial || ''}</div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="field-row">
-                      <div className="field-label">Centro</div>
-                      <div className="field-value">{centro?.nombre || ''}</div>
-                    </div>
-
-                    <div className="field-row">
-                      <div className="field-label">Fecha de Ingreso</div>
-                      <div className="field-value">{joven.fecha_ingreso ? format(new Date(joven.fecha_ingreso), 'dd/MM/yyyy') : ''}</div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="field-row">
-                  <div className="field-label">Estado</div>
-                  <div className="field-value">{joven.estado || ''}</div>
-                </div>
-              </div>
-
-              <div className="print-section">
                 <div className="print-section-title">Observaciones Generales</div>
                 <div className="field-value" style={{ minHeight: '18mm' }}>
-                  {joven.observaciones_generales || ''}
+                  {joven.observaciones ?? joven.observaciones_generales ?? ''}
                 </div>
               </div>
 
@@ -471,124 +432,109 @@ export default function ExpedienteJovenPage() {
 
           {/* ====== UI NORMAL (NO SE IMPRIME) ====== */}
           <div className="print-hidden">
-            {/* Tu UI normal intacta */}
-            {/* Información Principal */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-              {/* Foto y Datos Básicos */}
-              <div className="lg:col-span-1">
-                <div className="card">
-                  <div className="text-center">
-                    <div className="relative inline-block mb-6">
-                      <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-lg mx-auto">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-8">
+              {/* Perfil */}
+              <div className="lg:col-span-4 xl:col-span-3">
+                <div className="card border border-gray-200/80 shadow-sm overflow-hidden">
+                  <div className="bg-gradient-to-b from-primary-50/80 to-white dark:from-primary-950/30 dark:to-gray-900 px-6 pt-8 pb-6 text-center">
+                    <div className="relative inline-block mb-5">
+                      <div className="w-36 h-36 rounded-2xl overflow-hidden border-4 border-white shadow-md mx-auto ring-1 ring-gray-100 dark:ring-gray-700">
                         {joven.foto_url ? (
                           <img src={joven.foto_url} alt={`${joven.nombres} ${joven.apellidos}`} className="w-full h-full object-cover" />
                         ) : (
-                          <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-                            <User className="w-16 h-16 text-gray-400" />
+                          <div className="w-full h-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                            <User className="w-20 h-20 text-gray-400" />
                           </div>
                         )}
                       </div>
-
-                      <label className="absolute bottom-0 right-0 bg-primary-600 text-white p-2 rounded-full cursor-pointer hover:bg-primary-700 transition-colors">
+                      <label className="absolute -bottom-1 -right-1 bg-primary-600 text-white p-2.5 rounded-xl cursor-pointer hover:bg-primary-700 transition-colors shadow-md">
                         <Camera className="w-4 h-4" />
                         <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" disabled={uploading} />
                       </label>
                     </div>
-
-                    <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white leading-snug">
                       {joven.nombres} {joven.apellidos}
                     </h2>
-
-                    <div className="space-y-2 text-sm text-gray-600">
-                      <div className="flex items-center justify-center gap-2">
-                        <Calendar className="w-4 h-4" />
-                        <span>{joven.edad} años</span>
+                    <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+                      <span className="inline-flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-300">
+                        <Calendar className="w-4 h-4 shrink-0 text-primary-600" />
+                        {joven.edad} años
+                      </span>
+                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize ${getEstadoBadge(joven.estado)}`}>
+                        {joven.estado}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="px-6 py-5 space-y-3 text-sm text-gray-600 dark:text-gray-300 border-t border-gray-100 dark:border-gray-800">
+                    {joven.direccion && (
+                      <div className="flex gap-2">
+                        <MapPin className="w-4 h-4 shrink-0 mt-0.5 text-gray-400" />
+                        <span className="leading-relaxed">{joven.direccion}</span>
                       </div>
-
-                      {joven.direccion && (
-                        <div className="flex items-center justify-center gap-2">
-                          <MapPin className="w-4 h-4" />
-                          <span className="truncate">{joven.direccion}</span>
-                        </div>
-                      )}
-
-                      {joven.telefono && (
-                        <div className="flex items-center justify-center gap-2">
-                          <Phone className="w-4 h-4" />
-                          <span>{joven.telefono}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="mt-4">
-                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${getEstadoBadge(joven.estado)}`}>{joven.estado}</span>
-                    </div>
+                    )}
+                    {joven.telefono && (
+                      <div className="flex items-center gap-2">
+                        <Phone className="w-4 h-4 shrink-0 text-gray-400" />
+                        <span>{joven.telefono}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
 
-              {/* Información Detallada */}
-              <div className="lg:col-span-2">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="card">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                      <User className="w-5 h-5 text-blue-600" />
-                      Datos Personales
-                    </h3>
-                    <div className="space-y-3">
-                      <div>
-                        <label className="text-sm font-medium text-gray-500">Fecha de Nacimiento</label>
-                        <p className="text-gray-900">
-                          {joven.fecha_nacimiento ? format(new Date(joven.fecha_nacimiento), 'dd/MM/yyyy') : 'No especificada'}
-                        </p>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-gray-500">Sexo</label>
-                        <p className="text-gray-900">{joven.sexo || 'No especificado'}</p>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-gray-500">Estado Civil</label>
-                        <p className="text-gray-900">{joven.estado_civil || 'No especificado'}</p>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-gray-500">Email</label>
-                        <p className="text-gray-900">{joven.email || 'No especificado'}</p>
-                      </div>
-                    </div>
+              {/* Ficha unificada */}
+              <div className="lg:col-span-8 xl:col-span-9 space-y-6">
+                <div className="rounded-xl border border-gray-200/80 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
+                  <div className="border-b border-gray-100 dark:border-gray-800 px-6 py-4 bg-gray-50/80 dark:bg-gray-800/50">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Información del expediente</h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Datos personales e información del centro</p>
                   </div>
-
-                  <div className="card">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                      <FileText className="w-5 h-5 text-green-600" />
-                      Datos Administrativos
-                    </h3>
-                    <div className="space-y-3">
-                      <div>
-                        <label className="text-sm font-medium text-gray-500">Expediente Administrativo</label>
-                        <p className="text-gray-900">{joven.expediente_administrativo || 'No asignado'}</p>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-gray-500">Expediente Judicial</label>
-                        <p className="text-gray-900">{joven.expediente_judicial || 'No asignado'}</p>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-gray-500">Centro</label>
-                        <p className="text-gray-900">{centro?.nombre || 'Sin asignar'}</p>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-gray-500">Fecha de Ingreso</label>
-                        <p className="text-gray-900">
-                          {joven.fecha_ingreso ? format(new Date(joven.fecha_ingreso), 'dd/MM/yyyy') : 'No especificada'}
-                        </p>
-                      </div>
+                  <div className="grid md:grid-cols-2 md:divide-x divide-gray-100 dark:divide-gray-800">
+                    <div className="p-6 space-y-5">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-primary-600 dark:text-primary-400 flex items-center gap-2">
+                        <User className="w-4 h-4" />
+                        Identificación
+                      </p>
+                      <dl className="space-y-4">
+                        <div>
+                          <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Fecha de nacimiento</dt>
+                          <dd className="mt-0.5 text-gray-900 dark:text-white">
+                            {joven.fecha_nacimiento ? format(new Date(joven.fecha_nacimiento), 'dd/MM/yyyy') : '—'}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Sexo</dt>
+                          <dd className="mt-0.5 text-gray-900 dark:text-white">{joven.sexo || '—'}</dd>
+                        </div>
+                      </dl>
+                    </div>
+                    <div className="p-6 space-y-5 bg-gray-50/40 dark:bg-gray-800/20">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400 flex items-center gap-2">
+                        <Building2 className="w-4 h-4" />
+                        Centro y seguimiento
+                      </p>
+                      <dl className="space-y-4">
+                        <div>
+                          <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Centro</dt>
+                          <dd className="mt-0.5 text-gray-900 dark:text-white">{centro?.nombre || 'Sin asignar'}</dd>
+                        </div>
+                        <div>
+                          <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Fecha de ingreso</dt>
+                          <dd className="mt-0.5 text-gray-900 dark:text-white">
+                            {joven.fecha_ingreso ? format(new Date(joven.fecha_ingreso), 'dd/MM/yyyy') : '—'}
+                          </dd>
+                        </div>
+                      </dl>
                     </div>
                   </div>
                 </div>
 
-                {joven.observaciones_generales && (
-                  <div className="card mt-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Observaciones Generales</h3>
-                    <p className="text-gray-700 whitespace-pre-wrap">{joven.observaciones_generales}</p>
+                {(joven.observaciones || joven.observaciones_generales) && (
+                  <div className="rounded-xl border border-gray-200/80 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Observaciones generales</h3>
+                    <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
+                      {joven.observaciones ?? joven.observaciones_generales}
+                    </p>
                   </div>
                 )}
               </div>

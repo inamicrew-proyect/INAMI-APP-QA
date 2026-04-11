@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Save, User, Calendar, Phone, AlertTriangle } from 'lucide-react'
+import { ArrowLeft, Save, User, Calendar, Phone, AlertTriangle, Camera } from 'lucide-react'
+import { createClientComponentClient } from '@/lib/supabase-browser'
 import type { Centro } from '@/lib/supabase'
 import { jovenCreateSchema, calculateAgeFromBirth } from '@/lib/validation/jovenes'
 import { zodErrorToFieldErrors } from '@/lib/validation/utils'
@@ -30,6 +31,9 @@ export default function NuevoJovenPage() {
   })
 
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [fotoPendiente, setFotoPendiente] = useState<File | null>(null)
+  const [fotoPreview, setFotoPreview] = useState<string | null>(null)
+  const [uploadingFoto, setUploadingFoto] = useState(false)
 
   // Cargar centros al montar el componente
   useEffect(() => {
@@ -155,11 +159,53 @@ export default function NuevoJovenPage() {
         throw new Error(result.error || 'No se pudo crear el joven.')
       }
 
+      const newId = result.data?.id as string | undefined
+      let mensajeExito = 'Joven registrado exitosamente'
+
+      if (newId && fotoPendiente) {
+        try {
+          setUploadingFoto(true)
+          const supabase = createClientComponentClient()
+          const fileExt = fotoPendiente.name.split('.').pop() || 'jpg'
+          const filePath = `fotos-jovenes/${newId}.${fileExt}`
+          const { error: uploadError } = await supabase.storage
+            .from('fotos-jovenes')
+            .upload(filePath, fotoPendiente, { upsert: true })
+          if (uploadError) throw uploadError
+
+          const {
+            data: { publicUrl },
+          } = supabase.storage.from('fotos-jovenes').getPublicUrl(filePath)
+
+          const fotoRes = await fetch(`/api/jovenes/${newId}`, {
+            method: 'PUT',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ foto_url: publicUrl }),
+            cache: 'no-store',
+          })
+          const fotoJson = await fotoRes.json()
+          if (!fotoRes.ok || !fotoJson.success) {
+            throw new Error(fotoJson.error || 'No se pudo guardar la URL de la foto')
+          }
+        } catch (fotoErr) {
+          console.error('Error subiendo foto tras crear joven:', fotoErr)
+          mensajeExito = 'Joven registrado. No se pudo subir la fotografía; puedes agregarla desde el expediente.'
+        } finally {
+          setUploadingFoto(false)
+        }
+      }
+
       console.log('Joven creado exitosamente')
-      alert('Joven registrado exitosamente')
+      alert(mensajeExito)
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('jovenes:updated'))
       }
+      if (fotoPreview) {
+        URL.revokeObjectURL(fotoPreview)
+        setFotoPreview(null)
+      }
+      setFotoPendiente(null)
       router.push('/dashboard/jovenes')
     } catch (error: any) {
       console.error('Error creating joven:', error)
@@ -181,6 +227,19 @@ export default function NuevoJovenPage() {
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }))
     }
+  }
+
+  const handleFotoSeleccion = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (fotoPreview) URL.revokeObjectURL(fotoPreview)
+    if (!file) {
+      setFotoPendiente(null)
+      setFotoPreview(null)
+      return
+    }
+    setFotoPendiente(file)
+    setFotoPreview(URL.createObjectURL(file))
+    e.target.value = ''
   }
 
   return (
@@ -205,6 +264,26 @@ export default function NuevoJovenPage() {
           <div className="flex items-center gap-3 mb-6">
             <User className="w-6 h-6 text-primary-600" />
             <h2 className="text-xl font-bold text-gray-900">Información Personal</h2>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-start gap-4 mb-6 pb-6 border-b border-gray-200 dark:border-gray-600">
+            <div className="relative shrink-0">
+              <div className="w-28 h-28 rounded-full overflow-hidden border-2 border-gray-200 dark:border-gray-600 bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                {fotoPreview ? (
+                  <img src={fotoPreview} alt="Vista previa" className="w-full h-full object-cover" />
+                ) : (
+                  <User className="w-12 h-12 text-gray-400" />
+                )}
+              </div>
+              <label className="absolute bottom-0 right-0 bg-primary-600 text-white p-2 rounded-full cursor-pointer hover:bg-primary-700 transition-colors">
+                <Camera className="w-4 h-4" />
+                <input type="file" accept="image/*" className="hidden" onChange={handleFotoSeleccion} />
+              </label>
+            </div>
+            <div className="text-sm text-gray-600 dark:text-gray-300 pt-1">
+              <p className="font-medium text-gray-800 dark:text-gray-200">Fotografía (opcional)</p>
+              <p>Se guardará al crear el registro. Formatos de imagen habituales.</p>
+            </div>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -497,11 +576,11 @@ export default function NuevoJovenPage() {
           </button>
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || uploadingFoto}
             className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             <Save className="w-5 h-5" />
-            {loading ? 'Guardando...' : 'Guardar Joven'}
+            {loading || uploadingFoto ? 'Guardando...' : 'Guardar Joven'}
           </button>
         </div>
       </form>

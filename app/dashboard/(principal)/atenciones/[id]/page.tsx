@@ -115,15 +115,11 @@ export default function DetallesAtencionPage() {
           nombres: joven.nombres,
           apellidos: joven.apellidos,
           edad: joven.edad,
-          expediente_administrativo: joven.expediente_administrativo,
-          expediente_judicial: joven.expediente_judicial,
           direccion: joven.direccion,
           telefono: joven.telefono,
-          email: joven.email,
           fecha_nacimiento: joven.fecha_nacimiento,
           sexo: joven.sexo,
-          estado_civil: joven.estado_civil,
-          foto_url: joven.foto_url
+          foto_url: joven.foto_url,
         },
         atencion: {
           id: atencion.id,
