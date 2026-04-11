@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseRouteHandlerClient } from '@/lib/supabase-route-handler'
+import { getPublicSiteUrl } from '@/lib/env/public-site-url'
+import { resetPasswordEmailRecoveryAbsoluteUrl, resetPasswordEmailRecoveryPath } from '@/lib/routes'
 
 export const dynamic = 'force-dynamic'
 export const fetchCache = 'force-no-store'
@@ -11,24 +13,23 @@ export async function GET(request: NextRequest) {
   const type = requestUrl.searchParams.get('type')
   const next = requestUrl.searchParams.get('next')
   
-  const QA_ORIGIN = 'https://qa.inamiunah.online'
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || QA_ORIGIN
+  const siteUrl = getPublicSiteUrl()
   const forwardedProto = request.headers.get('x-forwarded-proto')
   const forwardedHost = request.headers.get('x-forwarded-host')
   const forwardedOrigin =
     forwardedHost && forwardedProto ? `${forwardedProto}://${forwardedHost}` : null
   const candidateOrigin = forwardedOrigin || requestUrl.origin || siteUrl
 
-  // En algunos despliegues request.url llega con origen interno (0.0.0.0/localhost).
-  // Para QA forzamos el dominio público y evitamos redirigir al host interno.
+  // Origen interno (0.0.0.0, etc.): redirigir a la URL pública configurada (p. ej. localhost:3000).
   const shouldForceSiteUrl =
     /:\/\/(0\.0\.0\.0|127\.0\.0\.1|localhost)(:\d+)?/i.test(candidateOrigin) ||
     /:\/\/(0\.0\.0\.0|127\.0\.0\.1|localhost)(:\d+)?/i.test(requestUrl.origin)
-  const requestOrigin = shouldForceSiteUrl ? QA_ORIGIN : candidateOrigin
+  const requestOrigin = shouldForceSiteUrl ? siteUrl : candidateOrigin
 
   // Si no hay código ni token_hash, Supabase puede haber enviado el token en el fragmento (#access_token=...).
   // El servidor no recibe el hash, así que devolvemos una página que lo lee y llama a /api/auth/set-session (cookies).
   if (!code) {
+    const recoveryResetPath = resetPasswordEmailRecoveryPath()
     const html = `<!DOCTYPE html>
 <html>
 <head>
@@ -40,6 +41,7 @@ export async function GET(request: NextRequest) {
   <script>
     (function() {
       var fallbackOrigin = ${JSON.stringify(requestOrigin)};
+      var recoveryPath = ${JSON.stringify(recoveryResetPath)};
       var rawOrigin = window.location.origin || '';
       var isInternalOrigin = /:\/\/(0\\.0\\.0\\.0|127\\.0\\.0\\.1|localhost)(:\\d+)?/i.test(rawOrigin);
       var origin = isInternalOrigin ? fallbackOrigin : rawOrigin;
@@ -56,7 +58,7 @@ export async function GET(request: NextRequest) {
         })
           .then(function(r) { if (r.ok) return r.json(); throw new Error('Error'); })
           .then(function() {
-            setTimeout(function() { window.location.replace(origin + '/reset-password'); }, 300);
+            setTimeout(function() { window.location.replace(origin + recoveryPath); }, 300);
           })
           .catch(function() { window.location.replace(origin + '/login?recovery_expired=1'); });
       } else {
@@ -96,14 +98,16 @@ export async function GET(request: NextRequest) {
     // REGLA 1: Si es recuperación explícita (type=recovery o next incluye reset-password), SIEMPRE ir a reset-password
     // Usar requestOrigin para que las cookies de sesión se mantengan (mismo dominio que la petición)
     if (isRecovery && !error && data?.session) {
-      return NextResponse.redirect(`${requestOrigin}/reset-password`)
+      return NextResponse.redirect(resetPasswordEmailRecoveryAbsoluteUrl(requestOrigin))
     }
     
     // REGLA 2: Si NO hay type ni next, y la sesión se creó exitosamente,
     // ASumir que es recuperación (resetPasswordForEmail no siempre incluye type)
     if (!error && data?.session) {
-      if (!type && !next) return NextResponse.redirect(`${requestOrigin}/reset-password`)
-      if (next && next.includes('reset-password')) return NextResponse.redirect(`${requestOrigin}/reset-password`)
+      if (!type && !next)
+        return NextResponse.redirect(resetPasswordEmailRecoveryAbsoluteUrl(requestOrigin))
+      if (next && next.includes('reset-password'))
+        return NextResponse.redirect(resetPasswordEmailRecoveryAbsoluteUrl(requestOrigin))
       if (type && type !== 'recovery') {
         if (next) {
           return NextResponse.redirect(`${requestOrigin}${next}`)
@@ -115,7 +119,7 @@ export async function GET(request: NextRequest) {
       if (next && !next.includes('reset-password')) {
         return NextResponse.redirect(`${requestOrigin}${next}`)
       }
-      return NextResponse.redirect(`${requestOrigin}/reset-password`)
+      return NextResponse.redirect(resetPasswordEmailRecoveryAbsoluteUrl(requestOrigin))
     } 
     
     // Si hubo error y no se redirigió antes, ir al login con mensaje de enlace expirado
@@ -125,12 +129,13 @@ export async function GET(request: NextRequest) {
   } catch (err) {
     if (process.env.NODE_ENV === 'development') console.error('Auth callback error:', err)
     if (isRecovery || (!type && !next)) {
-      return NextResponse.redirect(`${requestOrigin}/reset-password`)
+      return NextResponse.redirect(resetPasswordEmailRecoveryAbsoluteUrl(requestOrigin))
     }
   }
 
-  if (isRecovery) return NextResponse.redirect(`${requestOrigin}/reset-password`)
-  if (!type && !next) return NextResponse.redirect(`${requestOrigin}/reset-password`)
+  if (isRecovery) return NextResponse.redirect(resetPasswordEmailRecoveryAbsoluteUrl(requestOrigin))
+  if (!type && !next)
+    return NextResponse.redirect(resetPasswordEmailRecoveryAbsoluteUrl(requestOrigin))
   if (type && type !== 'recovery' && next && !next.includes('reset-password')) {
     return NextResponse.redirect(`${requestOrigin}${next}`)
   }

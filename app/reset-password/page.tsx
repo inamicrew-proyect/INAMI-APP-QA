@@ -4,15 +4,29 @@ import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Shield, Lock, CheckCircle, Eye as EyeIcon, EyeOff as EyeOffIcon } from 'lucide-react'
+import {
+  RESET_PASSWORD_FROM_EMAIL_PARAM,
+  RESET_PASSWORD_FROM_EMAIL_VALUE,
+} from '@/lib/routes'
 
 function ResetPasswordContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const email = searchParams.get('email') || ''
+  /** Lo pone `/auth/callback` tras el enlace del correo; anula cualquier otro criterio que dispare preguntas. */
+  const fromRecoveryEmailLink =
+    searchParams.get(RESET_PASSWORD_FROM_EMAIL_PARAM) === RESET_PASSWORD_FROM_EMAIL_VALUE
+  /** Solo desde login «preguntas secretas» (`flow=secret-questions`), nunca desde el correo. */
+  const isSecretQuestionsFlow =
+    !fromRecoveryEmailLink &&
+    searchParams.get('flow') === 'secret-questions' &&
+    Boolean(email.trim())
 
-  const [step, setStep] = useState<'questions' | 'reset'>('questions')
+  const [step, setStep] = useState<'questions' | 'reset'>(
+    isSecretQuestionsFlow ? 'questions' : 'reset'
+  )
   const [loading, setLoading] = useState(false)
-  const [checkingSession, setCheckingSession] = useState(!email)
+  const [checkingSession, setCheckingSession] = useState(!isSecretQuestionsFlow)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [hasSession, setHasSession] = useState(false)
@@ -29,17 +43,16 @@ function ResetPasswordContent() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   useEffect(() => {
-    // Si hay email en la URL, usarlo
-    if (email) {
+    if (isSecretQuestionsFlow) {
       setUserEmail(email)
-      if (step === 'questions') {
-        fetchUserQuestions()
-      }
-    } else {
-      // Si no hay email, verificar si tiene sesión (viene del callback)
-      checkSessionAndGetEmail()
+      setStep('questions')
+      setCheckingSession(false)
+      fetchUserQuestions()
+      return
     }
-  }, [email, step])
+    // Recuperación por correo: sesión creada en /auth/callback → solo formulario de contraseña
+    checkSessionAndGetEmail()
+  }, [isSecretQuestionsFlow, email])
 
   const checkSessionAndGetEmail = async () => {
     setCheckingSession(true)
@@ -50,17 +63,8 @@ function ResetPasswordContent() {
       if (response.ok && result.email) {
         setHasSession(true)
         setUserEmail(result.email)
-        
-        const questionsResponse = await fetch(`/api/security-questions/by-email?email=${encodeURIComponent(result.email)}`, { credentials: 'same-origin' })
-        const questionsResult = await questionsResponse.json()
-
-        if (questionsResponse.ok && questionsResult.questions && questionsResult.questions.length > 0) {
-          setUserQuestions(questionsResult.questions)
-          setAnswers(new Array(questionsResult.questions.length).fill(''))
-          setStep('questions')
-        } else {
-          setStep('reset')
-        }
+        // Enlace por correo: Supabase ya validó al usuario; no pedir preguntas secretas aquí.
+        setStep('reset')
       } else {
         setError('Sesión no válida. Por favor, solicite un nuevo enlace de recuperación.')
       }
@@ -227,8 +231,8 @@ function ResetPasswordContent() {
     }
   }
 
-  // Cargando mientras se verifica la sesión (viene del enlace del correo)
-  if (checkingSession && !email) {
+  // Cargando mientras se verifica la sesión (enlace del correo u otras URLs sin flow=secret-questions)
+  if (checkingSession) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50">
         <div className="text-center">

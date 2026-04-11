@@ -81,4 +81,20 @@ export const Routes = {
   ADMIN_SEGURIDAD: '/dashboard/admin/seguridad',
 } as const
 
+/**
+ * Query en `/reset-password` cuando el usuario llega del enlace del correo (callback/set-session).
+ * Evita activar el flujo de preguntas secretas aunque la URL lleve otros parámetros.
+ */
+export const RESET_PASSWORD_FROM_EMAIL_PARAM = 'from' as const
+export const RESET_PASSWORD_FROM_EMAIL_VALUE = 'recovery-email' as const
+
+export function resetPasswordEmailRecoveryPath(): string {
+  return `${Routes.RESET_PASSWORD}?${RESET_PASSWORD_FROM_EMAIL_PARAM}=${RESET_PASSWORD_FROM_EMAIL_VALUE}`
+}
+
+export function resetPasswordEmailRecoveryAbsoluteUrl(origin: string): string {
+  const base = origin.replace(/\/$/, '')
+  return `${base}${resetPasswordEmailRecoveryPath()}`
+}
+
 export type RoutePath = typeof Routes[keyof typeof Routes] | string

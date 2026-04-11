@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 // PASO 1.1: Importar el "auth helper" en lugar de tu "lib/auth"
 import { createClientComponentClient } from '@/lib/supabase-browser'
+import { getPublicSiteUrl } from '@/lib/env/public-site-url'
 import { userMustChangePassword } from '@/lib/auth-must-change-password'
 import { AlertCircle, CheckCircle, Eye, EyeOff, Mail, HelpCircle } from 'lucide-react'
 
@@ -84,7 +85,6 @@ function LoginPageContent() {
     // Manejar el callback de Supabase cuando llega con código o con token en el hash
     const handleAuthCallback = async () => {
       const currentOrigin = window.location.origin
-      const productionUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://qa.inamiunah.online'
 
       // Si el token viene en el hash (enlace de recuperación), ir al callback para procesarlo
       if (window.location.hash) {
@@ -98,19 +98,8 @@ function LoginPageContent() {
       const urlParams = new URLSearchParams(window.location.search)
       const code = urlParams.get('code')
       const type = urlParams.get('type')
-      const currentHost = window.location.host
 
-      // Si hay código y estamos en localhost, redirigir INMEDIATAMENTE a producción
-      if (code && (currentHost.includes('localhost') || currentOrigin.includes('localhost'))) {
-        if (type === 'recovery') {
-          window.location.replace(`${productionUrl}/auth/callback?code=${code}&type=recovery&next=/reset-password`)
-        } else {
-          window.location.replace(`${productionUrl}/auth/callback?code=${code}`)
-        }
-        return
-      }
-
-      // Si hay código pero no estamos en localhost, procesar normalmente
+      // Mismo origen (localhost u otro): el correo de recuperación debe apuntar a esta URL base.
       if (code && type === 'recovery') {
         router.push(`/auth/callback?code=${code}&type=recovery&next=/reset-password`)
       } else if (code) {
@@ -210,15 +199,8 @@ function LoginPageContent() {
     }
   }
 
-  const getRecoveryRedirectSiteUrl = () => {
-    const origin = typeof window !== 'undefined' ? window.location.origin : ''
-    const isLocalhost = /localhost|127\.0\.0\.1/.test(origin)
-    return isLocalhost
-      ? process.env.NEXT_PUBLIC_SITE_URL && !/localhost|127\.0\.0\.1/.test(process.env.NEXT_PUBLIC_SITE_URL)
-        ? process.env.NEXT_PUBLIC_SITE_URL
-        : 'https://qa.inamiunah.online'
-      : process.env.NEXT_PUBLIC_SITE_URL || origin || 'https://qa.inamiunah.online'
-  }
+  /** Base URL del enlace en el correo de recuperación (Supabase redirectTo). */
+  const getRecoveryRedirectSiteUrl = () => getPublicSiteUrl()
 
   /** Recuperación por enlace mágico al correo (el usuario elige este método explícitamente) */
   const handleRecoveryByEmail = async () => {
@@ -284,7 +266,9 @@ function LoginPageContent() {
       if (questionsResponse.ok && questionsResult.questions && questionsResult.questions.length > 0) {
         setShowResetPassword(false)
         setResetMessage('')
-        router.push(`/reset-password?email=${encodeURIComponent(email.trim())}`)
+        router.push(
+          `/reset-password?flow=secret-questions&email=${encodeURIComponent(email.trim())}`
+        )
         return
       }
 
