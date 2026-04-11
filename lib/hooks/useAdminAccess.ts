@@ -1,76 +1,35 @@
 // lib/hooks/useAdminAccess.ts
-// Hook para verificar acceso al panel de administrador basándose en permisos
+// Acceso a /dashboard/admin: perfil admin o permiso puede_ver del módulo Seguridad (ruta ADMIN).
 
-import { useState, useEffect } from 'react'
 import { useAuth } from '@/lib/auth'
 import { usePermissions } from './usePermissions'
 import { Routes } from '@/lib/routes'
 
 export function useAdminAccess() {
   const { profile, loading: authLoading } = useAuth()
-  const { canView, loading: permissionsLoading, permissions } = usePermissions()
-  
-  const [hasAccess, setHasAccess] = useState(false)
-  const [loading, setLoading] = useState(true)
+  const { canView, loading: permissionsLoading } = usePermissions()
 
-  useEffect(() => {
-    if (authLoading) {
-      queueMicrotask(() => setLoading(true))
-      return
-    }
+  const isProfileAdmin = profile?.role === 'admin'
 
-    // Si es admin, siempre tiene acceso - NO ESPERAR permisos
-    if (profile?.role === 'admin') {
-      console.log('useAdminAccess: Usuario es admin, acceso permitido inmediatamente')
-      queueMicrotask(() => {
-        setHasAccess(true)
-        setLoading(false)
-      })
-      return
-    }
+  if (authLoading) {
+    return { hasAccess: false, loading: true, isAdmin: false as const }
+  }
 
-    // Si no hay perfil, no tiene acceso
-    if (!profile?.id) {
-      queueMicrotask(() => {
-        setHasAccess(false)
-        setLoading(false)
-      })
-      return
-    }
+  if (!profile?.id) {
+    return { hasAccess: false, loading: false, isAdmin: false as const }
+  }
 
-    // Si aún está cargando permisos, esperar un máximo de 3 segundos
-    if (permissionsLoading) {
-      // Timeout de seguridad: después de 3 segundos, asumir que no tiene permisos
-      const timeoutId = setTimeout(() => {
-        console.warn('useAdminAccess: Timeout esperando permisos, asumiendo sin acceso')
-        setHasAccess(false)
-        setLoading(false)
-      }, 3000)
-      
-      return () => clearTimeout(timeoutId)
-    }
+  if (isProfileAdmin) {
+    return { hasAccess: true, loading: false, isAdmin: true as const }
+  }
 
-    // Si no es admin, verificar permisos directamente
-    const canAccessAdmin = canView(Routes.ADMIN)
-    
-    console.log('useAdminAccess: Verificando permisos basados en roles', {
-      canAccessAdmin,
-      profileRole: profile?.role,
-      permissionsLoading,
-      permissionsCount: permissions.length,
-      permissions: permissions.map(p => ({ ruta: p.modulo.ruta, puede_ver: p.puede_ver }))
-    })
-    
-    queueMicrotask(() => {
-      setHasAccess(canAccessAdmin)
-      setLoading(false)
-    })
-  }, [authLoading, permissionsLoading, profile?.role, profile?.id, canView, permissions])
+  if (permissionsLoading) {
+    return { hasAccess: false, loading: true, isAdmin: false as const }
+  }
 
   return {
-    hasAccess,
-    loading: loading || authLoading || permissionsLoading,
-    isAdmin: profile?.role === 'admin',
+    hasAccess: canView(Routes.ADMIN),
+    loading: false,
+    isAdmin: false as const,
   }
 }
-

@@ -1,9 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 /**
- * IDs de roles efectivos del usuario: primero `user_roles`, si está vacío
- * cae a `profiles.role` → tabla `roles.nombre` (compatibilidad con datos legacy).
- * Funciona con cliente sesión (middleware) o service role (API).
+ * IDs de roles efectivos: unión de `user_roles` y el rol inferido desde
+ * `profiles.role` → `roles.nombre`. Así un usuario con filas en `user_roles`
+ * sigue acumulando permisos de su rol de perfil (p. ej. admin) y viceversa.
  */
 export async function getRoleIdsForUser(
   supabase: SupabaseClient,
@@ -20,9 +20,6 @@ export async function getRoleIdsForUser(
 
   const fromAssignments =
     userRoles?.map((r: { role_id: string }) => r.role_id).filter(Boolean) ?? []
-  if (fromAssignments.length > 0) {
-    return [...new Set(fromAssignments)]
-  }
 
   const { data: profile, error: pErr } = await supabase
     .from('profiles')
@@ -30,19 +27,18 @@ export async function getRoleIdsForUser(
     .eq('id', userId)
     .maybeSingle()
 
-  if (pErr || !profile?.role) {
-    return []
+  let fromProfile: string[] = []
+  if (!pErr && profile?.role) {
+    const { data: roleRow, error: rErr } = await supabase
+      .from('roles')
+      .select('id')
+      .eq('nombre', profile.role)
+      .maybeSingle()
+    if (!rErr && roleRow?.id) {
+      fromProfile = [roleRow.id]
+    }
   }
 
-  const { data: roleRow, error: rErr } = await supabase
-    .from('roles')
-    .select('id')
-    .eq('nombre', profile.role)
-    .maybeSingle()
-
-  if (rErr || !roleRow?.id) {
-    return []
-  }
-
-  return [roleRow.id]
+  const merged = [...new Set([...fromAssignments, ...fromProfile])]
+  return merged
 }

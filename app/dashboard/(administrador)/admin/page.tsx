@@ -44,7 +44,7 @@ export default function AdminPanelPage() {
             />
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Panel Administrador</h1>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Administración del sistema</h1>
             <p className="text-gray-600 dark:text-gray-400">Gestión y administración del sistema</p>
           </div>
         </div>
