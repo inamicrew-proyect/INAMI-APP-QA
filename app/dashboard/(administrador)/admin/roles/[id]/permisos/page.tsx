@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Save, Shield, Check, X } from 'lucide-react'
 import { supabaseCache } from '@/lib/optimization'
+import { getModuloNombreParaUi } from '@/lib/module-display'
 
 interface Modulo {
   id: string
@@ -29,6 +30,7 @@ interface Rol {
   id: string
   nombre: string
   descripcion: string | null
+  activo: boolean
 }
 
 export default function PermisosRolPage() {
@@ -41,6 +43,7 @@ export default function PermisosRolPage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [rol, setRol] = useState<Rol | null>(null)
+  const [rolActivo, setRolActivo] = useState(true)
   const [modulos, setModulos] = useState<Modulo[]>([])
   const [permisos, setPermisos] = useState<Record<string, Permiso>>({})
 
@@ -63,6 +66,7 @@ export default function PermisosRolPage() {
         throw new Error('Rol no encontrado')
       }
       setRol(foundRol)
+      setRolActivo(foundRol.activo !== false)
 
       // Cargar módulos
       const modulesResponse = await fetch('/api/admin/modules', { cache: 'no-store', credentials: 'include' })
@@ -121,6 +125,20 @@ export default function PermisosRolPage() {
       setError(null)
       setSuccess(null)
 
+      const roleUpdate = await fetch('/api/admin/roles', {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id,
+          activo: rolActivo,
+        }),
+      })
+      if (!roleUpdate.ok) {
+        const body = await roleUpdate.json().catch(() => null)
+        throw new Error(body?.error || `No se pudo actualizar el estado del rol (${roleUpdate.status})`)
+      }
+
       // Guardar permisos para cada módulo
       const items = Object.values(permisos)
 
@@ -149,7 +167,7 @@ export default function PermisosRolPage() {
       await loadData()
       // Invalidar cache de permisos en el cliente para que Navbar/acciones usen el estado nuevo
       supabaseCache.clear()
-      setSuccess('Permisos guardados correctamente')
+      setSuccess('Rol y permisos guardados correctamente')
 
       setTimeout(() => {
         router.push(`/dashboard/admin/roles`)
@@ -200,7 +218,34 @@ export default function PermisosRolPage() {
             {rol.descripcion && (
               <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">{rol.descripcion}</p>
             )}
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+              <Link
+                href={`/dashboard/admin/roles/${id}/editar`}
+                className="text-primary-600 dark:text-primary-400 hover:underline font-medium"
+              >
+                Editar nombre y descripción del rol
+              </Link>
+            </p>
           </div>
+        </div>
+
+        <div className="rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50/80 dark:bg-gray-800/40 px-4 py-3">
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={rolActivo}
+              onChange={(e) => setRolActivo(e.target.checked)}
+              className="mt-1 rounded border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700"
+            />
+            <span>
+              <span className="text-sm font-semibold text-gray-900 dark:text-white block">Rol activo</span>
+              <span className="text-sm text-gray-600 dark:text-gray-400">
+                Si está desactivado, el rol sigue existiendo y conserva sus permisos en base de datos, pero puedes usarlo
+                para marcar roles que no deben asignarse a usuarios nuevos. Los usuarios que ya lo tengan no se modifican
+                solos: revisa sus cuentas si cambias este estado.
+              </span>
+            </span>
+          </label>
         </div>
 
         {error && (
@@ -233,7 +278,7 @@ export default function PermisosRolPage() {
                   <tr key={modulo.id} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                     <td className="py-4 px-4">
                       <div>
-                        <div className="font-medium text-gray-900 dark:text-white">{modulo.nombre}</div>
+                        <div className="font-medium text-gray-900 dark:text-white">{getModuloNombreParaUi(modulo)}</div>
                         {modulo.descripcion && (
                           <div className="text-sm text-gray-500 dark:text-gray-400">{modulo.descripcion}</div>
                         )}
@@ -304,7 +349,7 @@ export default function PermisosRolPage() {
             className="btn-primary inline-flex items-center gap-2 disabled:opacity-60"
           >
             <Save className="w-4 h-4" />
-            {saving ? 'Guardando...' : 'Guardar Permisos'}
+            {saving ? 'Guardando...' : 'Guardar cambios'}
           </button>
         </div>
       </div>

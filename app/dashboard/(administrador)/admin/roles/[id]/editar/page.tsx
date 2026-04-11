@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Save, Shield, Check, X } from 'lucide-react'
 import { supabaseCache } from '@/lib/optimization'
+import { getModuloNombreParaUi } from '@/lib/module-display'
 
 interface Rol {
   id: string
@@ -186,7 +187,7 @@ export default function EditarRolPage() {
         if (!res.ok) {
           const body = await res.json().catch(() => null)
           const msg = body?.error || body?.details || `HTTP ${res.status}`
-          throw new Error(`${modulo.nombre}: ${msg}`)
+          throw new Error(`${getModuloNombreParaUi(modulo)}: ${msg}`)
         }
       }
 
@@ -320,7 +321,7 @@ export default function EditarRolPage() {
                       <tr key={modulo.id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800">
                         <td className="py-4 px-4">
                           <div>
-                            <div className="font-medium text-gray-900 dark:text-white">{modulo.nombre}</div>
+                            <div className="font-medium text-gray-900 dark:text-white">{getModuloNombreParaUi(modulo)}</div>
                             {modulo.descripcion && (
                               <div className="text-sm text-gray-500 dark:text-gray-400">{modulo.descripcion}</div>
                             )}

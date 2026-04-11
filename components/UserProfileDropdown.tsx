@@ -7,6 +7,8 @@ import { User, Settings, Home, LogOut, ChevronDown } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 import { getSupabaseClient } from '@/lib/supabase-client'
 import { Routes } from '@/lib/routes'
+import { usePermissions } from '@/lib/hooks/usePermissions'
+import { canShowNavModule } from '@/lib/module-nav-access'
 
 const getRoleLabel = (role: string) => {
   const labels: Record<string, string> = {
@@ -24,6 +26,13 @@ const getRoleLabel = (role: string) => {
 export default function UserProfileDropdown() {
   const pathname = usePathname()
   const { profile } = useAuth()
+  const { canView, loading: permissionsLoading } = usePermissions()
+  const isAdmin = profile?.role === 'admin'
+  const showDashboardLink = canShowNavModule(Routes.DASHBOARD, {
+    isAdmin,
+    permissionsLoading,
+    canView,
+  })
 
   const isActive = (path: string) => {
     if (path === '/dashboard') return pathname === '/dashboard'
@@ -137,6 +146,7 @@ export default function UserProfileDropdown() {
 
           {/* Opciones del menú */}
           <div className="py-2">
+            {showDashboardLink && (
             <Link
               href={Routes.DASHBOARD}
               onClick={() => setIsOpen(false)}
@@ -149,6 +159,7 @@ export default function UserProfileDropdown() {
               <Home className="w-4 h-4" />
               Dashboard
             </Link>
+            )}
             <Link
               href={Routes.usuarioId(profile.id)}
               onClick={() => setIsOpen(false)}

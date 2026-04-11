@@ -13,7 +13,7 @@
  *   /dashboard/citas          → CITAS (agenda de citas para jóvenes)
  *   /dashboard/notificaciones → NOTIFICACIONES
  *   /dashboard/configuracion  → CONFIGURACIÓN (y preguntas secretas)
- *   /dashboard/seguridad      → SEGURIDAD (usuario)
+ *   /dashboard/seguridad      → redirige a /dashboard/admin si hay acceso; si no, mensaje informativo
  *   /dashboard/usuarios/:id   → Mi perfil / Perfil de usuario
  *   /dashboard/admin          → PANEL ADMINISTRADOR
  *   /dashboard/admin/usuarios → Usuarios (admin)

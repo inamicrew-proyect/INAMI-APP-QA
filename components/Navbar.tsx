@@ -14,6 +14,8 @@ import NotificationCenter from './NotificationCenter'
 import UserProfileDropdown from './UserProfileDropdown'
 import { useTheme } from '@/lib/useTheme'
 import { Routes } from '@/lib/routes'
+import { usePermissions } from '@/lib/hooks/usePermissions'
+import { canShowNavModule, getHomeHref, type NavPermissionContext } from '@/lib/module-nav-access'
 
 function Navbar() {
   // TODOS LOS HOOKS DEBEN ESTAR AQUÍ AL INICIO, ANTES DE CUALQUIER LÓGICA
@@ -26,8 +28,26 @@ function Navbar() {
   // 3. REEMPLAZAMOS toda la lógica de 'useState', 'useCallback' y 'useEffect'
   //    con nuestro nuevo hook 'useAuth'.
   const { profile } = useAuth()
+  const { canView, loading: permissionsLoading } = usePermissions()
   const { theme } = useTheme()
   const isDark = theme === 'dark'
+
+  const isAdmin = profile?.role === 'admin'
+  const navPermCtx: NavPermissionContext = {
+    isAdmin,
+    permissionsLoading,
+    canView,
+  }
+
+  const homeHref = getHomeHref(navPermCtx)
+  const showInicio = canShowNavModule(Routes.DASHBOARD, navPermCtx)
+  const showJovenes = canShowNavModule(Routes.JOVENES, navPermCtx)
+  const showAtenciones = canShowNavModule(Routes.ATENCIONES, navPermCtx)
+  const showCitas = canShowNavModule(Routes.CITAS, navPermCtx)
+  const showNotificacionesNav = canShowNavModule(Routes.NOTIFICACIONES, navPermCtx)
+
+  const showSeguridadEnNav =
+    isAdmin || (!permissionsLoading && canView(Routes.ADMIN))
 
   // Evitar error de hidratación
   useEffect(() => {
@@ -146,7 +166,7 @@ function Navbar() {
 	  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
 		<div className="flex justify-between items-center h-16">
   		  <div className="flex items-center">
-  			<Link href={Routes.DASHBOARD} className="flex items-center gap-3 group hover:scale-105 transition-transform duration-300">
+  			<Link href={homeHref} className="flex items-center gap-3 group hover:scale-105 transition-transform duration-300">
   			  <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-lg overflow-hidden group-hover:shadow-xl group-hover:rotate-6 transition-all duration-300 ring-2 ring-white/50 group-hover:ring-white">
 				<img
 					src="/inami.png"
@@ -167,29 +187,39 @@ function Navbar() {
 
 		  {/* Desktop menu */}
 		  <div className="hidden md:flex items-center gap-2">
+			{showInicio && (
 			<Link href={Routes.DASHBOARD} className={getNavButtonClass(Routes.DASHBOARD)}>
 			  Inicio
 			</Link>
+			)}
+			{showJovenes && (
 			<Link href={Routes.JOVENES} className={getNavButtonClass(Routes.JOVENES)}>
 			  Jóvenes
 			</Link>
+			)}
+          {showAtenciones && (
           <Link href={Routes.ATENCIONES} className={getNavButtonClass(Routes.ATENCIONES)}>
             Atenciones
           </Link>
+          )}
+          {showCitas && (
           <Link href={Routes.CITAS} className={getNavButtonClass(Routes.CITAS)}>
             Citas
           </Link>
-          {profile?.role === 'admin' && (
-            <Link href={Routes.SEGURIDAD} className={getNavButtonClass(Routes.SEGURIDAD)}>
+          )}
+          {showSeguridadEnNav && (
+            <Link href={Routes.ADMIN} className={getNavButtonClass(Routes.ADMIN)}>
               Seguridad
             </Link>
           )}
+          {showNotificacionesNav && (
           <Link href={Routes.NOTIFICACIONES} className={getNavButtonClass(Routes.NOTIFICACIONES)}>
             Notificaciones
           </Link>
+          )}
   			
   			<div className="flex items-center gap-3 ml-4 pl-4 border-l border-white/30">
-  			  <NotificationCenter />
+  			  <NotificationCenter visible={showNotificacionesNav} />
   			  <UserProfileDropdown />
   			</div>
   		  </div>
@@ -235,6 +265,7 @@ function Navbar() {
 			  </Link>
 			)}
 			
+			{showInicio && (
 			<Link 
 			  href={Routes.DASHBOARD} 
 			  className={`block px-4 py-2.5 rounded-lg font-medium text-base transition-all border-2 ${getMobileNavButtonClass(Routes.DASHBOARD)}`}
@@ -242,6 +273,8 @@ function Navbar() {
 			>
 			  Inicio
 			</Link>
+			)}
+			{showJovenes && (
 			<Link 
 			  href={Routes.JOVENES} 
 			  className={`block px-4 py-2.5 rounded-lg font-medium text-base transition-all border-2 ${getMobileNavButtonClass(Routes.JOVENES)}`}
@@ -249,6 +282,8 @@ function Navbar() {
 			>
 			  Jóvenes
 			</Link>
+			)}
+          {showAtenciones && (
           <Link 
             href={Routes.ATENCIONES} 
             className={`block px-4 py-2.5 rounded-lg font-medium text-base transition-all border-2 ${getMobileNavButtonClass(Routes.ATENCIONES)}`}
@@ -256,6 +291,8 @@ function Navbar() {
           >
             Atenciones
           </Link>
+          )}
+          {showCitas && (
           <Link
             href={Routes.CITAS}
             className={`block px-4 py-2.5 rounded-lg font-medium text-base transition-all border-2 ${getMobileNavButtonClass(Routes.CITAS)}`}
@@ -263,15 +300,17 @@ function Navbar() {
           >
             Citas
           </Link>
-          {profile?.role === 'admin' && (
+          )}
+          {showSeguridadEnNav && (
             <Link
-              href={Routes.SEGURIDAD}
-              className={`block px-4 py-2.5 rounded-lg font-medium text-base transition-all border-2 ${getMobileNavButtonClass(Routes.SEGURIDAD)}`}
+              href={Routes.ADMIN}
+              className={`block px-4 py-2.5 rounded-lg font-medium text-base transition-all border-2 ${getMobileNavButtonClass(Routes.ADMIN)}`}
               onClick={() => setIsOpen(false)}
             >
               Seguridad
             </Link>
           )}
+          {showNotificacionesNav && (
 <Link 
 			  href={Routes.NOTIFICACIONES} 
 			  className={`block px-4 py-2.5 rounded-lg font-medium text-base transition-all border-2 ${getMobileNavButtonClass(Routes.NOTIFICACIONES)}`}
@@ -279,6 +318,7 @@ function Navbar() {
 		  >
 		    Notificaciones
 		  </Link>
+          )}
 			<button
 			  onClick={handleSignOut}
 			  data-signout-button

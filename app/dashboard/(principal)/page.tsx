@@ -17,6 +17,9 @@ import {
 import { createClientComponentClient } from '@/lib/supabase-browser'
 import { Routes } from '@/lib/routes'
 import { HydrationSafeLucide } from '@/components/HydrationSafeLucide'
+import { useIsAdmin } from '@/lib/auth'
+import { usePermissions } from '@/lib/hooks/usePermissions'
+import { ModuleAccessDenied } from '@/components/ModuleAccessDenied'
 
 interface Stats {
   totalJovenes: number
@@ -46,6 +49,9 @@ export default function DashboardPage() {
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [hasSecurityQuestions, setHasSecurityQuestions] = useState<boolean | null>(null)
+
+  const { isAdmin } = useIsAdmin()
+  const { canView, loading: permissionsLoading } = usePermissions()
 
   // Optimización: Cargar todas las estadísticas en paralelo con timeout y mejor manejo de errores
   const loadData = async (isRefresh = false) => {
@@ -311,6 +317,23 @@ export default function DashboardPage() {
     ['Pedagógica', 'Legal', 'Médica', 'Psicológica', 'Trabajo Social', 'Seguridad'],
     []
   )
+
+  if (permissionsLoading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 py-16">
+        <div className="card text-center text-gray-600 dark:text-gray-300">Cargando permisos…</div>
+      </div>
+    )
+  }
+
+  if (!isAdmin && !canView(Routes.DASHBOARD)) {
+    return (
+      <ModuleAccessDenied
+        titulo="Sin acceso al inicio"
+        mensaje="Tu rol no incluye permiso para ver el panel de inicio (Dashboard). Si necesitas acceso, contacta a un administrador."
+      />
+    )
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-gray-50 dark:bg-gray-900 min-h-screen">

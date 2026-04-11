@@ -5,7 +5,12 @@ import { Bell, X, Check, AlertCircle, Calendar, Clock, Trash2 } from 'lucide-rea
 import { NotificationService, type Notificacion, type ConfiguracionNotificaciones } from '@/lib/notifications'
 import { useAuth } from '@/lib/auth'
 
-export default function NotificationCenter() {
+type NotificationCenterProps = {
+  /** Si es false, no se muestra el icono (p. ej. sin permiso Ver notificaciones). */
+  visible?: boolean
+}
+
+export default function NotificationCenter({ visible = true }: NotificationCenterProps) {
   const { user } = useAuth()
   const [notificaciones, setNotificaciones] = useState<Notificacion[]>([])
   const [, setConfiguracion] = useState<ConfiguracionNotificaciones | null>(null)
@@ -116,7 +121,7 @@ export default function NotificationCenter() {
 
   const notificacionesNoLeidas = notificaciones.filter((n: Notificacion) => !n.leida).length
 
-  if (!user) return null
+  if (!visible || !user) return null
 
   return (
     <div className="relative">

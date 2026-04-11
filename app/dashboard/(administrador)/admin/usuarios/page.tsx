@@ -222,7 +222,7 @@ export default function UsuariosPage() {
         className="inline-flex items-center gap-2 text-primary-600 hover:text-primary-700 mb-6"
       >
         <ArrowLeft className="w-4 h-4" />
-        Volver al Panel Administrador
+        Volver a administración
       </Link>
 
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
