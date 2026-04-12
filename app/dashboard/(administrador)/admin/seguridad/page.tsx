@@ -74,7 +74,6 @@ export default function SeguridadPage() {
   const [diasNotificacionVisible, setDiasNotificacionVisible] = useState(7)
   const [guardandoDiasNotificacion, setGuardandoDiasNotificacion] = useState(false)
   const [msgDiasNotificacion, setMsgDiasNotificacion] = useState<string | null>(null)
-
   useEffect(() => {
     if (!authLoading && !hasAccess) {
       router.push('/dashboard')

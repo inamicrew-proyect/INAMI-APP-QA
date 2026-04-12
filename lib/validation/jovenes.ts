@@ -147,9 +147,10 @@ export const jovenCreateSchema = z
 export const jovenUpdateSchema = z
   .object({
     ...jovenBaseFields,
-    estado: z.enum(['activo', 'egresado', 'transferido'], {
-      message: 'Debe seleccionar el estado.',
-    }),
+    estado: z
+      .string()
+      .min(1, { message: 'Debe seleccionar el estado.' })
+      .max(40, { message: 'Estado inválido.' }),
     expediente_administrativo: optionalStringSchema(EXPEDIENTE_MAX_LENGTH),
     expediente_judicial: optionalStringSchema(EXPEDIENTE_MAX_LENGTH),
   })

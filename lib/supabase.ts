@@ -49,7 +49,7 @@ export type Joven = {
   delito_infraccion?: string
   expediente_administrativo?: string
   expediente_judicial?: string
-  estado: 'activo' | 'egresado' | 'transferido'
+  estado: string
   observaciones?: string
   observaciones_generales?: string
   nombre_madre?: string

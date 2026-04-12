@@ -4,6 +4,9 @@ import { useCallback, useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
 import { Search, Plus, Edit, Trash2, Eye, ChevronLeft, ChevronRight, Filter } from 'lucide-react'
 import type { Joven, Centro } from '@/lib/supabase'
+import type { EstadoJovenCatalogo } from '@/lib/joven-estados'
+
+const FILTER_CATALOG_ACTIVOS = '__cuenta_activo__'
 import { format } from 'date-fns'
 import { useIsAdmin } from '@/lib/auth'
 import { usePermissions } from '@/lib/hooks/usePermissions'
@@ -32,6 +35,25 @@ export default function JovenesPage() {
   const [, setTotalCount] = useState(0)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
+  const [estadosCatalog, setEstadosCatalog] = useState<EstadoJovenCatalogo[]>([])
+  const [codigosActivosListado, setCodigosActivosListado] = useState<string[]>(['activo'])
+
+  const loadEstadosCatalogo = useCallback(async () => {
+    try {
+      const res = await fetch('/api/joven-estados', { credentials: 'include', cache: 'no-store' })
+      const data = await res.json()
+      if (res.ok) {
+        setEstadosCatalog(Array.isArray(data.estados) ? data.estados : [])
+        setCodigosActivosListado(
+          Array.isArray(data.codigosCuentanComoActivos) && data.codigosCuentanComoActivos.length > 0
+            ? data.codigosCuentanComoActivos
+            : ['activo']
+        )
+      }
+    } catch {
+      /* mantener defaults */
+    }
+  }, [])
 
   const loadJovenes = useCallback(async () => {
     setLoading(true)
@@ -98,6 +120,10 @@ export default function JovenesPage() {
   }, [loadJovenes])
 
   useEffect(() => {
+    loadEstadosCatalogo()
+  }, [loadEstadosCatalogo])
+
+  useEffect(() => {
     const handleJovenesUpdated = () => {
       loadJovenes()
     }
@@ -107,6 +133,42 @@ export default function JovenesPage() {
       window.removeEventListener('jovenes:updated', handleJovenesUpdated)
     }
   }, [loadJovenes])
+
+  useEffect(() => {
+    const handleCatalogo = () => loadEstadosCatalogo()
+    window.addEventListener('joven-estados:updated', handleCatalogo)
+    return () => window.removeEventListener('joven-estados:updated', handleCatalogo)
+  }, [loadEstadosCatalogo])
+
+  const estadoEtiqueta = useCallback(
+    (codigo: string) => {
+      const row = estadosCatalog.find((e) => e.codigo === codigo)
+      return row?.nombre ?? codigo
+    },
+    [estadosCatalog]
+  )
+
+  const opcionesFiltroEstado = useMemo(() => {
+    const opts: { value: string; label: string }[] = [
+      { value: 'todos', label: 'Todos los estados' },
+      { value: FILTER_CATALOG_ACTIVOS, label: 'Activos (según catálogo)' },
+    ]
+    const seen = new Set(opts.map((o) => o.value))
+    for (const e of estadosCatalog) {
+      if (!seen.has(e.codigo)) {
+        opts.push({ value: e.codigo, label: e.nombre })
+        seen.add(e.codigo)
+      }
+    }
+    for (const j of jovenes) {
+      const c = j.estado
+      if (c && !seen.has(c)) {
+        opts.push({ value: c, label: c })
+        seen.add(c)
+      }
+    }
+    return opts
+  }, [estadosCatalog, jovenes])
 
   const handleDelete = async (id: string) => {
     setDeleteLoading(true)
@@ -171,7 +233,10 @@ export default function JovenesPage() {
         joven.apellidos.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (joven.identidad && joven.identidad.toLowerCase().includes(searchTerm.toLowerCase()))
 
-      const matchesEstado = filterEstado === 'todos' || joven.estado === filterEstado
+      const matchesEstado =
+        filterEstado === 'todos' ||
+        (filterEstado === FILTER_CATALOG_ACTIVOS && codigosActivosListado.includes(joven.estado)) ||
+        (filterEstado !== FILTER_CATALOG_ACTIVOS && joven.estado === filterEstado)
 
       const fechaIngreso = joven.fecha_ingreso ? String(joven.fecha_ingreso).slice(0, 10) : ''
       const matchesFechaIngreso =
@@ -187,7 +252,7 @@ export default function JovenesPage() {
 
       return matchesSearch && matchesEstado && matchesFechaIngreso && matchesEdad
     })
-  }, [jovenes, searchTerm, filterEstado, fechaIngresoDesde, fechaIngresoHasta, edadMin, edadMax])
+  }, [jovenes, searchTerm, filterEstado, fechaIngresoDesde, fechaIngresoHasta, edadMin, edadMax, codigosActivosListado])
 
   // Paginación
   const totalPages = Math.ceil(filteredJovenes.length / ITEMS_PER_PAGE)
@@ -204,22 +269,23 @@ export default function JovenesPage() {
   }, [searchTerm, filterEstado, fechaIngresoDesde, fechaIngresoHasta, edadMin, edadMax])
 
   const getEstadoBadge = useCallback((estado: string) => {
-    const badges = {
+    const badges: Record<string, string> = {
       activo: 'badge-success',
+      inactivo: 'badge-warning',
       egresado: 'badge-info',
       transferido: 'badge-warning',
     }
-    return badges[estado as keyof typeof badges] || 'badge-info'
+    return badges[estado] || 'badge-info'
   }, [])
 
   // Estadísticas memoizadas
   const stats = useMemo(
     () => ({
       total: filteredJovenes.length,
-      activos: filteredJovenes.filter((j) => j.estado === 'activo').length,
+      activos: filteredJovenes.filter((j) => codigosActivosListado.includes(j.estado)).length,
       egresados: filteredJovenes.filter((j) => j.estado === 'egresado').length,
     }),
-    [filteredJovenes]
+    [filteredJovenes, codigosActivosListado]
   )
 
   return (
@@ -269,10 +335,11 @@ export default function JovenesPage() {
                 onChange={(e) => setFilterEstado(e.target.value)}
                 className="input-field w-full !pl-12 py-2.5 min-h-[44px] appearance-none"
               >
-                <option value="todos">Todos los estados</option>
-                <option value="activo">Activos</option>
-                <option value="egresado">Egresados</option>
-                <option value="transferido">Transferidos</option>
+                {opcionesFiltroEstado.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -401,7 +468,7 @@ export default function JovenesPage() {
                       <td className="text-gray-600 dark:text-gray-300">{joven.edad} años</td>
                       <td className="text-sm text-gray-600 dark:text-gray-300">{joven.centros?.nombre || 'Sin asignar'}</td>
                       <td>
-                        <span className={`badge ${getEstadoBadge(joven.estado)}`}>{joven.estado}</span>
+                        <span className={`badge ${getEstadoBadge(joven.estado)}`}>{estadoEtiqueta(joven.estado)}</span>
                       </td>
                       <td className="text-gray-600 dark:text-gray-300">
                         {format(new Date(joven.fecha_ingreso), 'dd/MM/yyyy')}

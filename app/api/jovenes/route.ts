@@ -1,6 +1,11 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createSupabaseRouteHandlerClient } from '@/lib/supabase-route-handler'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
+import {
+  assertEstadoValidForCreate,
+  listEstadosJovenRows,
+  pickDefaultEstadoCodigo,
+} from '@/lib/joven-estados-server'
 
 export const dynamic = 'force-dynamic'
 export const fetchCache = 'force-no-store'
@@ -137,7 +142,22 @@ export async function POST(request: NextRequest) {
 
     // Usar cliente admin si está disponible para evitar problemas de RLS
     const adminClient = getSupabaseAdmin()
-    
+    const catalogClient = adminClient ?? supabase
+
+    let estadoFinal =
+      typeof body.estado === 'string' && body.estado.trim() !== ''
+        ? body.estado.trim().toLowerCase()
+        : ''
+    if (!estadoFinal) {
+      const { rows } = await listEstadosJovenRows(catalogClient)
+      estadoFinal = pickDefaultEstadoCodigo(rows)
+    } else {
+      const check = await assertEstadoValidForCreate(catalogClient, estadoFinal)
+      if (!check.ok) {
+        return NextResponse.json({ error: check.message }, { status: 400 })
+      }
+    }
+
     const insertData = {
       nombres: body.nombres,
       apellidos: body.apellidos,
@@ -154,7 +174,7 @@ export async function POST(request: NextRequest) {
       medida_aplicada: body.medida_aplicada || null,
       delito_infraccion: body.delito_infraccion || null,
       observaciones: body.observaciones || null,
-      estado: body.estado || 'activo'
+      estado: estadoFinal,
     }
 
     if (adminClient) {

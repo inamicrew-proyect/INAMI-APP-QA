@@ -4,6 +4,7 @@ import { cookies } from 'next/headers'
 import { createSupabaseRouteHandlerClient } from '@/lib/supabase-route-handler'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { calculateAgeFromBirth } from '@/lib/validation/jovenes'
+import { assertEstadoValidForUpdate } from '@/lib/joven-estados-server'
 
 export const dynamic = 'force-dynamic'
 export const fetchCache = 'force-no-store'
@@ -243,6 +244,25 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     console.log('Datos recibidos para actualizar joven:', JSON.stringify(body, null, 2))
+
+    if (body.estado !== undefined && body.estado !== null) {
+      const codigo = String(body.estado).trim().toLowerCase()
+      if (!codigo) {
+        return NextResponse.json({ error: 'Estado inválido.' }, { status: 400 })
+      }
+      let catalogClient = null
+      try {
+        catalogClient = getSupabaseAdmin()
+      } catch {
+        catalogClient = null
+      }
+      const client = catalogClient ?? authCheck.supabase
+      const check = await assertEstadoValidForUpdate(client, codigo)
+      if (!check.ok) {
+        return NextResponse.json({ error: check.message }, { status: 400 })
+      }
+      body.estado = codigo
+    }
 
     const updateData: any = {
       updated_at: new Date().toISOString(),

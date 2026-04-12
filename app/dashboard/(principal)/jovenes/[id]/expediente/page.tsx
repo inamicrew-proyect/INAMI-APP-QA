@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { createClientComponentClient } from '@/lib/supabase-browser'
 import type { Joven, Centro } from '@/lib/supabase'
+import type { EstadoJovenCatalogo } from '@/lib/joven-estados'
 import { format } from 'date-fns'
 import { exportExpedientePDF, type PDFData } from '@/lib/pdf-generator'
 import { useIsAdmin } from '@/lib/auth'
@@ -41,6 +42,26 @@ export default function ExpedienteJovenPage() {
   const [atenciones, setAtenciones] = useState<any[]>([])
   const [uploading, setUploading] = useState(false)
   const [exportingPDF, setExportingPDF] = useState(false)
+  const [estadosCatalogo, setEstadosCatalogo] = useState<EstadoJovenCatalogo[]>([])
+
+  useEffect(() => {
+    const loadEstados = async () => {
+      try {
+        const res = await fetch('/api/joven-estados', { credentials: 'include', cache: 'no-store' })
+        const data = await res.json()
+        if (res.ok && Array.isArray(data.estados)) setEstadosCatalogo(data.estados)
+      } catch {
+        setEstadosCatalogo([])
+      }
+    }
+    loadEstados()
+    const h = () => loadEstados()
+    window.addEventListener('joven-estados:updated', h)
+    return () => window.removeEventListener('joven-estados:updated', h)
+  }, [])
+
+  const etiquetaEstado = (codigo: string) =>
+    estadosCatalogo.find((e) => e.codigo === codigo)?.nombre ?? codigo
 
   useEffect(() => {
     if (jovenId) {
@@ -375,7 +396,7 @@ export default function ExpedienteJovenPage() {
                     </div>
                     <div className="field-row">
                       <div className="field-label">Estado</div>
-                      <div className="field-value">{joven.estado || ''}</div>
+                      <div className="field-value">{joven.estado ? etiquetaEstado(joven.estado) : ''}</div>
                     </div>
                   </div>
                 </div>
@@ -460,8 +481,8 @@ export default function ExpedienteJovenPage() {
                         <Calendar className="w-4 h-4 shrink-0 text-primary-600" />
                         {joven.edad} años
                       </span>
-                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize ${getEstadoBadge(joven.estado)}`}>
-                        {joven.estado}
+                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${getEstadoBadge(joven.estado)}`}>
+                        {etiquetaEstado(joven.estado)}
                       </span>
                     </div>
                   </div>

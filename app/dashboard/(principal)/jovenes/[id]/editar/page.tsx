@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { ArrowLeft, Save, User, Calendar, AlertTriangle, Camera } from 'lucide-react'
 import { createClientComponentClient } from '@/lib/supabase-browser'
 import type { Joven, Centro } from '@/lib/supabase'
+import type { EstadoJovenCatalogo } from '@/lib/joven-estados'
 import { jovenUpdateSchema, calculateAgeFromBirth } from '@/lib/validation/jovenes'
 import { zodErrorToFieldErrors } from '@/lib/validation/utils'
 
@@ -20,6 +21,7 @@ export default function EditarJovenPage() {
   const [loadingCentros, setLoadingCentros] = useState(true)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const [estadosCatalogo, setEstadosCatalogo] = useState<EstadoJovenCatalogo[]>([])
 
   const [formData, setFormData] = useState({
     nombres: '',
@@ -38,7 +40,7 @@ export default function EditarJovenPage() {
     delito_infraccion: '',
     expediente_administrativo: '',
     expediente_judicial: '',
-    estado: 'activo' as 'activo' | 'egresado' | 'transferido',
+    estado: 'activo',
     observaciones: ''
   })
 
@@ -47,6 +49,24 @@ export default function EditarJovenPage() {
       loadData()
     }
   }, [jovenId])
+
+  useEffect(() => {
+    const loadEstados = async () => {
+      try {
+        const res = await fetch('/api/joven-estados', { credentials: 'include', cache: 'no-store' })
+        const data = await res.json()
+        if (res.ok && Array.isArray(data.estados)) {
+          setEstadosCatalogo(data.estados)
+        }
+      } catch {
+        setEstadosCatalogo([])
+      }
+    }
+    loadEstados()
+    const onUpd = () => loadEstados()
+    window.addEventListener('joven-estados:updated', onUpd)
+    return () => window.removeEventListener('joven-estados:updated', onUpd)
+  }, [])
 
   const loadData = async () => {
     try {
@@ -727,9 +747,29 @@ export default function EditarJovenPage() {
                 onChange={(e) => handleInputChange('estado', e.target.value)}
                 className="input-field"
               >
-                <option value="activo">Activo</option>
-                <option value="egresado">Egresado</option>
-                <option value="transferido">Transferido</option>
+                {estadosCatalogo.length === 0 ? (
+                  <>
+                    <option value="activo">Activo</option>
+                    <option value="inactivo">Inactivo</option>
+                    <option value="egresado">Egresado</option>
+                    <option value="transferido">Transferido</option>
+                  </>
+                ) : (
+                  <>
+                    {estadosCatalogo
+                      .filter((e) => e.activo || e.codigo === formData.estado)
+                      .sort((a, b) => a.orden - b.orden)
+                      .map((e) => (
+                        <option key={e.codigo} value={e.codigo}>
+                          {e.nombre}
+                        </option>
+                      ))}
+                    {formData.estado &&
+                      !estadosCatalogo.some((e) => e.codigo === formData.estado) && (
+                        <option value={formData.estado}>{formData.estado} (sin catálogo)</option>
+                      )}
+                  </>
+                )}
               </select>
             </div>
 

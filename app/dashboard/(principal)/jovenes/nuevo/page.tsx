@@ -133,7 +133,6 @@ export default function NuevoJovenPage() {
           medida_aplicada: sanitized.medida_aplicada ?? null,
           delito_infraccion: sanitized.delito_infraccion ?? null,
           observaciones: sanitized.observaciones ?? null,
-          estado: 'activo'
         }),
         cache: 'no-store',
       })

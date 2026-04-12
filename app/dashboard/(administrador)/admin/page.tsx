@@ -3,8 +3,9 @@
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Users, Lock, UserCog } from 'lucide-react'
+import { Users, Lock, UserCog, ListChecks } from 'lucide-react'
 import { useAdminAccess } from '@/lib/hooks/useAdminAccess'
+import { Routes } from '@/lib/routes'
 
 export default function AdminPanelPage() {
   const router = useRouter()
@@ -50,7 +51,7 @@ export default function AdminPanelPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-6">
         <Link
           href="/dashboard/admin/usuarios"
           className="card hover:shadow-lg transition-shadow group"
@@ -90,7 +91,7 @@ export default function AdminPanelPage() {
         </Link>
 
         <Link
-          href="/dashboard/admin/seguridad"
+          href={Routes.ADMIN_SEGURIDAD}
           className="card hover:shadow-lg transition-shadow group"
         >
           <div className="flex items-start gap-4">
@@ -99,10 +100,29 @@ export default function AdminPanelPage() {
             </div>
             <div className="flex-1">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
-                Bitácora
+                Seguridad
               </h3>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Bitácora de actividad del sistema
+                Métricas, notificaciones, parámetros y bitácora del sistema
+              </p>
+            </div>
+          </div>
+        </Link>
+
+        <Link
+          href={Routes.ADMIN_JOVEN_ESTADOS}
+          className="card hover:shadow-lg transition-shadow group"
+        >
+          <div className="flex items-start gap-4">
+            <div className="p-3 bg-sky-100 dark:bg-sky-900/30 rounded-lg group-hover:bg-sky-200 dark:group-hover:bg-sky-900/50 transition-colors">
+              <ListChecks className="w-6 h-6 text-sky-600 dark:text-sky-400" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+                Estados del joven
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Mantenimiento de estados (activo, inactivo, egresado, etc.) para formularios y listados
               </p>
             </div>
           </div>

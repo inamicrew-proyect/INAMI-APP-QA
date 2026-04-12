@@ -19,6 +19,7 @@
  *   /dashboard/admin/usuarios → Usuarios (admin)
  *   /dashboard/admin/roles    → Roles (admin)
  *   /dashboard/admin/seguridad → Seguridad del sistema (admin)
+ *   /dashboard/admin/joven-estados → Mantenimiento estados del joven (admin)
  */
 
 export const Routes = {
@@ -79,6 +80,7 @@ export const Routes = {
   adminRolEditar: (id: string) => `/dashboard/admin/roles/${id}/editar` as const,
   adminRolPermisos: (id: string) => `/dashboard/admin/roles/${id}/permisos` as const,
   ADMIN_SEGURIDAD: '/dashboard/admin/seguridad',
+  ADMIN_JOVEN_ESTADOS: '/dashboard/admin/joven-estados',
 } as const
 
 /**
