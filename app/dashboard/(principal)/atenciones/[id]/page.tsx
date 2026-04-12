@@ -16,6 +16,7 @@ import { format } from 'date-fns'
 import { exportAtencionPDF, type PDFData } from '@/lib/pdf-generator'
 import ReadonlyFormView from '@/components/ReadonlyFormView'
 import { pruneFormularioData } from '@/lib/formulario-utils'
+import { tituloFichaVisualizacion } from '@/lib/fichas-catalog'
 import { useAuth } from '@/lib/auth'
 import { usePermissions } from '@/lib/hooks/usePermissions'
 import { Routes } from '@/lib/routes'
@@ -34,6 +35,7 @@ export default function DetallesAtencionPage() {
   const [profesional, setProfesional] = useState<Profile | null>(null)
   const [tipoAtencion, setTipoAtencion] = useState<TipoAtencion | null>(null)
   const [formularioEspecifico, setFormularioEspecifico] = useState<any>(null)
+  const [tipoFormularioGuardado, setTipoFormularioGuardado] = useState<string | null>(null)
   const [exportingPDF, setExportingPDF] = useState(false)
   
   const { canEdit: canEditByPermission, loading: permissionsLoading } = usePermissions()
@@ -86,16 +88,21 @@ export default function DetallesAtencionPage() {
       setProfesional(atencionWithRelations.profesional)
       setTipoAtencion(atencionWithRelations.tipos_atencion)
 
-      // Cargar formulario específico si existe
+      // Cargar formulario específico si existe (último registro por fecha)
       const { data: formularioData, error: formularioError } = await supabase
         .from('formularios_atencion')
-        .select('*')
+        .select('datos_json, tipo_formulario')
         .eq('atencion_id', atencionId)
-        .single()
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
 
       if (!formularioError && formularioData) {
         const formulario = formularioData as FormularioAtencion
         setFormularioEspecifico(formulario.datos_json)
+        setTipoFormularioGuardado(formulario.tipo_formulario ?? null)
+      } else {
+        setTipoFormularioGuardado(null)
       }
     } catch (error: any) {
       console.error('Error loading data:', error)
@@ -169,15 +176,20 @@ export default function DetallesAtencionPage() {
   }
 
   const renderFormularioEspecifico = () => {
-    if (!formularioEspecifico || !tipoAtencion) return null
+    if (!formularioEspecifico) return null
+
+    const tituloFicha = tituloFichaVisualizacion(tipoFormularioGuardado, tipoAtencion?.nombre)
 
     return (
       <div className="card">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-          Formulario Específico - {tipoAtencion.nombre}
-        </h3>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">{tituloFicha}</h3>
+        {tipoAtencion?.nombre ? (
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Tipo de atención: {tipoAtencion.nombre}</p>
+        ) : (
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Contenido de la ficha registrada</p>
+        )}
 
-        <ReadonlyFormView value={pruneFormularioData(formularioEspecifico)} />
+        <ReadonlyFormView value={pruneFormularioData(formularioEspecifico)} layout="document" />
       </div>
     )
   }

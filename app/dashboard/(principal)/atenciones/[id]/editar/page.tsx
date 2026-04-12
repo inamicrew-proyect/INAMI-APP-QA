@@ -10,6 +10,7 @@ import DynamicForm from '@/components/DynamicForm'
 import { formularioFieldsByRole, type RoleKey } from '@/lib/formulario-utils'
 import { useAuth } from '@/lib/auth'
 import { isProfileAdminRole } from '@/lib/is-profile-admin'
+import { tituloFichaVisualizacion } from '@/lib/fichas-catalog'
 
 const FORMULARIO_ROUTE_BY_TIPO: Record<string, string> = {
   // Trabajo social
@@ -713,7 +714,7 @@ export default function EditarAtencionPage() {
           <div className="card">
             <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
               <User className="w-5 h-5 text-primary-600" />
-              Formulario Específico {tipoAtencion?.nombre ? `- ${tipoAtencion.nombre}` : ''}
+              {tituloFichaVisualizacion(formularioTipo, tipoAtencion?.nombre)}
             </h2>
             
             <div className="space-y-4">

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { getFichaMetaPorRutaCompleta } from '@/lib/fichas-catalog'
 import {
   Brain,
   Users,
@@ -682,6 +683,7 @@ export default function FormulariosPage() {
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {subseccion.formularios.map((formulario: any) => {
                           const FormIcon = formulario.icon
+                          const meta = getFichaMetaPorRutaCompleta(formulario.ruta)
                           return (
                             <Link
                               key={formulario.nombre}
@@ -693,6 +695,11 @@ export default function FormulariosPage() {
                                   <FormIcon className={`w-5 h-5 ${areaActual.color}`} />
                                 </div>
                                 <div className="flex-1 min-w-0">
+                                  {meta ? (
+                                    <p className="text-xs font-semibold text-primary-600 dark:text-primary-400 mb-0.5">
+                                      {meta.codigo}
+                                    </p>
+                                  ) : null}
                                   <h3 className="font-medium text-gray-900 dark:text-white group-hover:text-gray-700 dark:group-hover:text-gray-300 mb-1">
                                     {formulario.nombre}
                                   </h3>
@@ -719,6 +726,7 @@ export default function FormulariosPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {areaActual.formularios?.map((formulario: any) => {
                   const FormIcon = formulario.icon
+                  const meta = getFichaMetaPorRutaCompleta(formulario.ruta)
                   return (
                     <Link
                       key={formulario.nombre}
@@ -730,6 +738,11 @@ export default function FormulariosPage() {
                           <FormIcon className={`w-5 h-5 ${areaActual.color}`} />
                         </div>
                         <div className="flex-1 min-w-0">
+                          {meta ? (
+                            <p className="text-xs font-semibold text-primary-600 dark:text-primary-400 mb-0.5">
+                              {meta.codigo}
+                            </p>
+                          ) : null}
                           <h3 className="font-medium text-gray-900 dark:text-white group-hover:text-gray-700 dark:group-hover:text-gray-300 mb-1">
                             {formulario.nombre}
                           </h3>

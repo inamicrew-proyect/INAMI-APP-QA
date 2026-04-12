@@ -86,6 +86,8 @@ export type Atencion = {
 export type FormularioAtencion = {
   id: string
   atencion_id: string
+  joven_id?: string | null
+  tipo_formulario?: string | null
   datos_json: any
   created_at: string
   updated_at: string

@@ -6,13 +6,8 @@ import { createClientComponentClient } from '@/lib/supabase-browser'
 import { Save, ArrowLeft, User, Users } from 'lucide-react'
 import Link from 'next/link'
 import JovenSearchInput from '@/components/JovenSearchInput'
-
-interface Joven {
-  id: string
-  nombres: string
-  apellidos: string
-  expediente_administrativo?: string
-}
+import type { Joven } from '@/lib/supabase'
+import { nombreCompletoDesdeJoven } from '@/lib/joven-identificacion'
 
 interface FormData {
   joven_id: string
@@ -210,7 +205,7 @@ export default function EntrevistaFamiliarPMSPLPage() {
     setFormData(prev => ({
       ...prev,
       joven_id: joven.id,
-      nombre_completo_nnaj: `${joven.nombres} ${joven.apellidos}`,
+      nombre_completo_nnaj: nombreCompletoDesdeJoven(joven),
       exp_administrativo: joven.expediente_administrativo || ''
     }))
   }
