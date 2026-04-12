@@ -1,8 +1,8 @@
 'use client'
 
-import { useCallback, useEffect, useState, useMemo } from 'react'
+import { useCallback, useEffect, useState, useMemo, useRef } from 'react'
 import Link from 'next/link'
-import { Search, Plus, Edit, Trash2, Eye, ChevronLeft, ChevronRight, Filter } from 'lucide-react'
+import { Search, Plus, Edit, Trash2, Eye, ChevronLeft, ChevronRight, ChevronDown, SlidersHorizontal, ClipboardList } from 'lucide-react'
 import type { Joven, Centro } from '@/lib/supabase'
 import type { EstadoJovenCatalogo } from '@/lib/joven-estados'
 
@@ -37,6 +37,10 @@ export default function JovenesPage() {
   const [deleteLoading, setDeleteLoading] = useState(false)
   const [estadosCatalog, setEstadosCatalog] = useState<EstadoJovenCatalogo[]>([])
   const [codigosActivosListado, setCodigosActivosListado] = useState<string[]>(['activo'])
+  const [advancedOpen, setAdvancedOpen] = useState(true)
+  const [estadoDropdownOpen, setEstadoDropdownOpen] = useState(false)
+  const [estadoSearchInput, setEstadoSearchInput] = useState('Todos los estados')
+  const estadoComboRef = useRef<HTMLDivElement>(null)
 
   const loadEstadosCatalogo = useCallback(async () => {
     try {
@@ -170,6 +174,43 @@ export default function JovenesPage() {
     return opts
   }, [estadosCatalog, jovenes])
 
+  const opcionesEstadoFiltradas = useMemo(() => {
+    const selectedLabel = opcionesFiltroEstado.find((o) => o.value === filterEstado)?.label ?? ''
+    const q = estadoSearchInput.trim()
+    const effective = !q || q === selectedLabel ? '' : q.toLowerCase()
+    if (!effective) return opcionesFiltroEstado
+    return opcionesFiltroEstado.filter(
+      (o) =>
+        o.label.toLowerCase().includes(effective) || o.value.toLowerCase().includes(effective)
+    )
+  }, [opcionesFiltroEstado, estadoSearchInput, filterEstado])
+
+  const selectEstadoFiltro = useCallback((value: string, label: string) => {
+    setFilterEstado(value)
+    setEstadoSearchInput(label)
+    setEstadoDropdownOpen(false)
+  }, [])
+
+  useEffect(() => {
+    if (!estadoDropdownOpen) {
+      const label =
+        opcionesFiltroEstado.find((o) => o.value === filterEstado)?.label ?? 'Todos los estados'
+      setEstadoSearchInput(label)
+    }
+  }, [estadoDropdownOpen, filterEstado, opcionesFiltroEstado])
+
+  useEffect(() => {
+    if (!estadoDropdownOpen) return
+    const onPointerDown = (e: MouseEvent) => {
+      const el = estadoComboRef.current
+      if (el && !el.contains(e.target as Node)) {
+        setEstadoDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', onPointerDown)
+    return () => document.removeEventListener('mousedown', onPointerDown)
+  }, [estadoDropdownOpen])
+
   const handleDelete = async (id: string) => {
     setDeleteLoading(true)
     try {
@@ -268,6 +309,15 @@ export default function JovenesPage() {
     setCurrentPage(1)
   }, [searchTerm, filterEstado, fechaIngresoDesde, fechaIngresoHasta, edadMin, edadMax])
 
+  const limpiarFiltrosAvanzados = useCallback(() => {
+    setFechaIngresoDesde('')
+    setFechaIngresoHasta('')
+    setEdadMin('')
+    setEdadMax('')
+    setFilterEstado('todos')
+    setEstadoDropdownOpen(false)
+  }, [])
+
   const getEstadoBadge = useCallback((estado: string) => {
     const badges: Record<string, string> = {
       activo: 'badge-success',
@@ -304,116 +354,162 @@ export default function JovenesPage() {
         </Link>
       </div>
 
-      {/* Filters: misma estructura y alineación, iconos sin superposición */}
+      {/* Buscador + búsqueda avanzada (estado por texto, fechas, edad) */}
       <div className="card mb-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1.5fr_1.2fr_150px_150px_100px_100px] gap-4">
-          <div className="flex flex-col min-w-0">
-            <label htmlFor="jovenes-busqueda" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Búsqueda
-            </label>
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 w-5 h-5 pointer-events-none shrink-0" />
-              <input
-                id="jovenes-busqueda"
-                type="text"
-                placeholder="Nombre, apellido, identidad..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="input-field w-full !pl-12 py-2.5 min-h-[44px]"
-              />
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-end gap-3">
+            <div className="flex-1 min-w-0">
+              <label htmlFor="jovenes-busqueda" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Buscar por nombre o identidad
+              </label>
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 w-5 h-5 pointer-events-none shrink-0" />
+                <input
+                  id="jovenes-busqueda"
+                  type="text"
+                  placeholder="Nombre, apellido, identidad..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="input-field w-full !pl-12 py-2.5 min-h-[44px]"
+                />
+              </div>
             </div>
-          </div>
-          <div className="flex flex-col min-w-0">
-            <label htmlFor="jovenes-estado" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Estado
-            </label>
-            <div className="relative flex-1">
-              <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 w-5 h-5 pointer-events-none shrink-0" />
-              <select
-                id="jovenes-estado"
-                value={filterEstado}
-                onChange={(e) => setFilterEstado(e.target.value)}
-                className="input-field w-full !pl-12 py-2.5 min-h-[44px] appearance-none"
-              >
-                {opcionesFiltroEstado.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <div className="flex flex-col min-w-0">
-            <label htmlFor="jovenes-fecha-desde" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Fecha ingreso desde
-            </label>
-            <input
-              id="jovenes-fecha-desde"
-              type="date"
-              value={fechaIngresoDesde}
-              onChange={(e) => setFechaIngresoDesde(e.target.value)}
-              className="input-field w-full py-2.5 min-h-[44px]"
-            />
-          </div>
-          <div className="flex flex-col min-w-0">
-            <label htmlFor="jovenes-fecha-hasta" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Fecha ingreso hasta
-            </label>
-            <input
-              id="jovenes-fecha-hasta"
-              type="date"
-              value={fechaIngresoHasta}
-              onChange={(e) => setFechaIngresoHasta(e.target.value)}
-              className="input-field w-full py-2.5 min-h-[44px]"
-            />
-          </div>
-          <div className="flex flex-col min-w-0">
-            <label htmlFor="jovenes-edad-min" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Edad mín.
-            </label>
-            <input
-              id="jovenes-edad-min"
-              type="number"
-              min={0}
-              max={120}
-              placeholder="Ej. 14"
-              value={edadMin}
-              onChange={(e) => setEdadMin(e.target.value.replace(/\D/g, '').slice(0, 3))}
-              className="input-field w-full py-2.5 min-h-[44px]"
-            />
-          </div>
-          <div className="flex flex-col min-w-0">
-            <label htmlFor="jovenes-edad-max" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Edad máx.
-            </label>
-            <input
-              id="jovenes-edad-max"
-              type="number"
-              min={0}
-              max={120}
-              placeholder="Ej. 18"
-              value={edadMax}
-              onChange={(e) => setEdadMax(e.target.value.replace(/\D/g, '').slice(0, 3))}
-              className="input-field w-full py-2.5 min-h-[44px]"
-            />
-          </div>
-        </div>
-        {(fechaIngresoDesde || fechaIngresoHasta || edadMin || edadMax) && (
-          <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
             <button
               type="button"
-              onClick={() => {
-                setFechaIngresoDesde('')
-                setFechaIngresoHasta('')
-                setEdadMin('')
-                setEdadMax('')
-              }}
-              className="text-sm text-primary-600 dark:text-primary-400 hover:underline"
+              onClick={() => setAdvancedOpen((v) => !v)}
+              className="btn-secondary inline-flex items-center justify-center gap-2 py-2.5 min-h-[44px] shrink-0"
+              aria-expanded={advancedOpen}
             >
-              Limpiar filtros de fecha y edad
+              <SlidersHorizontal className="w-5 h-5" />
+              {advancedOpen ? 'Ocultar búsqueda avanzada' : 'Búsqueda avanzada'}
+              <ChevronDown className={`w-4 h-4 transition-transform shrink-0 ${advancedOpen ? 'rotate-180' : ''}`} />
             </button>
           </div>
-        )}
+
+          {advancedOpen && (
+            <div className="pt-2 border-t border-gray-200 dark:border-gray-700 space-y-4">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Filtra por estado (escribe para acotar opciones), rango de edad y fechas de ingreso al centro.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-4">
+                <div className="lg:col-span-4 flex flex-col min-w-0" ref={estadoComboRef}>
+                  <span id="jovenes-estado-label" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Estado
+                  </span>
+                  <div className="relative">
+                    <input
+                      id="jovenes-estado-buscar"
+                      type="text"
+                      autoComplete="off"
+                      aria-labelledby="jovenes-estado-label"
+                      aria-expanded={estadoDropdownOpen}
+                      aria-controls="jovenes-estado-listbox"
+                      role="combobox"
+                      value={estadoSearchInput}
+                      onChange={(e) => {
+                        setEstadoSearchInput(e.target.value)
+                        setEstadoDropdownOpen(true)
+                      }}
+                      onFocus={() => setEstadoDropdownOpen(true)}
+                      placeholder="Escribir para filtrar estados..."
+                      className="input-field w-full py-2.5 min-h-[44px] pr-10"
+                    />
+                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                    {estadoDropdownOpen && (
+                      <ul
+                        id="jovenes-estado-listbox"
+                        role="listbox"
+                        className="absolute z-50 mt-1 w-full max-h-56 overflow-auto rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 shadow-lg py-1"
+                      >
+                        {opcionesEstadoFiltradas.length === 0 ? (
+                          <li className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">Sin coincidencias</li>
+                        ) : (
+                          opcionesEstadoFiltradas.map((o) => (
+                            <li key={o.value} role="option" aria-selected={filterEstado === o.value}>
+                              <button
+                                type="button"
+                                className="w-full text-left px-3 py-2 text-sm text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                onMouseDown={(e) => e.preventDefault()}
+                                onClick={() => selectEstadoFiltro(o.value, o.label)}
+                              >
+                                {o.label}
+                              </button>
+                            </li>
+                          ))
+                        )}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+                <div className="lg:col-span-2 flex flex-col min-w-0">
+                  <label htmlFor="jovenes-fecha-desde" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Fecha ingreso desde
+                  </label>
+                  <input
+                    id="jovenes-fecha-desde"
+                    type="date"
+                    value={fechaIngresoDesde}
+                    onChange={(e) => setFechaIngresoDesde(e.target.value)}
+                    className="input-field w-full py-2.5 min-h-[44px]"
+                  />
+                </div>
+                <div className="lg:col-span-2 flex flex-col min-w-0">
+                  <label htmlFor="jovenes-fecha-hasta" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Fecha ingreso hasta
+                  </label>
+                  <input
+                    id="jovenes-fecha-hasta"
+                    type="date"
+                    value={fechaIngresoHasta}
+                    onChange={(e) => setFechaIngresoHasta(e.target.value)}
+                    className="input-field w-full py-2.5 min-h-[44px]"
+                  />
+                </div>
+                <div className="lg:col-span-2 flex flex-col min-w-0">
+                  <label htmlFor="jovenes-edad-min" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Edad mín.
+                  </label>
+                  <input
+                    id="jovenes-edad-min"
+                    type="number"
+                    min={0}
+                    max={120}
+                    placeholder="Ej. 14"
+                    value={edadMin}
+                    onChange={(e) => setEdadMin(e.target.value.replace(/\D/g, '').slice(0, 3))}
+                    className="input-field w-full py-2.5 min-h-[44px]"
+                  />
+                </div>
+                <div className="lg:col-span-2 flex flex-col min-w-0">
+                  <label htmlFor="jovenes-edad-max" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Edad máx.
+                  </label>
+                  <input
+                    id="jovenes-edad-max"
+                    type="number"
+                    min={0}
+                    max={120}
+                    placeholder="Ej. 18"
+                    value={edadMax}
+                    onChange={(e) => setEdadMax(e.target.value.replace(/\D/g, '').slice(0, 3))}
+                    className="input-field w-full py-2.5 min-h-[44px]"
+                  />
+                </div>
+              </div>
+              {(fechaIngresoDesde || fechaIngresoHasta || edadMin || edadMax || filterEstado !== 'todos') && (
+                <div className="pt-1">
+                  <button
+                    type="button"
+                    onClick={limpiarFiltrosAvanzados}
+                    className="text-sm text-primary-600 dark:text-primary-400 hover:underline"
+                  >
+                    Limpiar búsqueda avanzada
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Error Message */}
@@ -481,6 +577,13 @@ export default function JovenesPage() {
                             title="Ver detalles"
                           >
                             <Eye className="w-4 h-4" />
+                          </Link>
+                          <Link
+                            href={`/dashboard/atenciones?joven_id=${encodeURIComponent(joven.id)}`}
+                            className="p-2 text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-900/20 rounded-lg transition-colors"
+                            title="Atenciones de este joven"
+                          >
+                            <ClipboardList className="w-4 h-4" />
                           </Link>
 
                           {(!permissionsLoading && (isAdmin || canEditJoven || canDeleteJoven)) && (

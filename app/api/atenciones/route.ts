@@ -58,6 +58,7 @@ export async function GET(request: NextRequest) {
     const estado = searchParams.get('estado')
     const fechaDesde = searchParams.get('fecha_desde')
     const fechaHasta = searchParams.get('fecha_hasta')
+    const jovenId = searchParams.get('joven_id')?.trim() || null
 
     let query = adminClient
       .from('atenciones')
@@ -77,6 +78,9 @@ export async function GET(request: NextRequest) {
     }
     if (fechaHasta) {
       query = query.lte('fecha_atencion', `${fechaHasta}T23:59:59.999Z`)
+    }
+    if (jovenId) {
+      query = query.eq('joven_id', jovenId)
     }
 
     const { data, error, count } = await query.range(offset, offset + limit - 1)

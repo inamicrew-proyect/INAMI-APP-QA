@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo, useCallback } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { Search, Plus, Edit, Trash2, Eye, Filter, FileText, CheckCircle2, AlertTriangle, X, ChevronLeft, ChevronRight } from 'lucide-react'
 import { createClientComponentClient } from '@/lib/supabase-browser'
 import type { Atencion } from '@/lib/supabase'
@@ -53,6 +54,8 @@ function getAreaBgClass(tipoNombre: string) {
 
 export default function AtencionesPage() {
   const supabase = createClientComponentClient()
+  const searchParams = useSearchParams()
+  const filterJovenId = (searchParams.get('joven_id') || '').trim()
   const { isAdmin } = useIsAdmin()
   const { canEdit, canDelete, loading: permissionsLoading } = usePermissions()
   
@@ -127,6 +130,7 @@ export default function AtencionesPage() {
         }
         if (fechaDesde) params.set('fecha_desde', fechaDesde)
         if (fechaHasta) params.set('fecha_hasta', fechaHasta)
+        if (filterJovenId) params.set('joven_id', filterJovenId)
         const response = await fetch(`/api/atenciones?${params.toString()}`, {
           method: 'GET',
           credentials: 'include',
@@ -214,7 +218,7 @@ export default function AtencionesPage() {
         }
       }
     }
-  }, [supabaseClient, currentPage, itemsPerPage, filterEstado, fechaDesde, fechaHasta])
+  }, [supabaseClient, currentPage, itemsPerPage, filterEstado, fechaDesde, fechaHasta, filterJovenId])
 
   // Cargar datos al montar y cuando cambian página, tamaño de página o filtro de estado
   useEffect(() => {
@@ -359,7 +363,7 @@ export default function AtencionesPage() {
   // Resetear página cuando cambian filtros o tamaño de página
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchTerm, filterEstado, filterArea, fechaDesde, fechaHasta])
+  }, [searchTerm, filterEstado, filterArea, fechaDesde, fechaHasta, filterJovenId])
 
   const getEstadoBadge = useCallback((estado: string) => {
     const badges = {
@@ -398,6 +402,20 @@ export default function AtencionesPage() {
           </Link>
         </div>
       </div>
+
+      {filterJovenId && (
+        <div className="mb-6 rounded-lg border border-primary-200 dark:border-primary-800 bg-primary-50 dark:bg-primary-900/20 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <p className="text-sm text-gray-800 dark:text-gray-200">
+            Mostrando solo las atenciones del joven indicado (filtro desde el listado de jóvenes).
+          </p>
+          <Link
+            href="/dashboard/atenciones"
+            className="text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline whitespace-nowrap shrink-0"
+          >
+            Quitar filtro y ver todas
+          </Link>
+        </div>
+      )}
 
       {/* Debug Info - solo después de montar para evitar hydration mismatch */}
       {mounted && process.env.NODE_ENV === 'development' && debugInfo && (
