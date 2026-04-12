@@ -10,7 +10,7 @@ const DEFAULT_DAYS = 7
 
 /** Encargado de la cita + administradores (vista global). Sin duplicar solicitante si no es quien atiende. */
 async function getAdminUserIds(admin: NonNullable<ReturnType<typeof getSupabaseAdmin>>): Promise<string[]> {
-  const { data } = await admin.from('profiles').select('id').eq('role', 'admin')
+  const { data } = await admin.from('profiles').select('id').in('role', ['admin', 'ADMINISTRADOR'])
   return (data ?? []).map((r) => r.id as string)
 }
 

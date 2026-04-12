@@ -8,6 +8,7 @@ import type { Profile } from './supabase' // Tus tipos están bien
 import type { User } from '@supabase/supabase-js'
 import { cacheProfile, getCachedProfile, clearProfileCache } from './profile-cache'
 import { fetchTimeoutSignal } from './fetch-timeout-signal'
+import { isProfileAdminRole } from './is-profile-admin'
 
 /** La ruta /api/auth/profile puede tardar (Supabase + service role en frío); 10s provoca timeouts falsos */
 const AUTH_PROFILE_FETCH_TIMEOUT_MS = 20000
@@ -574,7 +575,7 @@ export function useAuth() {
  */
 export function useIsAdmin() {
   const { profile, loading } = useAuth()
-  const isAdmin = profile?.role === 'admin'
+  const isAdmin = isProfileAdminRole(profile?.role)
 
   return { isAdmin, loading }
 }

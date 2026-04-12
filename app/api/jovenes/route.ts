@@ -6,6 +6,7 @@ import {
   listEstadosJovenRows,
   pickDefaultEstadoCodigo,
 } from '@/lib/joven-estados-server'
+import { isProfileAdminRole } from '@/lib/is-profile-admin'
 
 export const dynamic = 'force-dynamic'
 export const fetchCache = 'force-no-store'
@@ -28,7 +29,7 @@ async function requireAuth(_request: NextRequest) {
     .eq('id', session.user.id)
     .single()
 
-  const isAdmin = profile?.role === 'admin'
+  const isAdmin = isProfileAdminRole(profile?.role)
 
   return { supabase, session, isAdmin, userId: session.user.id } as const
 }

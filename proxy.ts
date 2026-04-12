@@ -5,6 +5,7 @@ import type { NextRequest } from 'next/server'
 import { getPublicSupabaseAnonKey, getPublicSupabaseUrl } from '@/lib/env/public-supabase'
 import { userMustChangePassword } from '@/lib/auth-must-change-password'
 import { getRoleIdsForUser } from '@/lib/user-role-resolution'
+import { isProfileAdminRole } from '@/lib/is-profile-admin'
 
 export async function proxy(req: NextRequest) {
   let res = NextResponse.next({ request: req })
@@ -143,7 +144,7 @@ export async function proxy(req: NextRequest) {
           .eq('id', user.id)
           .single()
 
-        if (profile?.role === 'admin') {
+        if (isProfileAdminRole(profile?.role)) {
           // Continuar
         } else {
           const roleIds = await getRoleIdsForUser(supabase, user.id)

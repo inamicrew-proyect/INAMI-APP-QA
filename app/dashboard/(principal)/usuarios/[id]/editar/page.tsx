@@ -8,6 +8,7 @@ import { createClientComponentClient } from '@/lib/supabase-browser'
 import { userUpdateSchema } from '@/lib/validation/users'
 import { formatZodErrors } from '@/lib/validation/utils'
 import { useAuth } from '@/lib/auth'
+import { isProfileAdminRole } from '@/lib/is-profile-admin'
 
 type UserProfile = {
   id: string
@@ -48,7 +49,7 @@ export default function EditarUsuarioPage() {
   const MAX_PROFILE_PHOTO_SIZE = 1024 * 1024 // 1 MB
   const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp']
   
-  const isAdmin = currentUserProfile?.role === 'admin'
+  const isAdmin = isProfileAdminRole(currentUserProfile?.role)
   const canEditNameAndRole = isAdmin // Solo admin puede editar nombre y rol
 
   useEffect(() => {

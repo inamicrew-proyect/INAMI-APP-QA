@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseRouteHandlerClient } from '@/lib/supabase-route-handler'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
+import { isProfileAdminRole } from '@/lib/is-profile-admin'
 
 async function requireAdmin() {
   const supabase = await createSupabaseRouteHandlerClient()
@@ -18,7 +19,7 @@ async function requireAdmin() {
     .eq('id', session.user.id)
     .single()
 
-  if (profileError || !profile || profile.role !== 'admin') {
+  if (profileError || !profile || !isProfileAdminRole(profile.role)) {
     return { error: 'No autorizado', status: 403 }
   }
 

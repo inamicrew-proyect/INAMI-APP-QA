@@ -12,7 +12,10 @@ export async function notifyAdminsCriticalSecurity(payload: {
     return
   }
 
-  const { data: admins, error } = await admin.from('profiles').select('id').eq('role', 'admin')
+  const { data: admins, error } = await admin
+    .from('profiles')
+    .select('id')
+    .in('role', ['admin', 'ADMINISTRADOR'])
   if (error) {
     console.error('[notifyAdminsCriticalSecurity] Error listando administradores:', error)
     return

@@ -9,6 +9,7 @@ import { getSupabaseClient } from '@/lib/supabase-client'
 import { Routes } from '@/lib/routes'
 import { usePermissions } from '@/lib/hooks/usePermissions'
 import { canShowNavModule } from '@/lib/module-nav-access'
+import { isProfileAdminRole } from '@/lib/is-profile-admin'
 
 const getRoleLabel = (role: string) => {
   const labels: Record<string, string> = {
@@ -27,7 +28,7 @@ export default function UserProfileDropdown() {
   const pathname = usePathname()
   const { profile } = useAuth()
   const { canView, loading: permissionsLoading } = usePermissions()
-  const isAdmin = profile?.role === 'admin'
+  const isAdmin = isProfileAdminRole(profile?.role)
   const showDashboardLink = canShowNavModule(Routes.DASHBOARD, {
     isAdmin,
     permissionsLoading,

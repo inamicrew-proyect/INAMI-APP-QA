@@ -4,6 +4,7 @@ import { createSupabaseRouteHandlerClient } from '@/lib/supabase-route-handler'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { Routes } from '@/lib/routes'
 import { getRoleIdsForUser } from '@/lib/user-role-resolution'
+import { isProfileAdminRole } from '@/lib/is-profile-admin'
 
 export const dynamic = 'force-dynamic'
 export const fetchCache = 'force-no-store'
@@ -60,7 +61,7 @@ async function requireAdminOrProfesional(_request: NextRequest, atencionId: stri
   }
 
   // Si es admin, permitir
-  if (profile.role === 'admin') {
+  if (isProfileAdminRole(profile.role)) {
     return { supabase, profile, userId, isAdmin: true } as const
   }
 
@@ -104,7 +105,7 @@ async function requireAdminOrProfesionalOrModuloDelete(_request: NextRequest, at
     return { error: 'Perfil no encontrado', status: 401 } as const
   }
 
-  if (profile.role === 'admin') {
+  if (isProfileAdminRole(profile.role)) {
     return { supabase, profile, userId, isAdmin: true } as const
   }
 

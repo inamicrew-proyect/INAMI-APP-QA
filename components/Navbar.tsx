@@ -16,6 +16,7 @@ import { useTheme } from '@/lib/useTheme'
 import { Routes } from '@/lib/routes'
 import { usePermissions } from '@/lib/hooks/usePermissions'
 import { canShowNavModule, getHomeHref, type NavPermissionContext } from '@/lib/module-nav-access'
+import { isProfileAdminRole } from '@/lib/is-profile-admin'
 
 function Navbar() {
   // TODOS LOS HOOKS DEBEN ESTAR AQUÍ AL INICIO, ANTES DE CUALQUIER LÓGICA
@@ -32,7 +33,7 @@ function Navbar() {
   const { theme } = useTheme()
   const isDark = theme === 'dark'
 
-  const isAdmin = profile?.role === 'admin'
+  const isAdmin = isProfileAdminRole(profile?.role)
   const navPermCtx: NavPermissionContext = {
     isAdmin,
     permissionsLoading,

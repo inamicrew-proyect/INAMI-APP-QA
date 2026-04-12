@@ -4,6 +4,7 @@ import { createSupabaseRouteHandlerClient } from '@/lib/supabase-route-handler'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { adminUserExtraSchema, userUpdateSchema } from '@/lib/validation/users'
 import { formatZodErrors } from '@/lib/validation/utils'
+import { isProfileAdminRole } from '@/lib/is-profile-admin'
 
 export const dynamic = 'force-dynamic'
 export const fetchCache = 'force-no-store'
@@ -30,7 +31,7 @@ async function requireAdmin(_request: NextRequest) {
     return { error: 'Perfil no encontrado', status: 401 } as const
   }
 
-  if (profile.role !== 'admin') {
+  if (!isProfileAdminRole(profile.role)) {
     return { error: 'No autorizado', status: 403 } as const
   }
 
@@ -59,7 +60,7 @@ async function requireAuthOrOwnProfile(_request: NextRequest, targetUserId: stri
   }
 
   // Permitir si es admin o si está viendo su propio perfil
-  if (profile.role !== 'admin' && userId !== targetUserId) {
+  if (!isProfileAdminRole(profile.role) && userId !== targetUserId) {
     return { error: 'No autorizado. Solo puedes ver tu propio perfil.', status: 403 } as const
   }
 
@@ -159,7 +160,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   }
 
   const { profile: currentProfile, userId } = authCheck
-  const isAdmin = currentProfile.role === 'admin'
+  const isAdmin = isProfileAdminRole(currentProfile.role)
 
   const body = await request.json().catch(() => null)
   if (!body) {

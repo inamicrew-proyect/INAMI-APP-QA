@@ -1,9 +1,21 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Plus, Edit, Trash2, Eye, Shield, Search, RefreshCw } from 'lucide-react'
+import {
+  ArrowLeft,
+  Plus,
+  Edit,
+  Trash2,
+  Eye,
+  Shield,
+  Search,
+  RefreshCw,
+  AlertTriangle,
+  CheckCircle2,
+  X,
+} from 'lucide-react'
 import { useAdminAccess } from '@/lib/hooks/useAdminAccess'
 
 interface Rol {
@@ -24,6 +36,9 @@ export default function RolesPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [rolAEliminar, setRolAEliminar] = useState<{ id: string; nombre: string } | null>(null)
+  const [deleteModalError, setDeleteModalError] = useState<string | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
   // Verificar que el usuario tiene acceso
   useEffect(() => {
@@ -63,11 +78,27 @@ export default function RolesPage() {
     }
   }, [hasAccess])
 
-  const handleDelete = async (id: string, nombre: string) => {
-    if (!confirm(`¿Estás seguro de eliminar el rol "${nombre}"? Esta acción no se puede deshacer.`)) {
-      return
-    }
+  useEffect(() => {
+    if (!successMessage) return
+    const t = window.setTimeout(() => setSuccessMessage(null), 5000)
+    return () => window.clearTimeout(t)
+  }, [successMessage])
 
+  const abrirEliminarRol = (id: string, nombre: string) => {
+    setDeleteModalError(null)
+    setRolAEliminar({ id, nombre })
+  }
+
+  const cerrarModalEliminar = useCallback(() => {
+    if (deletingId) return
+    setRolAEliminar(null)
+    setDeleteModalError(null)
+  }, [deletingId])
+
+  const confirmarEliminarRol = async () => {
+    if (!rolAEliminar) return
+    const { id, nombre } = rolAEliminar
+    setDeleteModalError(null)
     try {
       setDeletingId(id)
       const response = await fetch(`/api/admin/roles?id=${id}`, {
@@ -85,14 +116,24 @@ export default function RolesPage() {
       }
 
       setRoles((prev) => prev.filter((r) => r.id !== id))
-      alert('Rol eliminado exitosamente')
-    } catch (error) {
-      console.error('Error deleting role:', error)
-      alert(error instanceof Error ? error.message : 'Error al eliminar el rol')
+      setRolAEliminar(null)
+      setSuccessMessage(`El rol «${nombre}» se ha eliminado correctamente.`)
+    } catch (err) {
+      console.error('Error deleting role:', err)
+      setDeleteModalError(err instanceof Error ? err.message : 'Error al eliminar el rol')
     } finally {
       setDeletingId(null)
     }
   }
+
+  useEffect(() => {
+    if (!rolAEliminar || deletingId) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') cerrarModalEliminar()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [rolAEliminar, deletingId, cerrarModalEliminar])
 
   const filteredRoles = roles.filter((rol) =>
     rol.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -133,6 +174,24 @@ export default function RolesPage() {
           Agregar Rol
         </Link>
       </div>
+
+      {successMessage && (
+        <div
+          className="mb-4 rounded-xl border-2 border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 shadow-sm flex items-start gap-3 p-4 transition-opacity"
+          role="status"
+        >
+          <CheckCircle2 className="w-6 h-6 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
+          <p className="text-sm font-medium pt-0.5">{successMessage}</p>
+          <button
+            type="button"
+            onClick={() => setSuccessMessage(null)}
+            className="ml-auto p-1 rounded-lg text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/50"
+            aria-label="Cerrar aviso"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {error && (
         <div className="card mb-4 border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400">
@@ -244,7 +303,7 @@ export default function RolesPage() {
                           <Edit className="w-4 h-4" />
                         </Link>
                         <button
-                          onClick={() => handleDelete(rol.id, rol.nombre)}
+                          onClick={() => abrirEliminarRol(rol.id, rol.nombre)}
                           disabled={deletingId === rol.id}
                           className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
                           title="Eliminar"
@@ -266,6 +325,73 @@ export default function RolesPage() {
           Total de roles: <span className="font-semibold text-gray-900 dark:text-white">{roles.length}</span>
         </p>
       </div>
+
+      {rolAEliminar && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 dark:bg-black/70 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="eliminar-rol-titulo"
+          aria-describedby="eliminar-rol-desc"
+          onClick={cerrarModalEliminar}
+        >
+          <div
+            className="relative w-full max-w-md rounded-2xl border-2 border-sky-200 dark:border-sky-800 bg-white dark:bg-gray-900 shadow-2xl overflow-hidden ring-1 ring-sky-500/20"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="bg-gradient-to-r from-sky-500 to-blue-600 px-5 py-4 flex items-center gap-3">
+              <div className="rounded-full bg-white/20 p-2">
+                <AlertTriangle className="w-6 h-6 text-white" aria-hidden />
+              </div>
+              <h2 id="eliminar-rol-titulo" className="text-lg font-bold text-white">
+                Eliminar rol
+              </h2>
+              <button
+                type="button"
+                onClick={cerrarModalEliminar}
+                disabled={!!deletingId}
+                className="ml-auto p-1.5 rounded-lg text-white/90 hover:bg-white/20 disabled:opacity-50"
+                aria-label="Cerrar"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <p id="eliminar-rol-desc" className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed">
+                ¿Seguro que deseas eliminar el rol{' '}
+                <span className="font-semibold text-gray-900 dark:text-white">
+                  «{rolAEliminar.nombre.toUpperCase()}»
+                </span>
+                ? Se quitarán las asignaciones y permisos asociados en base de datos.{' '}
+                <span className="text-red-600 dark:text-red-400 font-medium">Esta acción no se puede deshacer.</span>
+              </p>
+              {deleteModalError && (
+                <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-3 py-2 text-sm text-red-700 dark:text-red-300">
+                  {deleteModalError}
+                </div>
+              )}
+              <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end pt-1">
+                <button
+                  type="button"
+                  onClick={cerrarModalEliminar}
+                  disabled={!!deletingId}
+                  className="btn-secondary w-full sm:w-auto justify-center"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmarEliminarRol}
+                  disabled={!!deletingId}
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-white bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600 disabled:opacity-60 transition-colors"
+                >
+                  {deletingId ? 'Eliminando…' : 'Sí, eliminar'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

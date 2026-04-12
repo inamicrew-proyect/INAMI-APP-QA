@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useAuth } from '@/lib/auth'
 import { usePermissions } from '@/lib/hooks/usePermissions'
 import { getHomeHref } from '@/lib/module-nav-access'
+import { isProfileAdminRole } from '@/lib/is-profile-admin'
 
 type Props = {
   titulo: string
@@ -13,7 +14,7 @@ type Props = {
 export function ModuleAccessDenied({ titulo, mensaje }: Props) {
   const { profile } = useAuth()
   const { canView, loading } = usePermissions()
-  const isAdmin = profile?.role === 'admin'
+  const isAdmin = isProfileAdminRole(profile?.role)
   const homeHref = getHomeHref({
     isAdmin,
     permissionsLoading: loading,

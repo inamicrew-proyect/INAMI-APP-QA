@@ -3,6 +3,7 @@ import { createSupabaseRouteHandlerClient } from '@/lib/supabase-route-handler'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { Routes } from '@/lib/routes'
 import { getRoleIdsForUser } from '@/lib/user-role-resolution'
+import { isProfileAdminRole } from '@/lib/is-profile-admin'
 
 export const dynamic = 'force-dynamic'
 export const fetchCache = 'force-no-store'
@@ -30,7 +31,7 @@ async function hasModulePermission(
     .select('role')
     .eq('id', userId)
     .maybeSingle()
-  if (profile?.role === 'admin') return true
+  if (isProfileAdminRole(profile?.role)) return true
 
   const { data: moduleRow } = await admin
     .from('modulos')
