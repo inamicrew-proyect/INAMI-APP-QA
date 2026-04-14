@@ -1,5 +1,7 @@
 'use client'
 
+import { useFormularioAtencionEdicion } from '@/lib/hooks/use-formulario-atencion-edicion'
+import { actualizarAtencionYFormularioJson } from '@/lib/formulario-atencion-update'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -75,6 +77,11 @@ export default function DatosJudicialesPage() {
     recomendaciones: ''
   })
 
+  const { atencionIdEdicion, loadingExisting, fichaEncontrada } = useFormularioAtencionEdicion<FormData>({
+    tipoFormulario: 'datos_judiciales',
+    setFormData,
+  })
+
   useEffect(() => {
     loadJovenes()
   }, [])
@@ -109,6 +116,27 @@ export default function DatosJudicialesPage() {
     setLoading(true)
 
     try {
+      if (atencionIdEdicion && fichaEncontrada === true) {
+        const { data: att, error: attErr } = await supabase
+          .from('atenciones')
+          .select('tipo_atencion_id')
+          .eq('id', atencionIdEdicion)
+          .single()
+        if (attErr || !att?.tipo_atencion_id) {
+          throw new Error(attErr?.message || 'No se pudo resolver el tipo de atención.')
+        }
+        await actualizarAtencionYFormularioJson(supabase, {
+          atencionId: atencionIdEdicion,
+          tipoFormulario: 'datos_judiciales',
+          jovenId: formData.joven_id,
+          tipoAtencionId: att.tipo_atencion_id,
+          datosJson: formData,
+        })
+        alert('Ficha de datos judiciales actualizada exitosamente')
+        router.push(`/dashboard/atenciones/${atencionIdEdicion}`)
+        return
+      }
+
       const { error } = await supabase
         .from('formularios_atencion')
         .insert({
@@ -128,6 +156,14 @@ export default function DatosJudicialesPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  if (loadingExisting) {
+    return (
+      <div className="flex items-center justify-center min-h-[40vh] p-8">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      </div>
+    )
   }
 
   return (

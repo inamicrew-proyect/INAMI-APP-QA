@@ -4,7 +4,9 @@ import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { ArrowLeft, Save } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { saveOrUpdateFormulario } from '@/lib/formularios-psicologicos'
 import JovenSearchInput from '@/components/JovenSearchInput'
+import { edadDesdeJoven } from '@/lib/joven-helpers'
 
 export default function InformeSeguimientoPostSancionCPIPage() {
   const router = useRouter()
@@ -119,15 +121,7 @@ export default function InformeSeguimientoPostSancionCPIPage() {
     e.preventDefault()
     try {
       setSaving(true)
-      const { error } = await supabase
-        .from('formularios_psicologicos')
-        .insert([{
-          joven_id: jovenId,
-          tipo_formulario: 'informe_seguimiento_post_sancion_cpi',
-          datos_json: formData,
-          fecha_creacion: new Date().toISOString()
-        }])
-      if (error) throw error
+      await saveOrUpdateFormulario(jovenId, 'informe_seguimiento_post_sancion_cpi', formData)
       alert('Formulario guardado exitosamente')
       router.push(`/dashboard/jovenes/${jovenId}/expediente`)
     } catch (error) {
@@ -251,7 +245,7 @@ export default function InformeSeguimientoPostSancionCPIPage() {
                         setFormData(prev => ({
                           ...prev,
                           nombre_apellidos: `${joven.nombres} ${joven.apellidos}`,
-                          edad: joven.edad?.toString() || prev.edad
+                          edad: String(edadDesdeJoven(joven))
                         }))
                       }
                     }}

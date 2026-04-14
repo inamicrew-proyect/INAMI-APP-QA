@@ -43,11 +43,21 @@ const FORMULARIO_ROUTE_BY_TIPO: Record<string, string> = {
   platin_cpi: '/dashboard/atenciones/formularios/trabajo-social/platin-cpi',
   estudio_socioeconomico: '/dashboard/atenciones/formularios/trabajo-social/estudio-socioeconomico',
 
-  // Psicologia
+  // Psicologia (PMSPL: tipos alineados con lib/formularios-psicologicos TIPOS_FORMULARIOS y fichas-catalog)
+  entrevista_inicial_adolescente: '/dashboard/atenciones/formularios/psicologia/pmspl/entrevista-inicial-adolescente',
+  entrevista_final_adolescente: '/dashboard/atenciones/formularios/psicologia/pmspl/entrevista-final-adolescente',
+  entrevista_psicologica_adolescentes_jovenes: '/dashboard/atenciones/formularios/psicologia/pmspl/entrevista-psicologica-adolescentes-jovenes',
+  seguimiento_psicologico: '/dashboard/atenciones/formularios/psicologia/pmspl/seguimiento-psicologico',
+  informe_psicodiagnostico: '/dashboard/atenciones/formularios/psicologia/pmspl/informe-psicodiagnostico',
+  informe_final: '/dashboard/atenciones/formularios/psicologia/pmspl/informe-final',
+  remision_instituciones: '/dashboard/atenciones/formularios/psicologia/pmspl/remision-instituciones',
+  informe_seguimiento_psicologia_pmspl: '/dashboard/atenciones/formularios/psicologia/pmspl/informe-seguimiento',
+  // Psicologia CPI
   entrevista_inicial_adolescente_cpi: '/dashboard/atenciones/formularios/psicologia/cpi/entrevista-inicial-adolescente',
   entrevista_inicial_familia_cpi: '/dashboard/atenciones/formularios/psicologia/cpi/entrevista-inicial-familia',
   entrevista_preeliminar: '/dashboard/atenciones/formularios/psicologia/cpi/entrevista-preeliminar',
   entrevista_seguimiento_familia: '/dashboard/atenciones/formularios/psicologia/cpi/entrevista-seguimiento-familia',
+  informe_psicodiagnostico_cpi: '/dashboard/atenciones/formularios/psicologia/cpi/informe-psicodiagnostico',
   informe_final_cpi: '/dashboard/atenciones/formularios/psicologia/cpi/informe-final',
   informe_preliminar_cpi: '/dashboard/atenciones/formularios/psicologia/cpi/informe-preliminar',
   informe_seguimiento_post_sancion_cpi: '/dashboard/atenciones/formularios/psicologia/cpi/informe-seguimiento-post-sancion',
@@ -83,11 +93,6 @@ const FORMULARIO_ROUTE_BY_TIPO: Record<string, string> = {
   informe_inicial: '/dashboard/atenciones/formularios/pedagogia/informe-inicial',
   informe_inicial_educativo: '/dashboard/atenciones/formularios/educacion/informe-inicial'
 }
-
-// Solo redirigir cuando la ficha ya soporta cargar/actualizar por ?atencion_id=
-const FORMULARIOS_CON_EDICION_SOPORTADA = new Set<string>([
-  'entrevista_familiar_pmspl'
-])
 
 export default function EditarAtencionPage() {
   const router = useRouter()
@@ -128,8 +133,6 @@ export default function EditarAtencionPage() {
 
   useEffect(() => {
     if (!atencionId || !formularioTipo) return
-
-    if (!FORMULARIOS_CON_EDICION_SOPORTADA.has(formularioTipo)) return
 
     const route = FORMULARIO_ROUTE_BY_TIPO[formularioTipo]
     if (!route) return

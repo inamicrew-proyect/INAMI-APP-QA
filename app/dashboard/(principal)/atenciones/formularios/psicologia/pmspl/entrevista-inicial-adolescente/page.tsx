@@ -10,6 +10,7 @@ import {
   TIPOS_FORMULARIOS 
 } from '@/lib/formularios-psicologicos'
 import JovenSearchInput from '@/components/JovenSearchInput'
+import { edadDesdeJoven } from '@/lib/joven-helpers'
 
 interface NucleoConvivencia {
   nombre: string
@@ -428,7 +429,7 @@ export default function EntrevistaInicialAdolescentePage() {
                         ...prev,
                         joven_id: joven.id,
                         nombre_completo_nnaj: `${joven.nombres} ${joven.apellidos}`,
-                        edad: joven.edad?.toString() || prev.edad
+                        edad: String(edadDesdeJoven(joven))
                       }))
                       console.log('joven_id establecido en formData')
                     } else {

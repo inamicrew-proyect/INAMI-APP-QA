@@ -4,7 +4,9 @@ import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { ArrowLeft, Save } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { saveOrUpdateFormulario } from '@/lib/formularios-psicologicos'
 import JovenSearchInput from '@/components/JovenSearchInput'
+import { edadDesdeJoven } from '@/lib/joven-helpers'
 
 export default function SeguimientoTerapeuticoGrupalAdolescentesPage() {
   const router = useRouter()
@@ -96,15 +98,7 @@ export default function SeguimientoTerapeuticoGrupalAdolescentesPage() {
     e.preventDefault()
     try {
       setSaving(true)
-      const { error } = await supabase
-        .from('formularios_psicologicos')
-        .insert([{
-          joven_id: jovenId,
-          tipo_formulario: 'seguimiento_terapeutico_grupal_adolescentes_cpi',
-          datos_json: formData,
-          fecha_creacion: new Date().toISOString()
-        }])
-      if (error) throw error
+      await saveOrUpdateFormulario(jovenId, 'seguimiento_terapeutico_grupal_adolescentes_cpi', formData)
       alert('Formulario guardado exitosamente')
       router.push(`/dashboard/jovenes/${jovenId}/expediente`)
     } catch (error) {
@@ -204,7 +198,7 @@ export default function SeguimientoTerapeuticoGrupalAdolescentesPage() {
                         ...prev,
                         nombre_apellidos: `${joven.nombres} ${joven.apellidos}`,
                         fecha_nacimiento_edad: joven.fecha_nacimiento 
-                          ? `${new Date(joven.fecha_nacimiento).toLocaleDateString('es-HN')}, ${joven.edad || ''} años`
+                          ? `${new Date(joven.fecha_nacimiento).toLocaleDateString('es-HN')}, ${edadDesdeJoven(joven) || ''} años`
                           : prev.fecha_nacimiento_edad
                       }))
                     }

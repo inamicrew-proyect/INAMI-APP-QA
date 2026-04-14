@@ -4,7 +4,9 @@ import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { ArrowLeft, Save } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { saveOrUpdateFormulario } from '@/lib/formularios-psicologicos'
 import JovenSearchInput from '@/components/JovenSearchInput'
+import { edadDesdeJoven } from '@/lib/joven-helpers'
 
 export default function RemisionInternaPage() {
   const router = useRouter()
@@ -97,15 +99,7 @@ export default function RemisionInternaPage() {
     e.preventDefault()
     try {
       setSaving(true)
-      const { error } = await supabase
-        .from('formularios_psicologicos')
-        .insert([{
-          joven_id: jovenId,
-          tipo_formulario: 'remision_interna_cpi',
-          datos_json: formData,
-          fecha_creacion: new Date().toISOString()
-        }])
-      if (error) throw error
+      await saveOrUpdateFormulario(jovenId, 'remision_interna_cpi', formData)
       alert('Formulario guardado exitosamente')
       router.push(`/dashboard/jovenes/${jovenId}/expediente`)
     } catch (error) {
@@ -248,7 +242,7 @@ export default function RemisionInternaPage() {
                       setFormData(prev => ({
                         ...prev,
                         nombre_apellidos: `${joven.nombres} ${joven.apellidos}`,
-                        edad: joven.edad?.toString() || prev.edad
+                        edad: String(edadDesdeJoven(joven))
                       }))
                     }
                   }}

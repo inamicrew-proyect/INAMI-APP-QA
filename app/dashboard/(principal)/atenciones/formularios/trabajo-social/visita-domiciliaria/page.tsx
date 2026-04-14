@@ -1,6 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useFormularioAtencionEdicion } from '@/lib/hooks/use-formulario-atencion-edicion'
+import { actualizarAtencionYFormularioJson } from '@/lib/formulario-atencion-update'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { Save, ArrowLeft, User, Calendar, FileText, Home, Phone } from 'lucide-react'
@@ -34,7 +36,6 @@ interface FormData {
 
 export default function VisitaDomiciliariaPage() {
   const router = useRouter()
-  const [jovenes, setJovenes] = useState<Joven[]>([])
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -53,34 +54,17 @@ export default function VisitaDomiciliariaPage() {
     firma_entrevistado: ''
   })
 
-  useEffect(() => {
-    loadJovenes()
-  }, [])
+  const { atencionIdEdicion, loadingExisting, fichaEncontrada } = useFormularioAtencionEdicion<FormData>({
+    tipoFormulario: 'visita_domiciliaria',
+    setFormData,
+  })
 
-  const loadJovenes = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('jovenes')
-        .select('id, nombres, apellidos, fecha_nacimiento, edad, expediente_administrativo, expediente_judicial')
-        .eq('estado', 'activo')
-        .order('nombres')
-
-      if (error) throw error
-      setJovenes(data || [])
-    } catch (error) {
-      console.error('Error loading jovenes:', error)
-      alert('Error al cargar los jóvenes')
-    }
-  }
-
-  const handleJovenChange = (jovenId: string) => {
-    const joven = jovenes.find(j => j.id === jovenId)
-    if (joven) {
+  const handleJovenChange = (joven: Joven) => {
+    if (!joven?.id) return
       setFormData(prev => ({
         ...prev,
-        joven_id: jovenId
+        joven_id: joven.id
       }))
-    }
   }
 
   const validateForm = () => {
@@ -162,6 +146,40 @@ export default function VisitaDomiciliariaPage() {
         throw new Error('Tu usuario no tiene un perfil configurado. Por favor, ejecuta el script crear-perfil-usuario.sql en Supabase.')
       }
 
+      // Preparar datos para la función stored procedure
+      const datosJson = {
+        ...formData,
+        fecha_visita: formData.fecha_atencion,
+        hora_visita: null,
+        direccion_completa: formData.lugar_entrevista,
+        departamento: null,
+        municipio: null,
+        aldea_colonia_barrio: null,
+        calle_avenida_sector: null,
+        numero_casa: null,
+        referencias: null,
+        medios_transporte: null,
+        personas_presentes: [],
+        observaciones_ambiente: null,
+        recomendaciones: null,
+        requiere_seguimiento: false,
+        fecha_proxima_visita: null,
+        compromisos: []
+      }
+
+      if (atencionIdEdicion && fichaEncontrada === true && tipoAtencionId) {
+        await actualizarAtencionYFormularioJson(supabase, {
+          atencionId: atencionIdEdicion,
+          tipoFormulario: 'visita_domiciliaria',
+          jovenId: formData.joven_id,
+          tipoAtencionId: tipoAtencionId,
+          datosJson: datosJson as Record<string, unknown>,
+        })
+        alert('Ficha de Visita Domiciliaria actualizada exitosamente')
+        router.push(`/dashboard/atenciones/${atencionIdEdicion}`)
+        return
+      }
+
       // Crear una nueva atención
       const { data: nuevaAtencion, error: atencionError } = await supabase
         .from('atenciones')
@@ -187,27 +205,6 @@ export default function VisitaDomiciliariaPage() {
 
       const atencionId = nuevaAtencion.id
       console.log('✅ Atención creada exitosamente:', atencionId)
-
-      // Preparar datos para la función stored procedure
-      const datosJson = {
-        ...formData,
-        fecha_visita: formData.fecha_atencion,
-        hora_visita: null,
-        direccion_completa: formData.lugar_entrevista,
-        departamento: null,
-        municipio: null,
-        aldea_colonia_barrio: null,
-        calle_avenida_sector: null,
-        numero_casa: null,
-        referencias: null,
-        medios_transporte: null,
-        personas_presentes: [],
-        observaciones_ambiente: null,
-        recomendaciones: null,
-        requiere_seguimiento: false,
-        fecha_proxima_visita: null,
-        compromisos: []
-      }
 
       // Usar la función stored procedure
       const { data: formularioId, error: formularioError } = await supabase
@@ -273,6 +270,14 @@ export default function VisitaDomiciliariaPage() {
     }
   }
 
+  if (loadingExisting) {
+    return (
+      <div className="flex items-center justify-center min-h-[40vh] p-8">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      </div>
+    )
+  }
+
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-gray-50 dark:bg-gray-900 min-h-screen">
       {/* Header */}
@@ -314,7 +319,7 @@ export default function VisitaDomiciliariaPage() {
                 onChange={() => {}}
                 onJovenSelect={(joven) => {
                   if (joven && joven.id) {
-                    handleJovenChange(joven.id)
+                    handleJovenChange(joven)
                   }
                 }}
                 label="Joven"

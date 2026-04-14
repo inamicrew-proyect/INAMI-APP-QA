@@ -1,6 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useFormularioAtencionEdicion } from '@/lib/hooks/use-formulario-atencion-edicion'
+import { actualizarAtencionYFormularioJson } from '@/lib/formulario-atencion-update'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { Save, ArrowLeft, User, Briefcase } from 'lucide-react'
@@ -41,7 +43,6 @@ interface FormData {
 
 export default function InformeServicioComunitarioPage() {
   const router = useRouter()
-  const [jovenes, setJovenes] = useState<Joven[]>([])
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -67,37 +68,21 @@ export default function InformeServicioComunitarioPage() {
     firma_persona_entrevistada: ''
   })
 
-  useEffect(() => {
-    loadJovenes()
-  }, [])
+  const { atencionIdEdicion, loadingExisting, fichaEncontrada } = useFormularioAtencionEdicion<FormData>({
+    tipoFormulario: 'informe_servicio_comunitario',
+    setFormData,
+  })
 
-  const loadJovenes = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('jovenes')
-        .select('id, nombres, apellidos, fecha_nacimiento, edad, expediente_administrativo, expediente_judicial')
-        .eq('estado', 'activo')
-        .order('nombres')
 
-      if (error) throw error
-      setJovenes(data || [])
-    } catch (error) {
-      console.error('Error loading jovenes:', error)
-      alert('Error al cargar los jóvenes')
-    }
-  }
-
-  const handleJovenChange = (jovenId: string) => {
-    const joven = jovenes.find(j => j.id === jovenId)
-    if (joven) {
+  const handleJovenChange = (joven: Joven) => {
+    if (!joven?.id) return
       setFormData(prev => ({
         ...prev,
-        joven_id: jovenId,
+        joven_id: joven.id,
         nombre_nnaj: `${joven.nombres} ${joven.apellidos}`,
         exp_interno: joven.expediente_administrativo || '',
         exp_judicial: joven.expediente_judicial || ''
       }))
-    }
   }
 
   const validateForm = () => {
@@ -203,6 +188,20 @@ export default function InformeServicioComunitarioPage() {
         fecha_elaboracion: formData.fecha_supervision
       }
 
+      if (atencionIdEdicion && fichaEncontrada === true && tipoAtencionId) {
+        await actualizarAtencionYFormularioJson(supabase, {
+          atencionId: atencionIdEdicion,
+          tipoFormulario: 'informe_servicio_comunitario',
+          jovenId: formData.joven_id,
+          tipoAtencionId: tipoAtencionId,
+          datosJson: datosJson as Record<string, unknown>,
+        })
+        alert('Ficha actualizada exitosamente')
+        router.push(`/dashboard/atenciones/${atencionIdEdicion}`)
+        return
+      }
+
+
       // Guardar en formularios_atencion
       const { error: insertError } = await supabase
         .from('formularios_atencion')
@@ -228,6 +227,14 @@ export default function InformeServicioComunitarioPage() {
     } finally {
       setSaving(false)
     }
+  }
+
+  if (loadingExisting) {
+    return (
+      <div className="flex items-center justify-center min-h-[40vh] p-8">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      </div>
+    )
   }
 
   return (
@@ -286,7 +293,7 @@ export default function InformeServicioComunitarioPage() {
                 onChange={(value) => setFormData(prev => ({ ...prev, nombre_nnaj: value }))}
                 onJovenSelect={(joven) => {
                   if (joven.id) {
-                    handleJovenChange(joven.id)
+                    handleJovenChange(joven)
                   }
                 }}
                 label="Nombre"

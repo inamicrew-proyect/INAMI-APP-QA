@@ -1,5 +1,7 @@
 'use client'
 
+import { useFormularioAtencionEdicion } from '@/lib/hooks/use-formulario-atencion-edicion'
+import { actualizarAtencionYFormularioJson } from '@/lib/formulario-atencion-update'
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -189,6 +191,12 @@ export default function EstudioSocioeconomicoPage() {
     involucramiento_familiar: '',
     trabajador_social: ''
   })
+
+  const { atencionIdEdicion, loadingExisting, fichaEncontrada } = useFormularioAtencionEdicion<FormData>({
+    tipoFormulario: 'estudio_socioeconomico',
+    setFormData,
+  })
+
 
   useEffect(() => {
     loadJovenes()
@@ -413,6 +421,20 @@ export default function EstudioSocioeconomicoPage() {
         ...formData
       }
 
+      if (atencionIdEdicion && fichaEncontrada === true && tipoAtencionId) {
+        await actualizarAtencionYFormularioJson(supabase, {
+          atencionId: atencionIdEdicion,
+          tipoFormulario: 'estudio_socioeconomico',
+          jovenId: formData.joven_id,
+          tipoAtencionId: tipoAtencionId,
+          datosJson: datosJson as Record<string, unknown>,
+        })
+        alert('Ficha actualizada exitosamente')
+        router.push(`/dashboard/atenciones/${atencionIdEdicion}`)
+        return
+      }
+
+
       // Guardar en formularios_atencion
       const { error: insertError } = await supabase
         .from('formularios_atencion')
@@ -439,6 +461,14 @@ export default function EstudioSocioeconomicoPage() {
       alert(`Error: ${errorMessage}`)
       setSaving(false)
     }
+  }
+
+  if (loadingExisting) {
+    return (
+      <div className="flex items-center justify-center min-h-[40vh] p-8">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      </div>
+    )
   }
 
   return (

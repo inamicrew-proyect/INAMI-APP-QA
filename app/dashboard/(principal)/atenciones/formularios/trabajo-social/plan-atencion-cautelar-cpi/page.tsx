@@ -1,11 +1,14 @@
 'use client'
 
+import { useFormularioAtencionEdicion } from '@/lib/hooks/use-formulario-atencion-edicion'
+import { actualizarAtencionYFormularioJson } from '@/lib/formulario-atencion-update'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { Save, ArrowLeft, User, Plus, Trash2, Users } from 'lucide-react'
 import Link from 'next/link'
 import JovenSearchInput from '@/components/JovenSearchInput'
+import { edadDesdeJoven } from '@/lib/joven-helpers'
 
 interface Joven {
   id: string
@@ -19,6 +22,7 @@ interface Joven {
   expediente_judicial?: string
   direccion?: string
   telefono?: string
+  centro_id?: string
 }
 
 interface AreaIntervencion {
@@ -88,7 +92,6 @@ export default function PlanAtencionCautelarCPIPage() {
   const router = useRouter()
   const [jovenes, setJovenes] = useState<Joven[]>([])
   const [centros, setCentros] = useState<Centro[]>([])
-  const [centroSeleccionado, setCentroSeleccionado] = useState<string>('')
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -130,18 +133,16 @@ export default function PlanAtencionCautelarCPIPage() {
     trabajador_social: ''
   })
 
-  useEffect(() => {
-    loadCentros()
-  }, [])
+  const { atencionIdEdicion, loadingExisting, fichaEncontrada } = useFormularioAtencionEdicion<FormData>({
+    tipoFormulario: 'plan_atencion_cautelar_cpi',
+    setFormData,
+  })
+
 
   useEffect(() => {
-    if (centroSeleccionado && centros.length > 0) {
-      loadJovenes()
-    } else {
-      setJovenes([])
-      setFormData(prev => ({ ...prev, joven_id: '', centro_pedagogico: '' }))
-    }
-  }, [centroSeleccionado, centros])
+    loadCentros()
+    loadJovenes()
+  }, [])
 
   const loadCentros = async () => {
     try {
@@ -159,30 +160,16 @@ export default function PlanAtencionCautelarCPIPage() {
   }
 
   const loadJovenes = async () => {
-    if (!centroSeleccionado) {
-      setJovenes([])
-      return
-    }
-
     try {
       setLoading(true)
       const { data, error } = await supabase
         .from('jovenes')
         .select('id, nombres, apellidos, fecha_nacimiento, edad, identidad, sexo, expediente_administrativo, expediente_judicial, direccion, telefono, centro_id')
         .eq('estado', 'activo')
-        .eq('centro_id', centroSeleccionado)
         .order('nombres')
 
       if (error) throw error
       setJovenes(data || [])
-      
-      // Si hay un centro seleccionado, actualizar el campo centro_pedagogico con el nombre del centro
-      if (centroSeleccionado && data && data.length > 0) {
-        const centro = centros.find(c => c.id === centroSeleccionado)
-        if (centro) {
-          setFormData(prev => ({ ...prev, centro_pedagogico: centro.nombre }))
-        }
-      }
     } catch (error) {
       console.error('Error loading jovenes:', error)
       alert('Error al cargar los jóvenes')
@@ -191,14 +178,15 @@ export default function PlanAtencionCautelarCPIPage() {
     }
   }
 
-  const handleJovenChange = (jovenId: string) => {
-    const joven = jovenes.find(j => j.id === jovenId)
-    if (joven) {
-      setFormData(prev => ({
+  const handleJovenChange = (joven: Joven) => {
+    if (!joven?.id) return
+    const centroNombre = centros.find(c => c.id === joven.centro_id)?.nombre || ''
+    setFormData(prev => ({
         ...prev,
-        joven_id: jovenId,
+        joven_id: joven.id,
+        centro_pedagogico: centroNombre,
         nombre_completo: `${joven.nombres} ${joven.apellidos}`,
-        edad: joven.edad,
+        edad: edadDesdeJoven(joven),
         documento_identidad: joven.identidad || '',
         genero: joven.sexo || '',
         exp_administrativo: joven.expediente_administrativo || '',
@@ -206,7 +194,6 @@ export default function PlanAtencionCautelarCPIPage() {
         direccion_previa_ingreso: joven.direccion || '',
         lugar_fecha_nacimiento: joven.fecha_nacimiento ? `${joven.fecha_nacimiento}` : ''
       }))
-    }
   }
 
   const addAreaIntervencion = () => {
@@ -340,6 +327,20 @@ export default function PlanAtencionCautelarCPIPage() {
         fecha_elaboracion: new Date().toISOString()
       }
 
+      if (atencionIdEdicion && fichaEncontrada === true && tipoAtencionId) {
+        await actualizarAtencionYFormularioJson(supabase, {
+          atencionId: atencionIdEdicion,
+          tipoFormulario: 'plan_atencion_cautelar_cpi',
+          jovenId: formData.joven_id,
+          tipoAtencionId: tipoAtencionId,
+          datosJson: datosJson as Record<string, unknown>,
+        })
+        alert('Ficha actualizada exitosamente')
+        router.push(`/dashboard/atenciones/${atencionIdEdicion}`)
+        return
+      }
+
+
       // Guardar en formularios_atencion
       const { error: insertError } = await supabase
         .from('formularios_atencion')
@@ -378,6 +379,14 @@ export default function PlanAtencionCautelarCPIPage() {
     )
   }
 
+  if (loadingExisting) {
+    return (
+      <div className="flex items-center justify-center min-h-[40vh] p-8">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      </div>
+    )
+  }
+
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-gray-50 dark:bg-gray-900 min-h-screen">
       {/* Header */}
@@ -412,58 +421,22 @@ export default function PlanAtencionCautelarCPIPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Centro <span className="text-red-500">*</span>
-              </label>
-              <select
-                value={centroSeleccionado}
-                onChange={(e) => {
-                  setCentroSeleccionado(e.target.value)
-                  setFormData(prev => ({ ...prev, joven_id: '' }))
+              <JovenSearchInput
+                value={formData.nombre_completo}
+                onChange={(value) => setFormData(prev => ({ ...prev, nombre_completo: value }))}
+                onJovenSelect={(joven) => {
+                  if (joven && joven.id) {
+                    handleJovenChange(joven)
+                  }
                 }}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                label="Joven"
                 required
-              >
-                <option value="">Seleccione un centro</option>
-                {centros.map((centro) => (
-                  <option key={centro.id} value={centro.id}>
-                    {centro.nombre} ({centro.tipo})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Joven <span className="text-red-500">*</span>
-              </label>
-              {!centroSeleccionado ? (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Joven <span className="text-red-500">*</span>
-                  </label>
-                  <div className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400">
-                    Seleccione un centro primero
-                  </div>
-                </div>
-              ) : (
-                <JovenSearchInput
-                  value={formData.nombre_completo}
-                  onChange={(value) => setFormData(prev => ({ ...prev, nombre_completo: value }))}
-                  onJovenSelect={(joven) => {
-                    if (joven && joven.id) {
-                      handleJovenChange(joven.id)
-                    }
-                  }}
-                  label="Joven"
-                  required
-                  placeholder={loading ? 'Cargando jóvenes...' : 'Buscar joven por nombre...'}
-                  error={errors.joven_id}
-                  disabled={loading}
-                />
-              )}
-              {centroSeleccionado && jovenes.length === 0 && !loading && (
-                <p className="mt-1 text-sm text-yellow-600">No hay jóvenes activos en este centro</p>
+                placeholder={loading ? 'Cargando jóvenes...' : 'Buscar joven por nombre...'}
+                error={errors.joven_id}
+                disabled={loading}
+              />
+              {jovenes.length === 0 && !loading && (
+                <p className="mt-1 text-sm text-yellow-600">No hay jóvenes activos disponibles</p>
               )}
             </div>
 

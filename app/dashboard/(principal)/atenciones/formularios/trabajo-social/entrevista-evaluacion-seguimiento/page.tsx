@@ -1,10 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useFormularioAtencionEdicion } from '@/lib/hooks/use-formulario-atencion-edicion'
+import { actualizarAtencionYFormularioJson } from '@/lib/formulario-atencion-update'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { Save, ArrowLeft, User } from 'lucide-react'
 import Link from 'next/link'
+import JovenSearchInput from '@/components/JovenSearchInput'
+import { edadDesdeJoven } from '@/lib/joven-helpers'
 
 interface Joven {
   id: string
@@ -106,7 +110,6 @@ interface FormData {
 
 export default function EntrevistaEvaluacionSeguimientoPage() {
   const router = useRouter()
-  const [jovenes, setJovenes] = useState<Joven[]>([])
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -188,38 +191,21 @@ export default function EntrevistaEvaluacionSeguimientoPage() {
     observaciones_generales: ''
   })
 
-  useEffect(() => {
-    loadJovenes()
-  }, [])
+  const { atencionIdEdicion, loadingExisting, fichaEncontrada } = useFormularioAtencionEdicion<FormData>({
+    tipoFormulario: 'entrevista_evaluacion_seguimiento',
+    setFormData,
+  })
 
-  const loadJovenes = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('jovenes')
-        .select('id, nombres, apellidos, fecha_nacimiento, edad, expediente_administrativo, expediente_judicial')
-        .eq('estado', 'activo')
-        .order('nombres')
-
-      if (error) throw error
-      setJovenes(data || [])
-    } catch (error) {
-      console.error('Error loading jovenes:', error)
-      alert('Error al cargar los jóvenes')
-    }
-  }
-
-  const handleJovenChange = (jovenId: string) => {
-    const joven = jovenes.find(j => j.id === jovenId)
-    if (joven) {
+  const handleJovenChange = (joven: Joven) => {
+    if (!joven?.id) return
       setFormData(prev => ({
         ...prev,
-        joven_id: jovenId,
+        joven_id: joven.id,
         nombre_nnaj: `${joven.nombres} ${joven.apellidos}`,
-        edad: joven.edad,
+        edad: edadDesdeJoven(joven),
         exp_interno: joven.expediente_administrativo || '',
         exp_judicial: joven.expediente_judicial || ''
       }))
-    }
   }
 
   const handleCheckboxChange = (field: keyof FormData, value: string, checked: boolean) => {
@@ -306,6 +292,42 @@ export default function EntrevistaEvaluacionSeguimientoPage() {
         throw new Error('Tu usuario no tiene un perfil configurado. Por favor, ejecuta el script crear-perfil-usuario.sql en Supabase.')
       }
 
+      // Preparar datos para la función stored procedure
+      const datosJson = {
+        ...formData,
+        fecha_entrevista: formData.fecha_elaboracion,
+        tipo_entrevista: 'seguimiento', // Por defecto seguimiento
+        avances_observados: formData.autovaloracion,
+        cambios_comportamiento: formData.especifica_cambios_positivos,
+        cumplimiento_objetivos: formData.explica_metas_cumplidas,
+        areas_mejora: formData.explica_aspectos_mejorar ? [formData.explica_aspectos_mejorar] : [],
+        fortalezas_identificadas: formData.explica_logros_familiares ? [formData.explica_logros_familiares] : [],
+        situacion_actual: formData.autovaloracion,
+        necesidades_identificadas: formData.temas_ampliar_seguimiento ? [formData.temas_ampliar_seguimiento] : [],
+        factores_protectores: [],
+        factores_riesgo: formData.explica_obstaculos_familiares ? [formData.explica_obstaculos_familiares] : [],
+        plan_accion: formData.compromisos_nnaj,
+        compromisos: formData.compromisos_nnaj ? [formData.compromisos_nnaj] : [],
+        metas_corto_plazo: [],
+        metas_mediano_plazo: [],
+        metas_largo_plazo: [],
+        observaciones: formData.observaciones_generales,
+        recomendaciones: ''
+      }
+
+      if (atencionIdEdicion && fichaEncontrada === true && tipoAtencionId) {
+        await actualizarAtencionYFormularioJson(supabase, {
+          atencionId: atencionIdEdicion,
+          tipoFormulario: 'entrevista_evaluacion_seguimiento',
+          jovenId: formData.joven_id,
+          tipoAtencionId: tipoAtencionId,
+          datosJson: datosJson as Record<string, unknown>,
+        })
+        alert('Entrevista Social de Evaluación y Seguimiento actualizada exitosamente')
+        router.push(`/dashboard/atenciones/${atencionIdEdicion}`)
+        return
+      }
+
       // Crear una nueva atención
       const { data: nuevaAtencion, error: atencionError } = await supabase
         .from('atenciones')
@@ -330,29 +352,6 @@ export default function EntrevistaEvaluacionSeguimientoPage() {
       }
 
       const atencionId = nuevaAtencion.id
-
-      // Preparar datos para la función stored procedure
-      const datosJson = {
-        ...formData,
-        fecha_entrevista: formData.fecha_elaboracion,
-        tipo_entrevista: 'seguimiento', // Por defecto seguimiento
-        avances_observados: formData.autovaloracion,
-        cambios_comportamiento: formData.especifica_cambios_positivos,
-        cumplimiento_objetivos: formData.explica_metas_cumplidas,
-        areas_mejora: formData.explica_aspectos_mejorar ? [formData.explica_aspectos_mejorar] : [],
-        fortalezas_identificadas: formData.explica_logros_familiares ? [formData.explica_logros_familiares] : [],
-        situacion_actual: formData.autovaloracion,
-        necesidades_identificadas: formData.temas_ampliar_seguimiento ? [formData.temas_ampliar_seguimiento] : [],
-        factores_protectores: [],
-        factores_riesgo: formData.explica_obstaculos_familiares ? [formData.explica_obstaculos_familiares] : [],
-        plan_accion: formData.compromisos_nnaj,
-        compromisos: formData.compromisos_nnaj ? [formData.compromisos_nnaj] : [],
-        metas_corto_plazo: [],
-        metas_mediano_plazo: [],
-        metas_largo_plazo: [],
-        observaciones: formData.observaciones_generales,
-        recomendaciones: ''
-      }
 
       // Usar la función stored procedure
       const { error: formularioError } = await supabase
@@ -425,6 +424,14 @@ export default function EntrevistaEvaluacionSeguimientoPage() {
     }
   }
 
+  if (loadingExisting) {
+    return (
+      <div className="flex items-center justify-center min-h-[40vh] p-8">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      </div>
+    )
+  }
+
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-gray-50 dark:bg-gray-900 min-h-screen">
       {/* Header */}
@@ -476,21 +483,19 @@ export default function EntrevistaEvaluacionSeguimientoPage() {
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Nombre del NNAJ <span className="text-red-500">*</span>
               </label>
-              <select
-                value={formData.joven_id}
-                onChange={(e) => handleJovenChange(e.target.value)}
-                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white ${
-                  errors.joven_id ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                }`}
-              >
-                <option value="">Seleccione un joven</option>
-                {jovenes.map((joven) => (
-                  <option key={joven.id} value={joven.id}>
-                    {joven.nombres} {joven.apellidos}
-                  </option>
-                ))}
-              </select>
-              {errors.joven_id && <p className="mt-1 text-sm text-red-600">{errors.joven_id}</p>}
+              <JovenSearchInput
+                value=""
+                onChange={() => {}}
+                onJovenSelect={(joven) => {
+                  if (joven?.id) {
+                    handleJovenChange(joven)
+                  }
+                }}
+                label="Joven"
+                required
+                placeholder="Buscar joven por nombre..."
+                error={errors.joven_id}
+              />
             </div>
 
             <div>

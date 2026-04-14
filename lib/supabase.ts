@@ -1,10 +1,38 @@
-import { createClient } from '@supabase/supabase-js'
+import { createBrowserClient } from '@supabase/ssr'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { getPublicSupabaseAnonKey, getPublicSupabaseUrl } from '@/lib/env/public-supabase'
 
 const supabaseUrl = getPublicSupabaseUrl()
 const supabaseAnonKey = getPublicSupabaseAnonKey()
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+let supabaseInstance: SupabaseClient | null = null
+
+function resolveSupabase(): SupabaseClient {
+  if (supabaseInstance) return supabaseInstance
+  if (typeof window !== 'undefined') {
+    supabaseInstance = createBrowserClient(supabaseUrl, supabaseAnonKey) as unknown as SupabaseClient
+  } else {
+    supabaseInstance = createClient(supabaseUrl, supabaseAnonKey)
+  }
+  return supabaseInstance
+}
+
+/**
+ * Cliente Supabase compartido.
+ * En el navegador usa `createBrowserClient` (@supabase/ssr) para leer la sesión en cookies (App Router).
+ * Sin eso, `auth.getUser()` en formularios cliente devolvía null aunque el layout mostrara al usuario.
+ * En servidor queda el cliente anónimo clásico (no usar para sesión de usuario en RSC).
+ */
+export const supabase = new Proxy({} as SupabaseClient, {
+  get(_target, prop, receiver) {
+    const client = resolveSupabase()
+    const value = Reflect.get(client as object, prop, receiver)
+    if (typeof value === 'function') {
+      return (value as (...a: unknown[]) => unknown).bind(client)
+    }
+    return value
+  },
+})
 
 // Tipos de la base de datos
 export type Profile = {

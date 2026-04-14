@@ -1,10 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useFormularioAtencionEdicion } from '@/lib/hooks/use-formulario-atencion-edicion'
+import { actualizarAtencionYFormularioJson } from '@/lib/formulario-atencion-update'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { Save, ArrowLeft, User, Home, Users } from 'lucide-react'
 import Link from 'next/link'
+import JovenSearchInput from '@/components/JovenSearchInput'
+import { edadDesdeJoven } from '@/lib/joven-helpers'
 
 interface Joven {
   id: string
@@ -68,7 +72,6 @@ interface FormData {
 
 export default function FichaEntrevistaFinalCierrePage() {
   const router = useRouter()
-  const [jovenes, setJovenes] = useState<Joven[]>([])
   const [saving, setSaving] = useState(false)
 
   const [formData, setFormData] = useState<FormData>({
@@ -109,38 +112,22 @@ export default function FichaEntrevistaFinalCierrePage() {
     trabajador_social: ''
   })
 
-  useEffect(() => {
-    loadJovenes()
-  }, [])
+  const { atencionIdEdicion, loadingExisting, fichaEncontrada } = useFormularioAtencionEdicion<FormData>({
+    tipoFormulario: 'ficha_entrevista_final_cierre',
+    setFormData,
+  })
 
-  const loadJovenes = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('jovenes')
-        .select('id, nombres, apellidos, fecha_nacimiento, edad, expediente_administrativo, expediente_judicial')
-        .eq('estado', 'activo')
-        .order('nombres')
 
-      if (error) throw error
-      setJovenes(data || [])
-    } catch (error) {
-      console.error('Error loading jovenes:', error)
-      alert('Error al cargar los jóvenes')
-    }
-  }
-
-  const handleJovenChange = (jovenId: string) => {
-    const joven = jovenes.find(j => j.id === jovenId)
-    if (joven) {
+  const handleJovenChange = (joven: Joven) => {
+    if (!joven?.id) return
       setFormData(prev => ({
         ...prev,
-        joven_id: jovenId,
+        joven_id: joven.id,
         nombre: `${joven.nombres} ${joven.apellidos}`,
-        edad: joven.edad,
+        edad: edadDesdeJoven(joven),
         expediente_administrativo: joven.expediente_administrativo || '',
         expediente_judicial: joven.expediente_judicial || ''
       }))
-    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -231,6 +218,19 @@ export default function FichaEntrevistaFinalCierrePage() {
         fecha_elaboracion: formData.fecha_elaboracion || new Date().toISOString().split('T')[0]
       }
 
+      if (atencionIdEdicion && fichaEncontrada === true && tipoAtencionId) {
+        await actualizarAtencionYFormularioJson(supabase, {
+          atencionId: atencionIdEdicion,
+          tipoFormulario: 'ficha_entrevista_final_cierre',
+          jovenId: formData.joven_id,
+          tipoAtencionId: tipoAtencionId,
+          datosJson: datosJson as Record<string, unknown>,
+        })
+        alert('Ficha actualizada exitosamente')
+        router.push(`/dashboard/atenciones/${atencionIdEdicion}`)
+        return
+      }
+
       const { error: insertError } = await supabase
         .from('formularios_atencion')
         .insert({
@@ -255,6 +255,14 @@ export default function FichaEntrevistaFinalCierrePage() {
     } finally {
       setSaving(false)
     }
+  }
+
+  if (loadingExisting) {
+    return (
+      <div className="flex items-center justify-center min-h-[40vh] p-8">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      </div>
+    )
   }
 
   return (
@@ -287,21 +295,18 @@ export default function FichaEntrevistaFinalCierrePage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Joven <span className="text-red-500">*</span>
-              </label>
-              <select
-                value={formData.joven_id}
-                onChange={(e) => handleJovenChange(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-              >
-                <option value="">Seleccione un joven</option>
-                {jovenes.map((joven) => (
-                  <option key={joven.id} value={joven.id}>
-                    {joven.nombres} {joven.apellidos}
-                  </option>
-                ))}
-              </select>
+              <JovenSearchInput
+                value=""
+                onChange={() => {}}
+                onJovenSelect={(joven) => {
+                  if (joven?.id) {
+                    handleJovenChange(joven)
+                  }
+                }}
+                label="Joven"
+                required
+                placeholder="Buscar joven por nombre..."
+              />
             </div>
 
             <div>

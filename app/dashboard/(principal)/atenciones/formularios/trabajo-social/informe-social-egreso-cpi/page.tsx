@@ -1,10 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useFormularioAtencionEdicion } from '@/lib/hooks/use-formulario-atencion-edicion'
+import { actualizarAtencionYFormularioJson } from '@/lib/formulario-atencion-update'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { Save, ArrowLeft, User } from 'lucide-react'
 import Link from 'next/link'
+import JovenSearchInput from '@/components/JovenSearchInput'
+import { edadDesdeJoven } from '@/lib/joven-helpers'
 
 interface Joven {
   id: string
@@ -77,8 +81,6 @@ interface FormData {
 
 export default function InformeSocialEgresoCPIPage() {
   const router = useRouter()
-  const [jovenes, setJovenes] = useState<Joven[]>([])
-  const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -125,41 +127,22 @@ export default function InformeSocialEgresoCPIPage() {
     trabajador_social: ''
   })
 
-  useEffect(() => {
-    loadJovenes()
-  }, [])
+  const { atencionIdEdicion, loadingExisting, fichaEncontrada } = useFormularioAtencionEdicion<FormData>({
+    tipoFormulario: 'informe_social_egreso_cpi',
+    setFormData,
+  })
 
-  const loadJovenes = async () => {
-    try {
-      setLoading(true)
-      const { data, error } = await supabase
-        .from('jovenes')
-        .select('id, nombres, apellidos, fecha_nacimiento, edad, expediente_administrativo, expediente_judicial')
-        .eq('estado', 'activo')
-        .order('nombres')
 
-      if (error) throw error
-      setJovenes(data || [])
-    } catch (error) {
-      console.error('Error loading jovenes:', error)
-      alert('Error al cargar los jóvenes')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleJovenChange = (jovenId: string) => {
-    const joven = jovenes.find(j => j.id === jovenId)
-    if (joven) {
+  const handleJovenChange = (joven: Joven) => {
+    if (!joven?.id) return
       setFormData(prev => ({
         ...prev,
-        joven_id: jovenId,
+        joven_id: joven.id,
         nombre: `${joven.nombres} ${joven.apellidos}`,
-        edad: joven.edad,
+        edad: edadDesdeJoven(joven),
         exp_administrativo: joven.expediente_administrativo || '',
         exp_judicial: joven.expediente_judicial || ''
       }))
-    }
   }
 
   const validateForm = () => {
@@ -243,6 +226,20 @@ export default function InformeSocialEgresoCPIPage() {
         fecha_elaboracion: formData.fecha_elaboracion
       }
 
+      if (atencionIdEdicion && fichaEncontrada === true && tipoAtencionId) {
+        await actualizarAtencionYFormularioJson(supabase, {
+          atencionId: atencionIdEdicion,
+          tipoFormulario: 'informe_social_egreso_cpi',
+          jovenId: formData.joven_id,
+          tipoAtencionId: tipoAtencionId,
+          datosJson: datosJson as Record<string, unknown>,
+        })
+        alert('Ficha actualizada exitosamente')
+        router.push(`/dashboard/atenciones/${atencionIdEdicion}`)
+        return
+      }
+
+
       // Guardar en formularios_atencion
       const { error: insertError } = await supabase
         .from('formularios_atencion')
@@ -270,13 +267,10 @@ export default function InformeSocialEgresoCPIPage() {
     }
   }
 
-  if (loading) {
+  if (loadingExisting) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600 dark:text-gray-300">Cargando...</p>
-        </div>
+      <div className="flex items-center justify-center min-h-[40vh] p-8">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
       </div>
     )
   }
@@ -314,24 +308,19 @@ export default function InformeSocialEgresoCPIPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Joven <span className="text-red-500">*</span>
-              </label>
-              <select
-                value={formData.joven_id}
-                onChange={(e) => handleJovenChange(e.target.value)}
-                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white ${
-                  errors.joven_id ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                }`}
-              >
-                <option value="">Seleccione un joven</option>
-                {jovenes.map((joven) => (
-                  <option key={joven.id} value={joven.id}>
-                    {joven.nombres} {joven.apellidos}
-                  </option>
-                ))}
-              </select>
-              {errors.joven_id && <p className="mt-1 text-sm text-red-600">{errors.joven_id}</p>}
+              <JovenSearchInput
+                value=""
+                onChange={() => {}}
+                onJovenSelect={(joven) => {
+                  if (joven?.id) {
+                    handleJovenChange(joven)
+                  }
+                }}
+                label="Joven"
+                required
+                placeholder="Buscar joven por nombre..."
+                error={errors.joven_id}
+              />
             </div>
 
             <div>

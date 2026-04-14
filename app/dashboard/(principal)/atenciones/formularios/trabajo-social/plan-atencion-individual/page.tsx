@@ -1,11 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useFormularioAtencionEdicion } from '@/lib/hooks/use-formulario-atencion-edicion'
+import { actualizarAtencionYFormularioJson } from '@/lib/formulario-atencion-update'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { Save, ArrowLeft, User, Plus, Trash2, Users } from 'lucide-react'
 import Link from 'next/link'
 import JovenSearchInput from '@/components/JovenSearchInput'
+import { edadDesdeJoven } from '@/lib/joven-helpers'
 
 interface Joven {
   id: string
@@ -82,7 +85,6 @@ interface FormData {
 
 export default function PlanAtencionIndividualPage() {
   const router = useRouter()
-  const [jovenes, setJovenes] = useState<Joven[]>([])
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -126,34 +128,19 @@ export default function PlanAtencionIndividualPage() {
     trabajador_social: ''
   })
 
-  useEffect(() => {
-    loadJovenes()
-  }, [])
+  const { atencionIdEdicion, loadingExisting, fichaEncontrada } = useFormularioAtencionEdicion<FormData>({
+    tipoFormulario: 'plan_atencion_individual',
+    setFormData,
+  })
 
-  const loadJovenes = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('jovenes')
-        .select('id, nombres, apellidos, fecha_nacimiento, edad, identidad, sexo, expediente_administrativo, expediente_judicial, direccion, telefono')
-        .eq('estado', 'activo')
-        .order('nombres')
 
-      if (error) throw error
-      setJovenes(data || [])
-    } catch (error) {
-      console.error('Error loading jovenes:', error)
-      alert('Error al cargar los jóvenes')
-    }
-  }
-
-  const handleJovenChange = (jovenId: string) => {
-    const joven = jovenes.find(j => j.id === jovenId)
-    if (joven) {
+  const handleJovenChange = (joven: Joven) => {
+    if (!joven?.id) return
       setFormData(prev => ({
         ...prev,
-        joven_id: jovenId,
+        joven_id: joven.id,
         nombre_completo: `${joven.nombres} ${joven.apellidos}`,
-        edad: joven.edad,
+        edad: edadDesdeJoven(joven),
         documento_identidad: joven.identidad || '',
         genero: joven.sexo || '',
         exp_administrativo: joven.expediente_administrativo || '',
@@ -162,7 +149,6 @@ export default function PlanAtencionIndividualPage() {
         telefono: joven.telefono || '',
         lugar_fecha_nacimiento: joven.fecha_nacimiento ? `${joven.fecha_nacimiento}` : ''
       }))
-    }
   }
 
   const addAreaIntervencion = () => {
@@ -294,6 +280,20 @@ export default function PlanAtencionIndividualPage() {
         fecha_elaboracion: new Date().toISOString().split('T')[0]
       }
 
+      if (atencionIdEdicion && fichaEncontrada === true && tipoAtencionId) {
+        await actualizarAtencionYFormularioJson(supabase, {
+          atencionId: atencionIdEdicion,
+          tipoFormulario: 'plan_atencion_individual',
+          jovenId: formData.joven_id,
+          tipoAtencionId: tipoAtencionId,
+          datosJson: datosJson as Record<string, unknown>,
+        })
+        alert('Ficha actualizada exitosamente')
+        router.push(`/dashboard/atenciones/${atencionIdEdicion}`)
+        return
+      }
+
+
       // Guardar en formularios_atencion
       const { error: insertError } = await supabase
         .from('formularios_atencion')
@@ -319,6 +319,14 @@ export default function PlanAtencionIndividualPage() {
     } finally {
       setSaving(false)
     }
+  }
+
+  if (loadingExisting) {
+    return (
+      <div className="flex items-center justify-center min-h-[40vh] p-8">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      </div>
+    )
   }
 
   return (
@@ -364,7 +372,7 @@ export default function PlanAtencionIndividualPage() {
                 onChange={(value) => setFormData(prev => ({ ...prev, nombre_completo: value }))}
                 onJovenSelect={(joven) => {
                   if (joven && joven.id) {
-                    handleJovenChange(joven.id)
+                    handleJovenChange(joven)
                   }
                 }}
                 label="Joven"

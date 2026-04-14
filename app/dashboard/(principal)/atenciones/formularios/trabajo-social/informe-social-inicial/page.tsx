@@ -1,8 +1,11 @@
 'use client'
 
+import { useFormularioAtencionEdicion } from '@/lib/hooks/use-formulario-atencion-edicion'
+import { actualizarAtencionYFormularioJson } from '@/lib/formulario-atencion-update'
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClientComponentClient } from '@/lib/supabase-browser'
+import { edadDesdeJoven } from '@/lib/joven-helpers'
 import { Save, ArrowLeft, User, Plus, Trash2, Users, Home } from 'lucide-react'
 import Link from 'next/link'
 
@@ -180,6 +183,12 @@ export default function InformeSocialInicialPage() {
     trabajador_social: ''
   })
 
+  const { atencionIdEdicion, loadingExisting, fichaEncontrada } = useFormularioAtencionEdicion<FormData>({
+    tipoFormulario: 'informe_social_inicial',
+    setFormData,
+  })
+
+
   useEffect(() => {
     loadJovenes()
   }, [])
@@ -254,21 +263,19 @@ export default function InformeSocialInicialPage() {
     }).slice(0, 20) // Limitar a 20 resultados
   }, [jovenes, jovenSearchTerm])
 
-  const handleJovenChange = (jovenId: string) => {
-    const joven = jovenes.find(j => j.id === jovenId)
-    if (joven) {
+  const handleJovenChange = (joven: Joven) => {
+    if (!joven?.id) return
       setFormData(prev => ({
         ...prev,
-        joven_id: jovenId,
+        joven_id: joven.id,
         nombre: `${joven.nombres} ${joven.apellidos}`,
-        edad: joven.edad,
+        edad: edadDesdeJoven(joven),
         lugar_fecha_nacimiento: joven.fecha_nacimiento || '',
         exp_interno: joven.expediente_administrativo || '',
         exp_judicial: joven.expediente_judicial || ''
       }))
       setJovenSearchTerm(`${joven.nombres} ${joven.apellidos}`)
       setShowJovenDropdown(false)
-    }
   }
 
   // Manejar cambio en el input de búsqueda
@@ -292,7 +299,7 @@ export default function InformeSocialInicialPage() {
 
   // Manejar selección de joven del dropdown
   const handleJovenSelect = (joven: Joven) => {
-    handleJovenChange(joven.id)
+    handleJovenChange(joven)
   }
 
   const addEstructuraFamiliar = () => {
@@ -481,6 +488,20 @@ export default function InformeSocialInicialPage() {
         fecha_elaboracion: formData.fecha_elaboracion || new Date().toISOString().split('T')[0]
       }
 
+      if (atencionIdEdicion && fichaEncontrada === true && tipoAtencionId) {
+        await actualizarAtencionYFormularioJson(supabase, {
+          atencionId: atencionIdEdicion,
+          tipoFormulario: 'informe_social_inicial',
+          jovenId: formData.joven_id,
+          tipoAtencionId: tipoAtencionId,
+          datosJson: datosJson as Record<string, unknown>,
+        })
+        alert('Ficha actualizada exitosamente')
+        router.push(`/dashboard/atenciones/${atencionIdEdicion}`)
+        return
+      }
+
+
       // Guardar en formularios_atencion
       const { error: insertError } = await supabase
         .from('formularios_atencion')
@@ -506,6 +527,14 @@ export default function InformeSocialInicialPage() {
     } finally {
       setSaving(false)
     }
+  }
+
+  if (loadingExisting) {
+    return (
+      <div className="flex items-center justify-center min-h-[40vh] p-8">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      </div>
+    )
   }
 
   return (

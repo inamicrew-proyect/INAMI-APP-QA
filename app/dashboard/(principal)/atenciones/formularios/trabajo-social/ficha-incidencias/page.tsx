@@ -1,6 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useFormularioAtencionEdicion } from '@/lib/hooks/use-formulario-atencion-edicion'
+import { actualizarAtencionYFormularioJson } from '@/lib/formulario-atencion-update'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { Save, ArrowLeft, User, FileText, AlertTriangle } from 'lucide-react'
@@ -36,7 +38,6 @@ interface FormData {
 
 export default function FichaIncidenciasPage() {
   const router = useRouter()
-  const [jovenes, setJovenes] = useState<Joven[]>([])
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -57,37 +58,20 @@ export default function FichaIncidenciasPage() {
     firma_trabajador_social: ''
   })
 
-  useEffect(() => {
-    loadJovenes()
-  }, [])
+  const { atencionIdEdicion, loadingExisting, fichaEncontrada } = useFormularioAtencionEdicion<FormData>({
+    tipoFormulario: 'informe_incidencias',
+    setFormData,
+  })
 
-  const loadJovenes = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('jovenes')
-        .select('id, nombres, apellidos, fecha_nacimiento, edad, expediente_administrativo, expediente_judicial')
-        .eq('estado', 'activo')
-        .order('nombres')
-
-      if (error) throw error
-      setJovenes(data || [])
-    } catch (error) {
-      console.error('Error loading jovenes:', error)
-      alert('Error al cargar los jóvenes')
-    }
-  }
-
-  const handleJovenChange = (jovenId: string) => {
-    const joven = jovenes.find(j => j.id === jovenId)
-    if (joven) {
+  const handleJovenChange = (joven: Joven) => {
+    if (!joven?.id) return
       setFormData(prev => ({
         ...prev,
-        joven_id: jovenId,
+        joven_id: joven.id,
         nombre_completo_nnaj: `${joven.nombres} ${joven.apellidos}`,
         expediente_interno: joven.expediente_administrativo || '',
         expediente_judicial: joven.expediente_judicial || ''
       }))
-    }
   }
 
   const handleCheckboxChange = (value: string, checked: boolean) => {
@@ -182,32 +166,6 @@ export default function FichaIncidenciasPage() {
         throw new Error('Tu usuario no tiene un perfil configurado. Por favor, ejecuta el script crear-perfil-usuario.sql en Supabase.')
       }
 
-      // Crear una nueva atención
-      const { data: nuevaAtencion, error: atencionError } = await supabase
-        .from('atenciones')
-        .insert({
-          joven_id: formData.joven_id,
-          tipo_atencion_id: tipoAtencionId,
-          profesional_id: user.id,
-          fecha_atencion: formData.fecha_elaboracion,
-          motivo: 'Ficha de Incidencias',
-          estado: 'completada'
-        })
-        .select()
-        .single()
-
-      if (atencionError) {
-        console.error('Error al crear atención:', atencionError)
-        throw new Error(`Error al crear la atención: ${atencionError.message}`)
-      }
-
-      if (!nuevaAtencion) {
-        throw new Error('No se pudo crear la atención')
-      }
-
-      const atencionId = nuevaAtencion.id
-      console.log('✅ Atención creada exitosamente:', atencionId)
-
       // Preparar medios de verificación
       let mediosVerificacionFinal = [...formData.medios_verificacion]
       if (formData.medios_verificacion_otro.trim()) {
@@ -238,6 +196,45 @@ export default function FichaIncidenciasPage() {
         recomendaciones: formData.recomendaciones,
         medios_verificacion: mediosVerificacionFinal
       }
+
+      if (atencionIdEdicion && fichaEncontrada === true && tipoAtencionId) {
+        await actualizarAtencionYFormularioJson(supabase, {
+          atencionId: atencionIdEdicion,
+          tipoFormulario: 'informe_incidencias',
+          jovenId: formData.joven_id,
+          tipoAtencionId: tipoAtencionId,
+          datosJson: datosJson as Record<string, unknown>,
+        })
+        alert('Ficha de Incidencias actualizada exitosamente')
+        router.push(`/dashboard/atenciones/${atencionIdEdicion}`)
+        return
+      }
+
+      // Crear una nueva atención
+      const { data: nuevaAtencion, error: atencionError } = await supabase
+        .from('atenciones')
+        .insert({
+          joven_id: formData.joven_id,
+          tipo_atencion_id: tipoAtencionId,
+          profesional_id: user.id,
+          fecha_atencion: formData.fecha_elaboracion,
+          motivo: 'Ficha de Incidencias',
+          estado: 'completada'
+        })
+        .select()
+        .single()
+
+      if (atencionError) {
+        console.error('Error al crear atención:', atencionError)
+        throw new Error(`Error al crear la atención: ${atencionError.message}`)
+      }
+
+      if (!nuevaAtencion) {
+        throw new Error('No se pudo crear la atención')
+      }
+
+      const atencionId = nuevaAtencion.id
+      console.log('✅ Atención creada exitosamente:', atencionId)
 
       // Usar la función stored procedure
       const { data: formularioId, error: formularioError } = await supabase
@@ -304,6 +301,14 @@ export default function FichaIncidenciasPage() {
     }
   }
 
+  if (loadingExisting) {
+    return (
+      <div className="flex items-center justify-center min-h-[40vh] p-8">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      </div>
+    )
+  }
+
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-gray-50 dark:bg-gray-900 min-h-screen">
       {/* Header */}
@@ -360,7 +365,7 @@ export default function FichaIncidenciasPage() {
                 onChange={(value) => setFormData(prev => ({ ...prev, nombre_completo_nnaj: value }))}
                 onJovenSelect={(joven) => {
                   if (joven.id) {
-                    handleJovenChange(joven.id)
+                    handleJovenChange(joven)
                   }
                 }}
                 label="Nombre completo NNAJ"

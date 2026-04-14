@@ -1,8 +1,11 @@
 'use client'
 
+import { useFormularioAtencionEdicion } from '@/lib/hooks/use-formulario-atencion-edicion'
+import { actualizarAtencionYFormularioJson } from '@/lib/formulario-atencion-update'
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClientComponentClient } from '@/lib/supabase-browser'
+import { edadDesdeJoven } from '@/lib/joven-helpers'
 import { Save, ArrowLeft, User, Plus, Trash2, Users, Heart } from 'lucide-react'
 import Link from 'next/link'
 
@@ -476,6 +479,12 @@ export default function FichaSocialAreaTrabajoSocialPage() {
     lugar_fecha: ''
   })
 
+  const { atencionIdEdicion, loadingExisting, fichaEncontrada } = useFormularioAtencionEdicion<FormData>({
+    tipoFormulario: 'ficha_social_area_trabajo_social',
+    setFormData,
+  })
+
+
   useEffect(() => {
     loadJovenes()
   }, [])
@@ -549,22 +558,20 @@ export default function FichaSocialAreaTrabajoSocialPage() {
     }).slice(0, 20) // Limitar a 20 resultados
   }, [jovenes, jovenSearchTerm])
 
-  const handleJovenChange = (jovenId: string) => {
-    const joven = jovenes.find(j => j.id === jovenId)
-    if (joven) {
-      const fechaNac = joven.fecha_nacimiento ? new Date(joven.fecha_nacimiento).toLocaleDateString() : ''
-      setFormData(prev => ({
+  const handleJovenChange = (joven: Joven) => {
+    if (!joven?.id) return
+    const fechaNac = joven.fecha_nacimiento ? new Date(joven.fecha_nacimiento).toLocaleDateString() : ''
+    setFormData(prev => ({
         ...prev,
-        joven_id: jovenId,
+        joven_id: joven.id,
         nombre_completo: `${joven.nombres} ${joven.apellidos}`,
-        edad: joven.edad,
+        edad: edadDesdeJoven(joven),
         exp_administrativo: joven.expediente_administrativo || '',
         exp_judicial: joven.expediente_judicial || '',
         lugar_fecha_nacimiento: fechaNac
       }))
       setJovenSearchTerm(`${joven.nombres} ${joven.apellidos}`)
       setShowJovenDropdown(false)
-    }
   }
 
   // Manejar cambio en el input de búsqueda
@@ -588,7 +595,7 @@ export default function FichaSocialAreaTrabajoSocialPage() {
 
   // Manejar selección de joven del dropdown
   const handleJovenSelect = (joven: Joven) => {
-    handleJovenChange(joven.id)
+    handleJovenChange(joven)
   }
 
   const addEstructuraFamiliar = () => {
@@ -714,6 +721,19 @@ export default function FichaSocialAreaTrabajoSocialPage() {
         fecha_elaboracion: formData.fecha_elaboracion || new Date().toISOString().split('T')[0]
       }
 
+      if (atencionIdEdicion && fichaEncontrada === true && tipoAtencionId) {
+        await actualizarAtencionYFormularioJson(supabase, {
+          atencionId: atencionIdEdicion,
+          tipoFormulario: 'ficha_social_area_trabajo_social',
+          jovenId: formData.joven_id,
+          tipoAtencionId: tipoAtencionId,
+          datosJson: datosJson as Record<string, unknown>,
+        })
+        alert('Ficha actualizada exitosamente')
+        router.push(`/dashboard/atenciones/${atencionIdEdicion}`)
+        return
+      }
+
       const { error: insertError } = await supabase
         .from('formularios_atencion')
         .insert({
@@ -738,6 +758,14 @@ export default function FichaSocialAreaTrabajoSocialPage() {
     } finally {
       setSaving(false)
     }
+  }
+
+  if (loadingExisting) {
+    return (
+      <div className="flex items-center justify-center min-h-[40vh] p-8">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      </div>
+    )
   }
 
   return (

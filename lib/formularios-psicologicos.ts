@@ -22,25 +22,26 @@ export const TIPOS_FORMULARIOS = {
   ENTREVISTA_PSICOLOGICA_ADOLESCENTES_JOVENES: 'entrevista_psicologica_adolescentes_jovenes',
   SEGUIMIENTO_PSICOLOGICO: 'seguimiento_psicologico',
   INFORME_PSICODIAGNOSTICO_PMSPL: 'informe_psicodiagnostico',
-  INFORME_SEGUIMIENTO_PMSPL: 'informe_seguimiento',
+  /** Distinto de `informe_seguimiento` (médicos) para evitar colisión en rutas y en `formularios_atencion`. */
+  INFORME_SEGUIMIENTO_PMSPL: 'informe_seguimiento_psicologia_pmspl',
   INFORME_FINAL_PMSPL: 'informe_final',
   REMISION_INSTITUCIONES_PMSPL: 'remision_instituciones',
   
   // CPI
   ENTREVISTA_INICIAL_ADOLESCENTE_CPI: 'entrevista_inicial_adolescente_cpi',
   ENTREVISTA_INICIAL_FAMILIA_CPI: 'entrevista_inicial_familia_cpi',
-  ENTREVISTA_PREELIMINAR_CPI: 'entrevista_preeliminar_cpi',
-  ENTREVISTA_SEGUIMIENTO_FAMILIA_CPI: 'entrevista_seguimiento_familia_cpi',
-  SEGUIMIENTO_TERAPEUTICO_INDIVIDUAL_ADOLESCENTES: 'seguimiento_terapeutico_individual_adolescentes',
-  SEGUIMIENTO_TERAPEUTICO_GRUPAL_ADOLESCENTES: 'seguimiento_terapeutico_grupal_adolescentes',
+  ENTREVISTA_PREELIMINAR_CPI: 'entrevista_preeliminar',
+  ENTREVISTA_SEGUIMIENTO_FAMILIA_CPI: 'entrevista_seguimiento_familia',
+  SEGUIMIENTO_TERAPEUTICO_INDIVIDUAL_ADOLESCENTES: 'seguimiento_terapeutico_individual_adolescentes_cpi',
+  SEGUIMIENTO_TERAPEUTICO_GRUPAL_ADOLESCENTES: 'seguimiento_terapeutico_grupal_adolescentes_cpi',
   SEGUIMIENTO_TERAPEUTICO_GRUPAL_PADRES: 'seguimiento_terapeutico_grupal_padres',
-  SEGUIMIENTO_TERAPEUTICO_FAMILIAR: 'seguimiento_terapeutico_familiar',
-  INTERVENCION_CRISIS: 'intervencion_crisis',
-  REMISION_CPI: 'remision',
-  REMISION_INTERNA_CPI: 'remision_interna',
-  INFORME_PRELIMINAR_CPI: 'informe_preliminar',
+  SEGUIMIENTO_TERAPEUTICO_FAMILIAR: 'seguimiento_terapeutico_familiar_cpi',
+  INTERVENCION_CRISIS: 'intervencion_crisis_cpi',
+  REMISION_CPI: 'remision_cpi_pmspl',
+  REMISION_INTERNA_CPI: 'remision_interna_cpi',
+  INFORME_PRELIMINAR_CPI: 'informe_preliminar_cpi',
   INFORME_PSICODIAGNOSTICO_CPI: 'informe_psicodiagnostico_cpi',
-  INFORME_SEGUIMIENTO_POST_SANCION: 'informe_seguimiento_post_sancion',
+  INFORME_SEGUIMIENTO_POST_SANCION: 'informe_seguimiento_post_sancion_cpi',
   INFORME_FINAL_CPI: 'informe_final_cpi',
 } as const
 
@@ -271,6 +272,36 @@ async function crearAtencionPsicologica(
   }
 }
 
+/** Mantiene alineado `formularios_atencion` cuando ya existía vínculo por joven + tipo. */
+async function syncFormularioAtencionJsonPorJovenYTipo(
+  jovenId: string,
+  tipoFormulario: string,
+  datosJson: Record<string, unknown>
+): Promise<void> {
+  try {
+    const { createClientComponentClient } = await import('@/lib/supabase-browser')
+    const supabase = createClientComponentClient()
+    const { data: row, error } = await supabase
+      .from('formularios_atencion')
+      .select('id')
+      .eq('joven_id', jovenId)
+      .eq('tipo_formulario', tipoFormulario)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (error || !row?.id) return
+    await supabase
+      .from('formularios_atencion')
+      .update({
+        datos_json: datosJson,
+        joven_id: jovenId,
+      })
+      .eq('id', row.id)
+  } catch (e) {
+    console.error('syncFormularioAtencionJsonPorJovenYTipo:', e)
+  }
+}
+
 /**
  * Guardar o actualizar un formulario (upsert)
  * Si existe un formulario del mismo tipo para el joven, lo actualiza
@@ -298,7 +329,9 @@ export async function saveOrUpdateFormulario(
     if (formularioExistente && formularioExistente.id) {
       // Actualizar el formulario existente
       // No crear nueva atención si ya existe el formulario
-      return await updateFormulario(formularioExistente.id, datosJson)
+      const updated = await updateFormulario(formularioExistente.id, datosJson)
+      await syncFormularioAtencionJsonPorJovenYTipo(jovenId, tipoFormulario, datosJson as Record<string, unknown>)
+      return updated
     } else {
       // Crear una nueva atención antes de guardar el formulario
       const atencionId = await crearAtencionPsicologica(jovenId, motivo, fechaAtencion)

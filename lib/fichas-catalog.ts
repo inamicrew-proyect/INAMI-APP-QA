@@ -197,7 +197,7 @@ export const TIPO_FORMULARIO_A_SUFFIX: Record<string, string> = {
   entrevista_psicologica_adolescentes_jovenes: 'psicologia/pmspl/entrevista-psicologica-adolescentes-jovenes',
   seguimiento_psicologico: 'psicologia/pmspl/seguimiento-psicologico',
   informe_psicodiagnostico: 'psicologia/pmspl/informe-psicodiagnostico',
-  informe_seguimiento: 'psicologia/pmspl/informe-seguimiento',
+  informe_seguimiento_psicologia_pmspl: 'psicologia/pmspl/informe-seguimiento',
   informe_final: 'psicologia/pmspl/informe-final',
   remision_instituciones: 'psicologia/pmspl/remision-instituciones',
   // Psicología CPI
@@ -229,6 +229,7 @@ export const TIPO_FORMULARIO_A_SUFFIX: Record<string, string> = {
   historia_clinica: 'medicos/historia-clinica',
   examen_fisico: 'medicos/examen-fisico',
   hoja_egreso: 'medicos/hoja-egreso',
+  informe_seguimiento: 'medicos/informe-seguimiento',
   informe_seguimiento_salud: 'salud/informe-seguimiento',
   // Pedagogía / educación
   cierre: 'pedagogia/cierre',

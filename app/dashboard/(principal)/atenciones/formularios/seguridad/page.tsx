@@ -1,7 +1,8 @@
 'use client'
 
+import { actualizarAtencionYFormularioJson } from '@/lib/formulario-atencion-update'
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { ArrowLeft, Save, Shield, User, Calendar, AlertTriangle } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import type { Profile } from '@/lib/supabase'
@@ -9,6 +10,10 @@ import JovenSearchInput from '@/components/JovenSearchInput'
 
 export default function FormularioSeguridadPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const atencionIdEdicion = searchParams.get('atencion_id')
+  const [loadingExisting, setLoadingExisting] = useState(false)
+  const [fichaEncontrada, setFichaEncontrada] = useState<boolean | null>(null)
   const [loading, setLoading] = useState(false)
   const [profesionales, setProfesionales] = useState<Profile[]>([])
   
@@ -83,6 +88,99 @@ export default function FormularioSeguridadPage() {
     loadData()
   }, [])
 
+  useEffect(() => {
+    const loadExisting = async () => {
+      if (!atencionIdEdicion) {
+        setFichaEncontrada(false)
+        return
+      }
+      try {
+        setLoadingExisting(true)
+        setFichaEncontrada(null)
+        const { data, error } = await supabase
+          .from('formularios_atencion')
+          .select('datos_json, joven_id')
+          .eq('atencion_id', atencionIdEdicion)
+          .eq('tipo_formulario', 'ficha_ingreso_seguridad')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+
+        if (error) throw new Error(error.message)
+        if (!data?.datos_json) {
+          setFichaEncontrada(false)
+          return
+        }
+
+        const raw = data.datos_json as Record<string, unknown>
+        const dp = raw.datos_personales as Record<string, string> | undefined
+        const di = raw.datos_ingreso as Record<string, string> | undefined
+        const dj = raw.datos_judiciales as Record<string, string | boolean> | undefined
+        const fi = raw.forma_ingreso as Record<string, boolean> | undefined
+        const ef = raw.estado_fisico as Record<string, string> | undefined
+        const ap = raw.aprehension_traslado as Record<string, string> | undefined
+        const fr = raw.firmas as Record<string, string> | undefined
+
+        if (dp) {
+          setFormData((prev) => ({
+            ...prev,
+            joven_id: (typeof raw.joven_id === 'string' ? raw.joven_id : data.joven_id) || prev.joven_id,
+            nombre: dp.nombre ?? prev.nombre,
+            numero_expediente_administrativo: dp.numero_expediente_administrativo ?? prev.numero_expediente_administrativo,
+            edad: dp.edad ?? prev.edad,
+            fecha_nacimiento: dp.fecha_nacimiento ?? prev.fecha_nacimiento,
+            originario: dp.originario ?? prev.originario,
+            residente: dp.residente ?? prev.residente,
+            fecha_ingreso: di?.fecha_ingreso ?? prev.fecha_ingreso,
+            hora_ingreso: di?.hora_ingreso ?? prev.hora_ingreso,
+            numero_dni: di?.numero_dni ?? prev.numero_dni,
+            alias: di?.alias ?? prev.alias,
+            simpatizante: di?.simpatizante ?? prev.simpatizante,
+            estado_civil: di?.estado_civil ?? prev.estado_civil,
+            grado_escolaridad: di?.grado_escolaridad ?? prev.grado_escolaridad,
+            nombre_responsable: di?.nombre_responsable ?? prev.nombre_responsable,
+            telefono_responsable: di?.telefono_responsable ?? prev.telefono_responsable,
+            juzgado_remitente: (dj?.juzgado_remitente as string) ?? prev.juzgado_remitente,
+            juez_remite: (dj?.juez_remite as string) ?? prev.juez_remite,
+            expediente_judicial: (dj?.expediente_judicial as string) ?? prev.expediente_judicial,
+            numero_oficio_ingreso: (dj?.numero_oficio_ingreso as string) ?? prev.numero_oficio_ingreso,
+            infraccion_penal: (dj?.infraccion_penal as string) ?? prev.infraccion_penal,
+            es_reincidente: Boolean(dj?.es_reincidente),
+            ha_estado_otro_centro: Boolean(dj?.ha_estado_otro_centro),
+            ha_estado_proceso_judicial: Boolean(dj?.ha_estado_proceso_judicial),
+            cumplimiento_medida_cautelar: Boolean(fi?.cumplimiento_medida_cautelar),
+            sancion_privativa_libertad: Boolean(fi?.sancion_privativa_libertad),
+            traslado: Boolean(fi?.traslado),
+            golpes: ef?.golpes != null ? String(ef.golpes) : prev.golpes,
+            heridas: ef?.heridas != null ? String(ef.heridas) : prev.heridas,
+            cicatrices: ef?.cicatrices != null ? String(ef.cicatrices) : prev.cicatrices,
+            enfermedad: ef?.enfermedad != null ? String(ef.enfermedad) : prev.enfermedad,
+            impedimentos_fisicos: ef?.impedimentos_fisicos != null ? String(ef.impedimentos_fisicos) : prev.impedimentos_fisicos,
+            ansiedad: ef?.ansiedad != null ? String(ef.ansiedad) : prev.ansiedad,
+            personal_medico_atendio: ef?.personal_medico_atendio ?? prev.personal_medico_atendio,
+            fecha_aprehension: ap?.fecha_aprehension ?? prev.fecha_aprehension,
+            quien_aprehendio: ap?.quien_aprehendio ?? prev.quien_aprehendio,
+            fue_golpeado_aprehension: ap?.fue_golpeado_aprehension != null ? String(ap.fue_golpeado_aprehension) : prev.fue_golpeado_aprehension,
+            fue_golpeado_traslado: ap?.fue_golpeado_traslado != null ? String(ap.fue_golpeado_traslado) : prev.fue_golpeado_traslado,
+            por_quien_trasladado: ap?.por_quien_trasladado ?? prev.por_quien_trasladado,
+            nombre_supervisor_seguridad: fr?.nombre_supervisor_seguridad ?? prev.nombre_supervisor_seguridad,
+            fecha_entrevista: fr?.fecha_entrevista ?? prev.fecha_entrevista,
+            firma_nna: fr?.firma_nna ?? prev.firma_nna,
+            firma_supervisor: fr?.firma_supervisor ?? prev.firma_supervisor,
+          }))
+        }
+        setFichaEncontrada(true)
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : 'Error desconocido'
+        alert(`Error al cargar la ficha para edición: ${msg}`)
+        router.push(`/dashboard/atenciones/${atencionIdEdicion}`)
+      } finally {
+        setLoadingExisting(false)
+      }
+    }
+    void loadExisting()
+  }, [atencionIdEdicion, router])
+
   const loadData = async () => {
     try {
       // Cargar profesionales de seguridad
@@ -120,88 +218,145 @@ export default function FormularioSeguridadPage() {
 
     setLoading(true)
     try {
-      // Crear la atención de seguridad
+      const datosJson = {
+        tipo_formulario: 'ficha_ingreso_seguridad',
+        datos_personales: {
+          nombre: formData.nombre,
+          numero_expediente_administrativo: formData.numero_expediente_administrativo,
+          edad: formData.edad,
+          fecha_nacimiento: formData.fecha_nacimiento,
+          originario: formData.originario,
+          residente: formData.residente,
+        },
+        datos_ingreso: {
+          fecha_ingreso: formData.fecha_ingreso,
+          hora_ingreso: formData.hora_ingreso,
+          numero_dni: formData.numero_dni,
+          alias: formData.alias,
+          simpatizante: formData.simpatizante,
+          estado_civil: formData.estado_civil,
+          grado_escolaridad: formData.grado_escolaridad,
+          nombre_responsable: formData.nombre_responsable,
+          telefono_responsable: formData.telefono_responsable,
+        },
+        datos_judiciales: {
+          juzgado_remitente: formData.juzgado_remitente,
+          juez_remite: formData.juez_remite,
+          expediente_judicial: formData.expediente_judicial,
+          numero_oficio_ingreso: formData.numero_oficio_ingreso,
+          infraccion_penal: formData.infraccion_penal,
+          es_reincidente: formData.es_reincidente,
+          ha_estado_otro_centro: formData.ha_estado_otro_centro,
+          ha_estado_proceso_judicial: formData.ha_estado_proceso_judicial,
+        },
+        forma_ingreso: {
+          cumplimiento_medida_cautelar: formData.cumplimiento_medida_cautelar,
+          sancion_privativa_libertad: formData.sancion_privativa_libertad,
+          traslado: formData.traslado,
+        },
+        estado_fisico: {
+          golpes: formData.golpes,
+          heridas: formData.heridas,
+          cicatrices: formData.cicatrices,
+          enfermedad: formData.enfermedad,
+          impedimentos_fisicos: formData.impedimentos_fisicos,
+          ansiedad: formData.ansiedad,
+          personal_medico_atendio: formData.personal_medico_atendio,
+        },
+        aprehension_traslado: {
+          fecha_aprehension: formData.fecha_aprehension,
+          quien_aprehendio: formData.quien_aprehendio,
+          fue_golpeado_aprehension: formData.fue_golpeado_aprehension,
+          fue_golpeado_traslado: formData.fue_golpeado_traslado,
+          por_quien_trasladado: formData.por_quien_trasladado,
+        },
+        firmas: {
+          nombre_supervisor_seguridad: formData.nombre_supervisor_seguridad,
+          fecha_entrevista: formData.fecha_entrevista,
+          firma_nna: formData.firma_nna,
+          firma_supervisor: formData.firma_supervisor,
+        },
+      }
+
+      const { data: tipoAtencion } = await supabase
+        .from('tipos_atencion')
+        .select('id')
+        .eq('profesional_responsable', 'seguridad')
+        .limit(1)
+        .maybeSingle()
+
+      let tipoAtencionId = tipoAtencion?.id
+      if (!tipoAtencionId) {
+        const { data: anyTipo } = await supabase.from('tipos_atencion').select('id').limit(1).maybeSingle()
+        tipoAtencionId = anyTipo?.id
+      }
+      if (!tipoAtencionId) throw new Error('No se encontró ningún tipo de atención en la base de datos.')
+
+      if (atencionIdEdicion && fichaEncontrada === true) {
+        const { data: att, error: attErr } = await supabase
+          .from('atenciones')
+          .select('tipo_atencion_id')
+          .eq('id', atencionIdEdicion)
+          .single()
+        if (attErr || !att?.tipo_atencion_id) {
+          throw new Error(attErr?.message || 'No se pudo resolver el tipo de atención.')
+        }
+        await actualizarAtencionYFormularioJson(supabase, {
+          atencionId: atencionIdEdicion,
+          tipoFormulario: 'ficha_ingreso_seguridad',
+          jovenId: formData.joven_id,
+          tipoAtencionId: att.tipo_atencion_id,
+          datosJson,
+        })
+        alert('Ficha de Ingreso actualizada exitosamente')
+        router.push(`/dashboard/atenciones/${atencionIdEdicion}`)
+        return
+      }
+
+      if (atencionIdEdicion && fichaEncontrada === false) {
+        const { error: attUpdErr } = await supabase
+          .from('atenciones')
+          .update({
+            joven_id: formData.joven_id,
+            tipo_atencion_id: tipoAtencionId,
+            profesional_id: formData.profesional_id,
+          })
+          .eq('id', atencionIdEdicion)
+        if (attUpdErr) throw attUpdErr
+        const { error: formularioError } = await supabase.from('formularios_atencion').insert({
+          tipo_formulario: 'ficha_ingreso_seguridad',
+          joven_id: formData.joven_id,
+          atencion_id: atencionIdEdicion,
+          datos_json: datosJson,
+        })
+        if (formularioError) throw formularioError
+        alert('Ficha de Ingreso registrada exitosamente')
+        router.push(`/dashboard/atenciones/${atencionIdEdicion}`)
+        return
+      }
+
       const { data: atencionData, error: atencionError } = await supabase
         .from('atenciones')
         .insert({
           joven_id: formData.joven_id,
-          tipo_atencion_id: 'seguridad', // ID del tipo de atención de seguridad
+          tipo_atencion_id: tipoAtencionId,
           profesional_id: formData.profesional_id,
           fecha_atencion: new Date().toISOString(),
           motivo: 'Ficha de Ingreso - Área de Seguridad',
           observaciones: formData.observaciones,
-          estado: 'completada'
+          estado: 'completada',
         })
         .select()
 
       if (atencionError) throw atencionError
 
-      // Guardar el formulario específico
       if (atencionData?.[0]) {
-        const { error: formularioError } = await supabase
-          .from('formularios_atencion')
-          .insert({
-            atencion_id: atencionData[0].id,
-            datos_json: {
-              tipo_formulario: 'ficha_ingreso_seguridad',
-              datos_personales: {
-                nombre: formData.nombre,
-                numero_expediente_administrativo: formData.numero_expediente_administrativo,
-                edad: formData.edad,
-                fecha_nacimiento: formData.fecha_nacimiento,
-                originario: formData.originario,
-                residente: formData.residente
-              },
-              datos_ingreso: {
-                fecha_ingreso: formData.fecha_ingreso,
-                hora_ingreso: formData.hora_ingreso,
-                numero_dni: formData.numero_dni,
-                alias: formData.alias,
-                simpatizante: formData.simpatizante,
-                estado_civil: formData.estado_civil,
-                grado_escolaridad: formData.grado_escolaridad,
-                nombre_responsable: formData.nombre_responsable,
-                telefono_responsable: formData.telefono_responsable
-              },
-              datos_judiciales: {
-                juzgado_remitente: formData.juzgado_remitente,
-                juez_remite: formData.juez_remite,
-                expediente_judicial: formData.expediente_judicial,
-                numero_oficio_ingreso: formData.numero_oficio_ingreso,
-                infraccion_penal: formData.infraccion_penal,
-                es_reincidente: formData.es_reincidente,
-                ha_estado_otro_centro: formData.ha_estado_otro_centro,
-                ha_estado_proceso_judicial: formData.ha_estado_proceso_judicial
-              },
-              forma_ingreso: {
-                cumplimiento_medida_cautelar: formData.cumplimiento_medida_cautelar,
-                sancion_privativa_libertad: formData.sancion_privativa_libertad,
-                traslado: formData.traslado
-              },
-              estado_fisico: {
-                golpes: formData.golpes,
-                heridas: formData.heridas,
-                cicatrices: formData.cicatrices,
-                enfermedad: formData.enfermedad,
-                impedimentos_fisicos: formData.impedimentos_fisicos,
-                ansiedad: formData.ansiedad,
-                personal_medico_atendio: formData.personal_medico_atendio
-              },
-              aprehension_traslado: {
-                fecha_aprehension: formData.fecha_aprehension,
-                quien_aprehendio: formData.quien_aprehendio,
-                fue_golpeado_aprehension: formData.fue_golpeado_aprehension,
-                fue_golpeado_traslado: formData.fue_golpeado_traslado,
-                por_quien_trasladado: formData.por_quien_trasladado
-              },
-              firmas: {
-                nombre_supervisor_seguridad: formData.nombre_supervisor_seguridad,
-                fecha_entrevista: formData.fecha_entrevista,
-                firma_nna: formData.firma_nna,
-                firma_supervisor: formData.firma_supervisor
-              }
-            }
-          })
+        const { error: formularioError } = await supabase.from('formularios_atencion').insert({
+          tipo_formulario: 'ficha_ingreso_seguridad',
+          joven_id: formData.joven_id,
+          atencion_id: atencionData[0].id,
+          datos_json: datosJson,
+        })
 
         if (formularioError) throw formularioError
       }
@@ -221,6 +376,14 @@ export default function FormularioSeguridadPage() {
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }))
     }
+  }
+
+  if (loadingExisting) {
+    return (
+      <div className="flex items-center justify-center min-h-[40vh] p-8">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      </div>
+    )
   }
 
   return (
@@ -959,7 +1122,11 @@ export default function FormularioSeguridadPage() {
           </button>
           <button
             type="submit"
-            disabled={loading}
+            disabled={
+              loading ||
+              loadingExisting ||
+              (Boolean(atencionIdEdicion) && fichaEncontrada === null)
+            }
             className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             <Save className="w-5 h-5" />

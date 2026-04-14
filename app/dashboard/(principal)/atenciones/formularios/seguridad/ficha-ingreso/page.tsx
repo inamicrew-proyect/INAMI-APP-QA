@@ -1,5 +1,7 @@
 'use client'
 
+import { useFormularioAtencionEdicion } from '@/lib/hooks/use-formulario-atencion-edicion'
+import { actualizarAtencionYFormularioJson } from '@/lib/formulario-atencion-update'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -115,6 +117,11 @@ export default function FichaIngresoPage() {
     observaciones: ''
   })
 
+  const { atencionIdEdicion, loadingExisting, fichaEncontrada } = useFormularioAtencionEdicion<FormData>({
+    tipoFormulario: 'ficha_ingreso_seguridad',
+    setFormData,
+  })
+
   useEffect(() => {
     loadJovenes()
   }, [])
@@ -217,6 +224,19 @@ export default function FichaIngresoPage() {
       // 2. Obtener ID del tipo de atención
       const tipoAtencionId = await getTipoAtencionId()
       console.log('✅ Tipo de atención obtenido:', tipoAtencionId)
+
+      if (atencionIdEdicion && fichaEncontrada === true && tipoAtencionId) {
+        await actualizarAtencionYFormularioJson(supabase, {
+          atencionId: atencionIdEdicion,
+          tipoFormulario: 'ficha_ingreso_seguridad',
+          jovenId: formData.joven_id,
+          tipoAtencionId: tipoAtencionId,
+          datosJson: formData,
+        })
+        alert('Ficha de ingreso actualizada exitosamente')
+        router.push(`/dashboard/atenciones/${atencionIdEdicion}`)
+        return
+      }
 
       // 3. Crear la atención de seguridad
       const { data: atencionData, error: atencionError } = await supabase
@@ -329,6 +349,14 @@ export default function FichaIngresoPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  if (loadingExisting) {
+    return (
+      <div className="flex items-center justify-center min-h-[40vh] p-8">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      </div>
+    )
   }
 
   return (

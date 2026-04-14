@@ -1,6 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useFormularioAtencionEdicion } from '@/lib/hooks/use-formulario-atencion-edicion'
+import { actualizarAtencionYFormularioJson } from '@/lib/formulario-atencion-update'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { Save, ArrowLeft, User, FileText, Heart, Activity } from 'lucide-react'
@@ -65,7 +67,7 @@ interface FormData {
   observaciones: string
 }
 
-export default function ExamenFisicoPage() {
+function ExamenFisicoForm() {
   const router = useRouter()
   const [jovenes, setJovenes] = useState<Joven[]>([])
   const [loading, setLoading] = useState(false)
@@ -103,6 +105,11 @@ export default function ExamenFisicoPage() {
     tiene_lesiones: false,
     descripcion_lesiones: '',
     observaciones: ''
+  })
+
+  const { atencionIdEdicion, loadingExisting, fichaEncontrada } = useFormularioAtencionEdicion<FormData>({
+    tipoFormulario: 'examen_fisico',
+    setFormData,
   })
 
   useEffect(() => {
@@ -192,25 +199,74 @@ export default function ExamenFisicoPage() {
     setLoading(true)
 
     try {
-      const { error } = await supabase
-        .from('formularios_atencion')
-        .insert({
-          tipo_formulario: 'examen_fisico',
-          joven_id: formData.joven_id,
-          datos_json: formData,
-          created_at: new Date().toISOString()
+      if (atencionIdEdicion && fichaEncontrada === true) {
+        const { data: att, error: attErr } = await supabase
+          .from('atenciones')
+          .select('tipo_atencion_id')
+          .eq('id', atencionIdEdicion)
+          .single()
+        if (attErr || !att?.tipo_atencion_id) {
+          throw new Error(attErr?.message || 'No se pudo resolver el tipo de atención.')
+        }
+        await actualizarAtencionYFormularioJson(supabase, {
+          atencionId: atencionIdEdicion,
+          tipoFormulario: 'examen_fisico',
+          jovenId: formData.joven_id,
+          tipoAtencionId: att.tipo_atencion_id,
+          datosJson: formData,
         })
+        alert('Examen físico actualizado exitosamente')
+        router.push(`/dashboard/atenciones/${atencionIdEdicion}`)
+        return
+      }
 
-      if (error) throw error
+      if (atencionIdEdicion && fichaEncontrada === false) {
+        const { error: updErr } = await supabase
+          .from('atenciones')
+          .update({ joven_id: formData.joven_id })
+          .eq('id', atencionIdEdicion)
+        if (updErr) throw updErr
+      }
+
+      const { error } = await supabase.from('formularios_atencion').insert({
+        tipo_formulario: 'examen_fisico',
+        joven_id: formData.joven_id,
+        ...(atencionIdEdicion ? { atencion_id: atencionIdEdicion } : {}),
+        datos_json: formData,
+        created_at: new Date().toISOString(),
+      })
+
+      if (error) throw new Error(error.message)
 
       alert('Examen físico guardado exitosamente')
-      router.push('/dashboard/atenciones')
+      if (atencionIdEdicion) {
+        router.push(`/dashboard/atenciones/${atencionIdEdicion}`)
+      } else {
+        router.push('/dashboard/atenciones')
+      }
     } catch (error) {
       console.error('Error saving form:', error)
-      alert('Error al guardar el examen físico')
+      const msg =
+        error instanceof Error
+          ? error.message
+          : typeof error === 'object' &&
+              error !== null &&
+              'message' in error &&
+              typeof (error as { message: unknown }).message === 'string'
+            ? (error as { message: string }).message
+            : 'Error desconocido'
+      alert(`Error al guardar el examen físico: ${msg}`)
     } finally {
       setLoading(false)
     }
+  }
+
+  if (loadingExisting) {
+    return (
+      <div className="flex items-center justify-center min-h-[40vh] p-8">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      </div>
+    )
   }
 
   return (
@@ -782,7 +838,11 @@ export default function ExamenFisicoPage() {
           </Link>
           <button
             type="submit"
-            disabled={loading}
+            disabled={
+              loading ||
+              loadingExisting ||
+              (Boolean(atencionIdEdicion) && fichaEncontrada === null)
+            }
             className="btn-primary flex items-center gap-2"
           >
             <Save className="w-5 h-5" />
@@ -791,5 +851,21 @@ export default function ExamenFisicoPage() {
         </div>
       </form>
     </div>
+  )
+}
+
+function ExamenFisicoSuspenseFallback() {
+  return (
+    <div className="flex items-center justify-center min-h-[40vh] p-8 bg-gray-50 dark:bg-gray-900">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+    </div>
+  )
+}
+
+export default function ExamenFisicoPage() {
+  return (
+    <Suspense fallback={<ExamenFisicoSuspenseFallback />}>
+      <ExamenFisicoForm />
+    </Suspense>
   )
 }

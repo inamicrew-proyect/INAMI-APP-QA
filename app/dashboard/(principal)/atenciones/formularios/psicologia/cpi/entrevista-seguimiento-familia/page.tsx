@@ -4,7 +4,9 @@ import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { ArrowLeft, Save } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { saveOrUpdateFormulario } from '@/lib/formularios-psicologicos'
 import JovenSearchInput from '@/components/JovenSearchInput'
+import { edadDesdeJoven } from '@/lib/joven-helpers'
 
 export default function EntrevistaSeguimientoFamiliaPage() {
   const router = useRouter()
@@ -88,15 +90,7 @@ export default function EntrevistaSeguimientoFamiliaPage() {
     e.preventDefault()
     try {
       setSaving(true)
-      const { error } = await supabase
-        .from('formularios_psicologicos')
-        .insert([{
-          joven_id: jovenId,
-          tipo_formulario: 'entrevista_seguimiento_familia',
-          datos_json: formData,
-          fecha_creacion: new Date().toISOString()
-        }])
-      if (error) throw error
+      await saveOrUpdateFormulario(jovenId, 'entrevista_seguimiento_familia', formData)
       alert('Formulario guardado exitosamente')
       router.push(`/dashboard/jovenes/${jovenId}/expediente`)
     } catch (error) {
@@ -210,7 +204,7 @@ export default function EntrevistaSeguimientoFamiliaPage() {
                       setFormData(prev => ({
                         ...prev,
                         nombre_apellidos: `${joven.nombres} ${joven.apellidos}`,
-                        edad: joven.edad?.toString() || prev.edad
+                        edad: String(edadDesdeJoven(joven))
                       }))
                     }
                   }}

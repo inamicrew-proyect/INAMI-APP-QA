@@ -1,14 +1,21 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { actualizarAtencionYFormularioJson } from '@/lib/formulario-atencion-update'
+import { useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { ArrowLeft, Save, Heart, User, AlertTriangle } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import type { Joven } from '@/lib/supabase'
 import JovenSearchInput from '@/components/JovenSearchInput'
 
-export default function InformeSeguimientoSaludPage() {
+function InformeSeguimientoSaludForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const atencionIdEdicion = searchParams.get('atencion_id')
+  const [loadingExisting, setLoadingExisting] = useState(false)
+  const [fichaEncontrada, setFichaEncontrada] = useState<boolean | null>(() =>
+    searchParams.get('atencion_id') ? null : false
+  )
   const [loading, setLoading] = useState(false)
   const [jovenes, setJovenes] = useState<Joven[]>([])
   
@@ -50,14 +57,80 @@ export default function InformeSeguimientoSaludPage() {
     loadData()
   }, [])
 
+  useEffect(() => {
+    const loadExisting = async () => {
+      if (!atencionIdEdicion) {
+        setFichaEncontrada(false)
+        setLoadingExisting(false)
+        return
+      }
+      try {
+        setLoadingExisting(true)
+        setFichaEncontrada(null)
+        const { data, error } = await supabase
+          .from('formularios_atencion')
+          .select('datos_json, joven_id')
+          .eq('atencion_id', atencionIdEdicion)
+          .eq('tipo_formulario', 'informe_seguimiento_salud')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+
+        if (error) throw new Error(error.message)
+        if (!data?.datos_json) {
+          setFichaEncontrada(false)
+          return
+        }
+
+        const raw = data.datos_json as Record<string, unknown>
+        const dg = raw.datos_generales as Record<string, string> | undefined
+        const en = raw.estado_nutricional as Record<string, string> | undefined
+        const es = raw.estado_salud as Record<string, string> | undefined
+        const lab = raw.laboratorio as Record<string, string> | undefined
+        const ref = raw.referencias as Record<string, string> | undefined
+        const odo = raw.odontologia as Record<string, string> | undefined
+        const fir = raw.firma as Record<string, string> | undefined
+
+        if (dg) {
+          setFormData((prev) => ({
+            ...prev,
+            joven_id: (typeof raw.joven_id === 'string' ? raw.joven_id : data.joven_id) || prev.joven_id,
+            nombre_nnaj: dg.nombre_nnaj ?? prev.nombre_nnaj,
+            edad: dg.edad ?? prev.edad,
+            centro_pedagogico: dg.centro_pedagogico ?? prev.centro_pedagogico,
+            fecha: dg.fecha ?? prev.fecha,
+            peso: en?.peso ?? prev.peso,
+            talla: en?.talla ?? prev.talla,
+            imc: en?.imc ?? prev.imc,
+            estado_salud_actual: es?.estado_salud_actual ?? prev.estado_salud_actual,
+            informacion_complementaria: es?.informacion_complementaria ?? prev.informacion_complementaria,
+            resultados_laboratorio: lab?.resultados_laboratorio ?? prev.resultados_laboratorio,
+            referencias_diagnostico: ref?.referencias_diagnostico ?? prev.referencias_diagnostico,
+            diagnostico_odontologico: odo?.diagnostico_odontologico ?? prev.diagnostico_odontologico,
+            firma_medico: fir?.firma_medico ?? prev.firma_medico,
+          }))
+        } else {
+          setFormData((prev) => ({
+            ...prev,
+            ...(raw as Record<string, unknown>),
+            joven_id: (typeof raw.joven_id === 'string' ? raw.joven_id : data.joven_id) || prev.joven_id,
+          }))
+        }
+        setFichaEncontrada(true)
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : 'Error desconocido'
+        alert(`Error al cargar la ficha para edición: ${msg}`)
+        router.push(`/dashboard/atenciones/${atencionIdEdicion}`)
+      } finally {
+        setLoadingExisting(false)
+      }
+    }
+    void loadExisting()
+  }, [atencionIdEdicion, router])
+
   const loadData = async () => {
     try {
       // Obtener el usuario actual (médico)
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        setFormData(prev => ({ ...prev, profesional_id: user.id }))
-      }
-
       // Cargar jóvenes activos
       const { data: jovenesData, error: jovenesError } = await supabase
         .from('jovenes')
@@ -101,59 +174,111 @@ export default function InformeSeguimientoSaludPage() {
 
     setLoading(true)
     try {
-      // Crear la atención médica
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Usuario no autenticado')
+
+      const { data: tipoAtencion } = await supabase
+        .from('tipos_atencion')
+        .select('id')
+        .eq('profesional_responsable', 'medico')
+        .limit(1)
+        .maybeSingle()
+
+      let tipoAtencionId = tipoAtencion?.id
+      if (!tipoAtencionId) {
+        const { data: anyTipo } = await supabase.from('tipos_atencion').select('id').limit(1).maybeSingle()
+        tipoAtencionId = anyTipo?.id
+      }
+      if (!tipoAtencionId) throw new Error('No se encontró ningún tipo de atención en la base de datos.')
+
+      const datosJson = {
+        tipo_formulario: 'informe_seguimiento_salud',
+        datos_generales: {
+          nombre_nnaj: formData.nombre_nnaj,
+          edad: formData.edad,
+          centro_pedagogico: formData.centro_pedagogico,
+          fecha: formData.fecha,
+        },
+        estado_nutricional: {
+          peso: formData.peso,
+          talla: formData.talla,
+          imc: formData.imc,
+        },
+        estado_salud: {
+          estado_salud_actual: formData.estado_salud_actual,
+          informacion_complementaria: formData.informacion_complementaria,
+        },
+        laboratorio: {
+          resultados_laboratorio: formData.resultados_laboratorio,
+        },
+        referencias: {
+          referencias_diagnostico: formData.referencias_diagnostico,
+        },
+        odontologia: {
+          diagnostico_odontologico: formData.diagnostico_odontologico,
+        },
+        firma: {
+          firma_medico: formData.firma_medico,
+        },
+      }
+
+      if (atencionIdEdicion && fichaEncontrada === true) {
+        await actualizarAtencionYFormularioJson(supabase, {
+          atencionId: atencionIdEdicion,
+          tipoFormulario: 'informe_seguimiento_salud',
+          jovenId: formData.joven_id,
+          tipoAtencionId: tipoAtencionId,
+          datosJson: datosJson as Record<string, unknown>,
+        })
+        alert('Informe Médico de Seguimiento actualizado exitosamente')
+        router.push(`/dashboard/atenciones/${atencionIdEdicion}`)
+        return
+      }
+
+      if (atencionIdEdicion && fichaEncontrada === false) {
+        const { error: attUpdErr } = await supabase
+          .from('atenciones')
+          .update({
+            joven_id: formData.joven_id,
+            tipo_atencion_id: tipoAtencionId,
+            profesional_id: user.id,
+          })
+          .eq('id', atencionIdEdicion)
+        if (attUpdErr) throw attUpdErr
+        const { error: formularioError } = await supabase.from('formularios_atencion').insert({
+          tipo_formulario: 'informe_seguimiento_salud',
+          joven_id: formData.joven_id,
+          atencion_id: atencionIdEdicion,
+          datos_json: datosJson,
+        })
+        if (formularioError) throw formularioError
+        alert('Informe Médico de Seguimiento registrado exitosamente')
+        router.push(`/dashboard/atenciones/${atencionIdEdicion}`)
+        return
+      }
+
       const { data: atencionData, error: atencionError } = await supabase
         .from('atenciones')
         .insert({
           joven_id: formData.joven_id,
-          tipo_atencion_id: 'medico', // ID del tipo de atención médica
-        
+          tipo_atencion_id: tipoAtencionId,
+          profesional_id: user.id,
           fecha_atencion: new Date().toISOString(),
           motivo: 'Informe Médico de Seguimiento',
           observaciones: formData.estado_salud_actual,
-          estado: 'completada'
+          estado: 'completada',
         })
         .select()
 
       if (atencionError) throw atencionError
 
-      // Guardar el formulario específico
       if (atencionData?.[0]) {
-        const { error: formularioError } = await supabase
-          .from('formularios_atencion')
-          .insert({
-            atencion_id: atencionData[0].id,
-            datos_json: {
-              tipo_formulario: 'informe_seguimiento_salud',
-              datos_generales: {
-                nombre_nnaj: formData.nombre_nnaj,
-                edad: formData.edad,
-                centro_pedagogico: formData.centro_pedagogico,
-                fecha: formData.fecha
-              },
-              estado_nutricional: {
-                peso: formData.peso,
-                talla: formData.talla,
-                imc: formData.imc
-              },
-              estado_salud: {
-                estado_salud_actual: formData.estado_salud_actual,
-                informacion_complementaria: formData.informacion_complementaria
-              },
-              laboratorio: {
-                resultados_laboratorio: formData.resultados_laboratorio
-              },
-              referencias: {
-                referencias_diagnostico: formData.referencias_diagnostico
-              },
-              odontologia: {
-                diagnostico_odontologico: formData.diagnostico_odontologico
-              },
-              firma: {
-                firma_medico: formData.firma_medico
-              }
-            }
-          })
+        const { error: formularioError } = await supabase.from('formularios_atencion').insert({
+          tipo_formulario: 'informe_seguimiento_salud',
+          joven_id: formData.joven_id,
+          atencion_id: atencionData[0].id,
+          datos_json: datosJson,
+        })
 
         if (formularioError) throw formularioError
       }
@@ -173,6 +298,14 @@ export default function InformeSeguimientoSaludPage() {
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }))
     }
+  }
+
+  if (loadingExisting) {
+    return (
+      <div className="flex items-center justify-center min-h-[40vh] p-8">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      </div>
+    )
   }
 
   return (
@@ -497,7 +630,11 @@ export default function InformeSeguimientoSaludPage() {
           </button>
           <button
             type="submit"
-            disabled={loading}
+            disabled={
+              loading ||
+              loadingExisting ||
+              (Boolean(atencionIdEdicion) && fichaEncontrada === null)
+            }
             className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             <Save className="w-5 h-5" />
@@ -506,5 +643,21 @@ export default function InformeSeguimientoSaludPage() {
         </div>
       </form>
     </div>
+  )
+}
+
+function InformeSeguimientoSaludSuspenseFallback() {
+  return (
+    <div className="flex items-center justify-center min-h-[40vh] p-8">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+    </div>
+  )
+}
+
+export default function InformeSeguimientoSaludPage() {
+  return (
+    <Suspense fallback={<InformeSeguimientoSaludSuspenseFallback />}>
+      <InformeSeguimientoSaludForm />
+    </Suspense>
   )
 }

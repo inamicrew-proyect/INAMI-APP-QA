@@ -1,14 +1,19 @@
 'use client'
 
+import { actualizarAtencionYFormularioJson } from '@/lib/formulario-atencion-update'
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { ArrowLeft, Save, Users } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import JovenSearchInput from '@/components/JovenSearchInput'
 
 export default function InformeIncidenciasPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const atencionIdEdicion = searchParams.get('atencion_id')
   const [loading, setLoading] = useState(false)
+  const [loadingExisting, setLoadingExisting] = useState(false)
+  const [fichaEncontrada, setFichaEncontrada] = useState<boolean | null>(null)
   
   const [formData, setFormData] = useState({
     joven_id: '',
@@ -39,6 +44,69 @@ export default function InformeIncidenciasPage() {
   useEffect(() => {
     loadData()
   }, [])
+
+  useEffect(() => {
+    const loadExisting = async () => {
+      if (!atencionIdEdicion) {
+        setFichaEncontrada(false)
+        return
+      }
+      try {
+        setLoadingExisting(true)
+        setFichaEncontrada(null)
+        const { data, error } = await supabase
+          .from('formularios_atencion')
+          .select('datos_json, joven_id')
+          .eq('atencion_id', atencionIdEdicion)
+          .eq('tipo_formulario', 'informe_incidencias')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+
+        if (error) throw new Error(error.message)
+        if (!data?.datos_json) {
+          setFichaEncontrada(false)
+          return
+        }
+
+        const raw = data.datos_json as Record<string, unknown>
+        const datosCaso = raw.datos_caso as Record<string, string> | undefined
+        if (datosCaso) {
+          setFormData((prev) => ({
+            ...prev,
+            joven_id: (typeof raw.joven_id === 'string' ? raw.joven_id : data.joven_id) || prev.joven_id,
+            nombre_completo_nnaj: datosCaso.nombre_completo_nnaj ?? prev.nombre_completo_nnaj,
+            medida: datosCaso.medida ?? prev.medida,
+            expediente_interno: datosCaso.expediente_interno ?? prev.expediente_interno,
+            expediente_judicial: datosCaso.expediente_judicial ?? prev.expediente_judicial,
+            situacion_presentada: (raw.situacion_presentada as string) ?? prev.situacion_presentada,
+            acciones_realizadas: (raw.acciones_realizadas as string) ?? prev.acciones_realizadas,
+            recomendaciones: (raw.recomendaciones as string) ?? prev.recomendaciones,
+            medios_verificacion: Array.isArray(raw.medios_verificacion)
+              ? (raw.medios_verificacion as string[])
+              : prev.medios_verificacion,
+          }))
+        } else {
+          setFormData((prev) => ({
+            ...prev,
+            ...(raw as Record<string, unknown>),
+            joven_id: (typeof raw.joven_id === 'string' ? raw.joven_id : data.joven_id) || prev.joven_id,
+            medios_verificacion: Array.isArray(raw.medios_verificacion)
+              ? (raw.medios_verificacion as string[])
+              : prev.medios_verificacion,
+          }))
+        }
+        setFichaEncontrada(true)
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : 'Error desconocido'
+        alert(`Error al cargar la ficha para edición: ${msg}`)
+        router.push(`/dashboard/atenciones/${atencionIdEdicion}`)
+      } finally {
+        setLoadingExisting(false)
+      }
+    }
+    void loadExisting()
+  }, [atencionIdEdicion, router])
 
   const loadData = async () => {
     try {
@@ -77,46 +145,94 @@ export default function InformeIncidenciasPage() {
 
     setLoading(true)
     try {
-      // Obtener el usuario actual (trabajador social)
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('Usuario no autenticado')
 
-      // Crear la atención de trabajo social
+      const { data: tipoAtencion } = await supabase
+        .from('tipos_atencion')
+        .select('id')
+        .eq('profesional_responsable', 'trabajador_social')
+        .limit(1)
+        .maybeSingle()
+
+      let tipoAtencionId = tipoAtencion?.id
+      if (!tipoAtencionId) {
+        const { data: anyTipo } = await supabase.from('tipos_atencion').select('id').limit(1).maybeSingle()
+        tipoAtencionId = anyTipo?.id
+      }
+      if (!tipoAtencionId) throw new Error('No se encontró ningún tipo de atención en la base de datos.')
+
+      const datosJson = {
+        tipo_formulario: 'informe_incidencias',
+        datos_caso: {
+          nombre_completo_nnaj: formData.nombre_completo_nnaj,
+          medida: formData.medida,
+          expediente_interno: formData.expediente_interno,
+          expediente_judicial: formData.expediente_judicial,
+        },
+        situacion_presentada: formData.situacion_presentada,
+        acciones_realizadas: formData.acciones_realizadas,
+        recomendaciones: formData.recomendaciones,
+        medios_verificacion: formData.medios_verificacion,
+      }
+
+      if (atencionIdEdicion && fichaEncontrada === true) {
+        await actualizarAtencionYFormularioJson(supabase, {
+          atencionId: atencionIdEdicion,
+          tipoFormulario: 'informe_incidencias',
+          jovenId: formData.joven_id,
+          tipoAtencionId: tipoAtencionId,
+          datosJson: datosJson as Record<string, unknown>,
+        })
+        alert('Informe de Incidencias actualizado exitosamente')
+        router.push(`/dashboard/atenciones/${atencionIdEdicion}`)
+        return
+      }
+
+      if (atencionIdEdicion && fichaEncontrada === false) {
+        const { error: attUpdErr } = await supabase
+          .from('atenciones')
+          .update({
+            joven_id: formData.joven_id,
+            tipo_atencion_id: tipoAtencionId,
+            profesional_id: user.id,
+          })
+          .eq('id', atencionIdEdicion)
+        if (attUpdErr) throw attUpdErr
+        const { error: formularioError } = await supabase.from('formularios_atencion').insert({
+          tipo_formulario: 'informe_incidencias',
+          joven_id: formData.joven_id,
+          atencion_id: atencionIdEdicion,
+          datos_json: datosJson,
+        })
+        if (formularioError) throw formularioError
+        alert('Informe de Incidencias registrado exitosamente')
+        router.push(`/dashboard/atenciones/${atencionIdEdicion}`)
+        return
+      }
+
       const { data: atencionData, error: atencionError } = await supabase
         .from('atenciones')
         .insert({
           joven_id: formData.joven_id,
-          tipo_atencion_id: 'trabajador_social',
+          tipo_atencion_id: tipoAtencionId,
           profesional_id: user.id,
           fecha_atencion: new Date().toISOString(),
           motivo: 'Informe de Incidencias',
           observaciones: formData.situacion_presentada,
-          estado: 'completada'
+          estado: 'completada',
         })
         .select()
 
       if (atencionError) throw atencionError
 
-      // Guardar el formulario específico
       if (atencionData?.[0]) {
-        const { error: formularioError } = await supabase
-          .from('formularios_atencion')
-          .insert({
-            atencion_id: atencionData[0].id,
-            datos_json: {
-              tipo_formulario: 'informe_incidencias',
-              datos_caso: {
-                nombre_completo_nnaj: formData.nombre_completo_nnaj,
-                medida: formData.medida,
-                expediente_interno: formData.expediente_interno,
-                expediente_judicial: formData.expediente_judicial
-              },
-              situacion_presentada: formData.situacion_presentada,
-              acciones_realizadas: formData.acciones_realizadas,
-              recomendaciones: formData.recomendaciones,
-              medios_verificacion: formData.medios_verificacion
-            }
-          })
+        const { error: formularioError } = await supabase.from('formularios_atencion').insert({
+          tipo_formulario: 'informe_incidencias',
+          joven_id: formData.joven_id,
+          atencion_id: atencionData[0].id,
+          datos_json: datosJson,
+        })
 
         if (formularioError) throw formularioError
       }
@@ -145,6 +261,14 @@ export default function InformeIncidenciasPage() {
     } else {
       handleInputChange(field, currentValues.filter(v => v !== value))
     }
+  }
+
+  if (loadingExisting) {
+    return (
+      <div className="flex items-center justify-center min-h-[40vh] p-8">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      </div>
+    )
   }
 
   return (
@@ -357,7 +481,11 @@ export default function InformeIncidenciasPage() {
           </button>
           <button
             type="submit"
-            disabled={loading}
+            disabled={
+              loading ||
+              loadingExisting ||
+              (Boolean(atencionIdEdicion) && fichaEncontrada === null)
+            }
             className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             <Save className="w-5 h-5" />

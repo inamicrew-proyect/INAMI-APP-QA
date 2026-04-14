@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Search, X, User } from 'lucide-react'
 import type { Joven } from '@/lib/supabase'
+import { edadDesdeJoven } from '@/lib/joven-helpers'
 
 interface JovenSearchInputProps {
   value: string
@@ -222,6 +223,7 @@ export default function JovenSearchInput({
         >
           {filteredJovenes.map((joven) => {
             const nombreCompleto = `${joven.nombres} ${joven.apellidos}`
+            const edadCalculada = edadDesdeJoven(joven)
             return (
               <button
                 key={joven.id}
@@ -235,7 +237,7 @@ export default function JovenSearchInput({
                     {nombreCompleto}
                   </div>
                   <div className="text-sm text-gray-500 dark:text-gray-400">
-                    {joven.edad && `Edad: ${joven.edad} años`}
+                    {edadCalculada > 0 && `Edad: ${edadCalculada} años`}
                     {joven.identidad && ` • ID: ${joven.identidad}`}
                     {joven.expediente_administrativo && ` • Exp. Admin: ${joven.expediente_administrativo}`}
                   </div>

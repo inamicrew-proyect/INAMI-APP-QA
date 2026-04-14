@@ -10,6 +10,7 @@ import {
   TIPOS_FORMULARIOS 
 } from '@/lib/formularios-psicologicos'
 import JovenSearchInput from '@/components/JovenSearchInput'
+import { edadDesdeJoven } from '@/lib/joven-helpers'
 
 export default function SeguimientoTerapeuticoGrupalPadresPage() {
   const router = useRouter()
@@ -294,7 +295,7 @@ export default function SeguimientoTerapeuticoGrupalPadresPage() {
                         joven_id: joven.id,
                         nombre_apellidos: `${joven.nombres} ${joven.apellidos}`,
                         fecha_nacimiento_edad: joven.fecha_nacimiento 
-                          ? `${new Date(joven.fecha_nacimiento).toLocaleDateString('es-HN')}, ${joven.edad || ''} años`
+                          ? `${new Date(joven.fecha_nacimiento).toLocaleDateString('es-HN')}, ${edadDesdeJoven(joven) || ''} años`
                           : prev.fecha_nacimiento_edad
                       }))
                       console.log('joven_id establecido en formData')

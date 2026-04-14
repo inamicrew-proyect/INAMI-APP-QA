@@ -1,8 +1,11 @@
 'use client'
 
+import { useFormularioAtencionEdicion } from '@/lib/hooks/use-formulario-atencion-edicion'
+import { actualizarAtencionYFormularioJson } from '@/lib/formulario-atencion-update'
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClientComponentClient } from '@/lib/supabase-browser'
+import { edadDesdeJoven } from '@/lib/joven-helpers'
 import { Save, ArrowLeft, User, FileText } from 'lucide-react'
 import Link from 'next/link'
 
@@ -294,6 +297,11 @@ export default function FichaSocialPage() {
     otros_organizaciones: ''
   })
 
+  const { atencionIdEdicion, loadingExisting, fichaEncontrada } = useFormularioAtencionEdicion<FormData>({
+    tipoFormulario: 'ficha_social',
+    setFormData,
+  })
+
   useEffect(() => {
     loadJovenes()
   }, [])
@@ -390,19 +398,17 @@ export default function FichaSocialPage() {
     }).slice(0, 20) // Limitar a 20 resultados
   }, [jovenes, jovenSearchTerm])
 
-  const handleJovenChange = (jovenId: string) => {
-    const joven = jovenes.find(j => j.id === jovenId)
-    if (joven) {
+  const handleJovenChange = (joven: Joven) => {
+    if (!joven?.id) return
       setFormData(prev => ({
         ...prev,
-        joven_id: jovenId,
+        joven_id: joven.id,
         nombre_completo: `${joven.nombres} ${joven.apellidos}`,
         fecha_nacimiento: joven.fecha_nacimiento,
-        edad: joven.edad
+        edad: edadDesdeJoven(joven)
       }))
       setJovenSearchTerm(`${joven.nombres} ${joven.apellidos}`)
       setShowJovenDropdown(false)
-    }
   }
 
   // Manejar cambio en el input de búsqueda
@@ -437,7 +443,7 @@ export default function FichaSocialPage() {
 
   // Manejar selección de joven del dropdown
   const handleJovenSelect = (joven: Joven) => {
-    handleJovenChange(joven.id)
+    handleJovenChange(joven)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -494,6 +500,43 @@ export default function FichaSocialPage() {
         throw new Error('Tu usuario no tiene un perfil configurado. Por favor, ejecuta el script crear-perfil-usuario.sql en Supabase.')
       }
 
+      // Preparar datos para la función stored procedure
+      // Convertir estructura_familiar y distribucion_ingresos a formato JSONB
+      const datosJson = {
+        ...formData,
+        estructura_familiar: formData.estructura_familiar.map(item => ({
+          orden: item.orden,
+          nombre: item.nombre,
+          edad: item.edad,
+          parentesco: item.parentesco,
+          escolaridad: item.escolaridad,
+          ocupacion: item.ocupacion
+        })),
+        distribucion_ingresos: formData.distribucion_ingresos.map(item => ({
+          parentesco: item.parentesco,
+          cantidad: item.cantidad,
+          frecuencia: item.frecuencia,
+          observacion: item.observacion
+        })),
+        egresos: formData.egresos, // La función stored procedure espera 'egresos' en el JSONB
+        construccion_vivienda: formData.construccion_vivienda,
+        distribucion_vivienda: formData.distribucion_vivienda,
+        tiempo_reside_comunidad: formData.tiempo_reside_comunidad
+      }
+
+      if (atencionIdEdicion && fichaEncontrada === true && tipoAtencionId) {
+        await actualizarAtencionYFormularioJson(supabase, {
+          atencionId: atencionIdEdicion,
+          tipoFormulario: 'ficha_social',
+          jovenId: formData.joven_id,
+          tipoAtencionId: tipoAtencionId,
+          datosJson: datosJson as Record<string, unknown>,
+        })
+        alert('Ficha Social actualizada exitosamente')
+        router.push(`/dashboard/atenciones/${atencionIdEdicion}`)
+        return
+      }
+
       // Crear una nueva atención para que aparezca en la lista de atenciones
       const { data: nuevaAtencion, error: atencionError } = await supabase
         .from('atenciones')
@@ -519,30 +562,6 @@ export default function FichaSocialPage() {
 
       const atencionId = nuevaAtencion.id
       console.log('✅ Atención creada exitosamente:', atencionId)
-
-      // Preparar datos para la función stored procedure
-      // Convertir estructura_familiar y distribucion_ingresos a formato JSONB
-      const datosJson = {
-        ...formData,
-        estructura_familiar: formData.estructura_familiar.map(item => ({
-          orden: item.orden,
-          nombre: item.nombre,
-          edad: item.edad,
-          parentesco: item.parentesco,
-          escolaridad: item.escolaridad,
-          ocupacion: item.ocupacion
-        })),
-        distribucion_ingresos: formData.distribucion_ingresos.map(item => ({
-          parentesco: item.parentesco,
-          cantidad: item.cantidad,
-          frecuencia: item.frecuencia,
-          observacion: item.observacion
-        })),
-        egresos: formData.egresos, // La función stored procedure espera 'egresos' en el JSONB
-        construccion_vivienda: formData.construccion_vivienda,
-        distribucion_vivienda: formData.distribucion_vivienda,
-        tiempo_reside_comunidad: formData.tiempo_reside_comunidad
-      }
 
       // Usar la función stored procedure para crear el formulario
       const { data: formularioId, error: formularioError } = await supabase
@@ -666,6 +685,14 @@ export default function FichaSocialPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  if (loadingExisting) {
+    return (
+      <div className="flex items-center justify-center min-h-[40vh] p-8">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      </div>
+    )
   }
 
   return (

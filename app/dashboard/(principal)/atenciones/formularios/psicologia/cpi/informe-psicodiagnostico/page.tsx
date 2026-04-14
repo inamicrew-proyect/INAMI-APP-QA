@@ -10,6 +10,7 @@ import {
   TIPOS_FORMULARIOS 
 } from '@/lib/formularios-psicologicos'
 import JovenSearchInput from '@/components/JovenSearchInput'
+import { edadDesdeJoven } from '@/lib/joven-helpers'
 
 export default function InformePsicodiagnosticoCPIPage() {
   const router = useRouter()
@@ -330,7 +331,7 @@ export default function InformePsicodiagnosticoCPIPage() {
                           ...prev,
                           joven_id: joven.id,
                           nombre_apellidos: `${joven.nombres} ${joven.apellidos}`,
-                          edad: joven.edad?.toString() || prev.edad,
+                          edad: String(edadDesdeJoven(joven)),
                           lugar_fecha_nacimiento: joven.fecha_nacimiento 
                             ? `${joven.lugar_nacimiento || ''}, ${new Date(joven.fecha_nacimiento).toLocaleDateString('es-HN')}`
                             : prev.lugar_fecha_nacimiento,

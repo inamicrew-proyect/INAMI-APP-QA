@@ -1,10 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { createClientComponentClient } from '@/lib/supabase-browser'
 import { Save, ArrowLeft, User, Users } from 'lucide-react'
 import Link from 'next/link'
+import JovenSearchInput from '@/components/JovenSearchInput'
+import { edadDesdeJoven } from '@/lib/joven-helpers'
 
 interface Joven {
   id: string
@@ -89,9 +91,13 @@ interface FormData {
 
 export default function EntrevistaFamiliarCPIPage() {
   const router = useRouter()
-  const [jovenes, setJovenes] = useState<Joven[]>([])
-  const [loading, setLoading] = useState(false)
+  const searchParams = useSearchParams()
+  const supabase = createClientComponentClient()
+  const atencionId = searchParams.get('atencion_id')
+  const isEditMode = !!atencionId
+
   const [saving, setSaving] = useState(false)
+  const [loadingExisting, setLoadingExisting] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   const [formData, setFormData] = useState<FormData>({
@@ -149,40 +155,56 @@ export default function EntrevistaFamiliarCPIPage() {
   })
 
   useEffect(() => {
-    loadJovenes()
-  }, [])
+    const loadExistingData = async () => {
+      if (!isEditMode || !atencionId) return
 
-  const loadJovenes = async () => {
-    try {
-      setLoading(true)
-      const { data, error } = await supabase
-        .from('jovenes')
-        .select('id, nombres, apellidos, fecha_nacimiento, edad, identidad, expediente_administrativo, expediente_judicial')
-        .eq('estado', 'activo')
-        .order('nombres')
+      try {
+        setLoadingExisting(true)
+        const { data: formularioData, error: formularioError } = await supabase
+          .from('formularios_atencion')
+          .select('datos_json, joven_id')
+          .eq('atencion_id', atencionId)
+          .eq('tipo_formulario', 'entrevista_familiar_cpi')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
 
-      if (error) throw error
-      setJovenes(data || [])
-    } catch (error) {
-      console.error('Error loading jovenes:', error)
-      alert('Error al cargar los jóvenes')
-    } finally {
-      setLoading(false)
+        if (formularioError) {
+          throw new Error(formularioError.message)
+        }
+
+        if (!formularioData?.datos_json) {
+          throw new Error('No se encontró la ficha de entrevista familiar CPI para esta atención.')
+        }
+
+        const datos = formularioData.datos_json as Partial<FormData>
+        setFormData((prev) => ({
+          ...prev,
+          ...datos,
+          joven_id: (datos.joven_id || formularioData.joven_id || prev.joven_id) as string,
+        }))
+      } catch (error: unknown) {
+        const msg = error instanceof Error ? error.message : 'Error desconocido'
+        alert(`Error al cargar la ficha para edición: ${msg}`)
+        router.push(`/dashboard/atenciones/${atencionId}`)
+      } finally {
+        setLoadingExisting(false)
+      }
     }
-  }
 
-  const handleJovenChange = (jovenId: string) => {
-    const joven = jovenes.find(j => j.id === jovenId)
-    if (joven) {
+    loadExistingData()
+  }, [isEditMode, atencionId, supabase, router])
+
+  const handleJovenChange = (joven: Joven) => {
+    if (!joven?.id) return
       setFormData(prev => ({
         ...prev,
-        joven_id: jovenId,
+        joven_id: joven.id,
         nombre_completo: `${joven.nombres} ${joven.apellidos}`,
-        edad: joven.edad,
+        edad: edadDesdeJoven(joven),
         exp_administrativo: joven.expediente_administrativo || '',
         numero_identidad: joven.identidad || ''
       }))
-    }
   }
 
   const validateForm = () => {
@@ -235,53 +257,79 @@ export default function EntrevistaFamiliarCPIPage() {
         tipoAtencionId = anyTipo?.id
       }
 
-      // Crear fecha de atención en formato ISO
-      const fechaAtencion = new Date().toISOString()
-
-      // Crear o actualizar atención
-      const { data: atencion, error: atencionError } = await supabase
-        .from('atenciones')
-        .insert({
-          joven_id: formData.joven_id,
-          tipo_atencion_id: tipoAtencionId,
-          profesional_id: user.id,
-          fecha_atencion: fechaAtencion,
-          motivo: 'Ficha Entrevista Familiar CPI',
-          estado: 'completada'
-        })
-        .select()
-        .single()
-
-      if (atencionError) {
-        throw new Error(`Error al crear la atención: ${atencionError.message}`)
-      }
-
-      const atencionId = atencion.id
-
-      // Preparar datos JSON
       const datosJson = {
         ...formData
       }
 
-      // Guardar en formularios_atencion
-      const { error: insertError } = await supabase
-        .from('formularios_atencion')
-        .insert({
-          tipo_formulario: 'entrevista_familiar_cpi',
-          joven_id: formData.joven_id,
-          atencion_id: atencionId,
-          datos_json: datosJson,
-          created_at: new Date().toISOString()
-        })
-        .select()
-        .single()
+      if (isEditMode && atencionId) {
+        const { error: updateAtencionError } = await supabase
+          .from('atenciones')
+          .update({
+            joven_id: formData.joven_id,
+            tipo_atencion_id: tipoAtencionId,
+          })
+          .eq('id', atencionId)
 
-      if (insertError) {
-        throw new Error(`Error al guardar el formulario: ${insertError.message}`)
+        if (updateAtencionError) {
+          throw new Error(`Error al actualizar la atención: ${updateAtencionError.message}`)
+        }
+
+        const { error: updateFormularioError } = await supabase
+          .from('formularios_atencion')
+          .update({
+            joven_id: formData.joven_id,
+            datos_json: datosJson,
+          })
+          .eq('atencion_id', atencionId)
+          .eq('tipo_formulario', 'entrevista_familiar_cpi')
+
+        if (updateFormularioError) {
+          throw new Error(`Error al actualizar la ficha: ${updateFormularioError.message}`)
+        }
+
+        alert('Ficha Entrevista Familiar CPI actualizada exitosamente')
+        router.push(`/dashboard/atenciones/${atencionId}`)
+      } else {
+        const fechaAtencion = new Date().toISOString()
+
+        const { data: atencion, error: atencionError } = await supabase
+          .from('atenciones')
+          .insert({
+            joven_id: formData.joven_id,
+            tipo_atencion_id: tipoAtencionId,
+            profesional_id: user.id,
+            fecha_atencion: fechaAtencion,
+            motivo: 'Ficha Entrevista Familiar CPI',
+            estado: 'completada'
+          })
+          .select()
+          .single()
+
+        if (atencionError) {
+          throw new Error(`Error al crear la atención: ${atencionError.message}`)
+        }
+
+        const nuevaAtencionId = atencion.id
+
+        const { error: insertError } = await supabase
+          .from('formularios_atencion')
+          .insert({
+            tipo_formulario: 'entrevista_familiar_cpi',
+            joven_id: formData.joven_id,
+            atencion_id: nuevaAtencionId,
+            datos_json: datosJson,
+            created_at: new Date().toISOString()
+          })
+          .select()
+          .single()
+
+        if (insertError) {
+          throw new Error(`Error al guardar el formulario: ${insertError.message}`)
+        }
+
+        alert('Ficha Entrevista Familiar CPI guardada exitosamente')
+        router.push('/dashboard/atenciones')
       }
-
-      alert('Ficha Entrevista Familiar CPI guardada exitosamente')
-      router.push('/dashboard/atenciones')
     } catch (error: any) {
       console.error('Error saving form:', error)
       alert(`Error al guardar la ficha: ${error.message || 'Error desconocido'}`)
@@ -290,12 +338,11 @@ export default function EntrevistaFamiliarCPIPage() {
     }
   }
 
-  if (loading) {
+  if (loadingExisting) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600 dark:text-gray-300">Cargando...</p>
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
         </div>
       </div>
     )
@@ -309,7 +356,7 @@ export default function EntrevistaFamiliarCPIPage() {
         </Link>
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Ficha Entrevista Familiar CPI
+            {isEditMode ? 'Editar Ficha Entrevista Familiar CPI' : 'Ficha Entrevista Familiar CPI'}
           </h1>
           <p className="text-gray-600 dark:text-gray-300 mt-2">
             Centro Pedagógico de Internamiento
@@ -336,24 +383,19 @@ export default function EntrevistaFamiliarCPIPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Joven <span className="text-red-500">*</span>
-              </label>
-              <select
-                value={formData.joven_id}
-                onChange={(e) => handleJovenChange(e.target.value)}
-                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white ${
-                  errors.joven_id ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                }`}
-              >
-                <option value="">Seleccione un joven</option>
-                {jovenes.map((joven) => (
-                  <option key={joven.id} value={joven.id}>
-                    {joven.nombres} {joven.apellidos}
-                  </option>
-                ))}
-              </select>
-              {errors.joven_id && <p className="mt-1 text-sm text-red-600">{errors.joven_id}</p>}
+              <JovenSearchInput
+                value={formData.nombre_completo}
+                onChange={(value) => setFormData((prev) => ({ ...prev, nombre_completo: value }))}
+                onJovenSelect={(joven) => {
+                  if (joven?.id) {
+                    handleJovenChange(joven)
+                  }
+                }}
+                label="Joven"
+                required
+                placeholder="Buscar joven por nombre..."
+                error={errors.joven_id}
+              />
             </div>
 
             <div>

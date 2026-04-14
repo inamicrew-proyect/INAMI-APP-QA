@@ -4,7 +4,9 @@ import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { ArrowLeft, Save } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { saveOrUpdateFormulario } from '@/lib/formularios-psicologicos'
 import JovenSearchInput from '@/components/JovenSearchInput'
+import { edadDesdeJoven } from '@/lib/joven-helpers'
 
 interface NucleoConvivencia {
   nombre: string
@@ -222,19 +224,11 @@ export default function EntrevistaInicialAdolescenteCPIPage() {
     e.preventDefault()
     try {
       setSaving(true)
-      const { error } = await supabase
-        .from('formularios_psicologicos')
-        .insert([{
-          joven_id: jovenId,
-          tipo_formulario: 'entrevista_inicial_adolescente_cpi',
-          datos_json: {
-            ...formData,
-            nucleo_convivencia: nucleoConvivencia,
-            consumo_adicciones: consumoAdicciones
-          },
-          fecha_creacion: new Date().toISOString()
-        }])
-      if (error) throw error
+      await saveOrUpdateFormulario(jovenId, 'entrevista_inicial_adolescente_cpi', {
+        ...formData,
+        nucleo_convivencia: nucleoConvivencia,
+        consumo_adicciones: consumoAdicciones,
+      })
       alert('Formulario guardado exitosamente')
       router.push(`/dashboard/jovenes/${jovenId}/expediente`)
     } catch (error) {
@@ -348,7 +342,7 @@ export default function EntrevistaInicialAdolescenteCPIPage() {
                       setFormData(prev => ({
                         ...prev,
                         nombre_apellidos: `${joven.nombres} ${joven.apellidos}`,
-                        edad: joven.edad?.toString() || prev.edad
+                        edad: String(edadDesdeJoven(joven))
                       }))
                     }
                   }}

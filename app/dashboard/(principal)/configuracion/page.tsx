@@ -2,16 +2,14 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Settings, Palette, Bell, Shield, ShieldOff, Lock, Sun, Moon, CheckCircle, Eye, EyeOff } from 'lucide-react'
+import { ArrowLeft, Settings, Palette, Shield, ShieldOff, Lock, Sun, Moon, CheckCircle, Eye, EyeOff } from 'lucide-react'
 import { useTheme } from '@/lib/useTheme'
-import NotificationSettings from '@/components/NotificationSettings'
 import { createClientComponentClient } from '@/lib/supabase-browser'
 
 export default function ConfiguracionPage() {
   const router = useRouter()
   const { theme, toggleTheme } = useTheme()
   const supabase = createClientComponentClient()
-  const [showNotificationSettings, setShowNotificationSettings] = useState(false)
   
   // Estados para 2FA
   const [qrCode, setQrCode] = useState<string | null>(null)
@@ -21,7 +19,9 @@ export default function ConfiguracionPage() {
   const [mfaLoading, setMfaLoading] = useState(false)
   const [mfaEnabled, setMfaEnabled] = useState(false)
   const [enrolledFactorId, setEnrolledFactorId] = useState<string | null>(null)
+  const [hasPendingTotpFactor, setHasPendingTotpFactor] = useState(false)
   const [checkingMfaStatus, setCheckingMfaStatus] = useState(true)
+  const [showDisableMfaDialog, setShowDisableMfaDialog] = useState(false)
 
   // Estados para cambiar contraseña
   const [showChangePassword, setShowChangePassword] = useState(false)
@@ -53,13 +53,17 @@ export default function ConfiguracionPage() {
           return
         }
 
+        const anyTotpFactor = factors?.all?.find(
+          (factor: any) => factor.factor_type === 'totp'
+        )
         const verifiedTotpFactor = factors?.all?.find(
           (factor: any) => factor.factor_type === 'totp' && factor.status === 'verified'
         )
         const hasVerifiedTotp = !!verifiedTotpFactor
 
         setMfaEnabled(hasVerifiedTotp)
-        setEnrolledFactorId(verifiedTotpFactor?.id ?? null)
+        setEnrolledFactorId((verifiedTotpFactor?.id ?? anyTotpFactor?.id) ?? null)
+        setHasPendingTotpFactor(!!anyTotpFactor && !hasVerifiedTotp)
       } catch (err) {
         console.error('Error inesperado verificando 2FA:', err)
       } finally {
@@ -76,19 +80,39 @@ export default function ConfiguracionPage() {
     setMfaSuccess(null)
     setMfaLoading(true)
 
-    const { data, error } = await supabase.auth.mfa.enroll({
+    let { data, error } = await supabase.auth.mfa.enroll({
       factorType: 'totp',
     })
-    
+
+    // Si existe un factor TOTP previo (normalmente pendiente o incompleto), lo reinicia y reintenta.
+    if (error?.message?.includes('already exists') && enrolledFactorId) {
+      const { error: unenrollError } = await supabase.auth.mfa.unenroll({
+        factorId: enrolledFactorId,
+      })
+
+      if (!unenrollError) {
+        const retry = await supabase.auth.mfa.enroll({ factorType: 'totp' })
+        data = retry.data
+        error = retry.error
+      }
+    }
+
     setMfaLoading(false)
     if (error) {
       setMfaError(error.message)
       return
     }
 
+    if (!data) {
+      setMfaError('No se pudo iniciar el registro de 2FA.')
+      return
+    }
+
     if (data.type === 'totp') {
       setFactorId(data.id)
       setQrCode(data.totp.qr_code)
+      setEnrolledFactorId(data.id)
+      setHasPendingTotpFactor(true)
     } else {
       setMfaError('Error: Se recibió un tipo de factor inesperado: ' + data.type)
     }
@@ -120,6 +144,7 @@ export default function ConfiguracionPage() {
       setQrCode(null)
       setFactorId(null)
       setMfaEnabled(true)
+      setHasPendingTotpFactor(false)
       setTimeout(() => {
         router.refresh()
       }, 2000)
@@ -129,11 +154,11 @@ export default function ConfiguracionPage() {
   // Función para desactivar 2FA
   const handleDisableMFA = async () => {
     if (!enrolledFactorId) return
-    if (!confirm('¿Estás seguro de que deseas desactivar la autenticación de dos factores? Tu cuenta tendrá menos seguridad.')) return
 
     setMfaError(null)
     setMfaSuccess(null)
     setMfaLoading(true)
+    setShowDisableMfaDialog(false)
 
     const { error } = await supabase.auth.mfa.unenroll({
       factorId: enrolledFactorId,
@@ -146,6 +171,7 @@ export default function ConfiguracionPage() {
       setMfaSuccess('Autenticación de dos factores desactivada correctamente.')
       setMfaEnabled(false)
       setEnrolledFactorId(null)
+      setHasPendingTotpFactor(false)
       setTimeout(() => {
         setMfaSuccess(null)
         router.refresh()
@@ -348,28 +374,6 @@ export default function ConfiguracionPage() {
             </div>
           </div>
 
-          {/* Notificaciones */}
-          <div className="bg-stone-50 dark:bg-gray-800 rounded-xl border border-stone-200 dark:border-gray-700/50 p-6 hover:border-stone-300 dark:hover:border-gray-600 transition-colors">
-            <div className="flex items-start gap-4">
-              <div className="p-2.5 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                <Bell className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-              </div>
-              <div className="flex-1">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-0.5">Notificaciones</h2>
-                <p className="text-gray-500 dark:text-gray-400 text-sm mb-5">
-                  Gestiona tus preferencias de notificaciones
-                </p>
-                
-                <button
-                  onClick={() => setShowNotificationSettings(true)}
-                  className="px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
-                >
-                  Configurar Notificaciones
-                </button>
-              </div>
-            </div>
-          </div>
-
           {/* Seguridad */}
           <div className="bg-stone-50 dark:bg-gray-800 rounded-xl border border-stone-200 dark:border-gray-700/50 p-6 hover:border-stone-300 dark:hover:border-gray-600 transition-colors">
             <div className="flex items-start gap-4">
@@ -553,7 +557,7 @@ export default function ConfiguracionPage() {
                           </div>
                         )}
                         <button
-                          onClick={handleDisableMFA}
+                          onClick={() => setShowDisableMfaDialog(true)}
                           disabled={mfaLoading}
                           className="w-full px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                         >
@@ -563,6 +567,13 @@ export default function ConfiguracionPage() {
                       </>
                     ) : (
                       <>
+                        {hasPendingTotpFactor && (
+                          <div className="mb-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                            <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                              Hay una configuración de 2FA pendiente para esta cuenta. Puedes generar un nuevo QR para completarla.
+                            </p>
+                          </div>
+                        )}
                         {mfaError && (
                           <div className="mb-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
                             <p className="text-sm text-red-800 dark:text-red-200">{mfaError}</p>
@@ -635,16 +646,42 @@ export default function ConfiguracionPage() {
         </div>
       </div>
 
-      {/* Modal de Configuración de Notificaciones */}
-      {showNotificationSettings && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50">
-          <div className="bg-stone-50 dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <NotificationSettings 
-                showButton={false}
-                showModal={showNotificationSettings}
-                onClose={() => setShowNotificationSettings(false)}
-              />
+      {/* Diálogo de confirmación: desactivar 2FA */}
+      {showDisableMfaDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full p-6 border border-stone-200 dark:border-gray-700">
+            <div className="space-y-4">
+              <div className="flex justify-center">
+                <div className="p-3 bg-red-100 dark:bg-red-900/30 rounded-full">
+                  <ShieldOff className="w-10 h-10 text-red-600 dark:text-red-400" />
+                </div>
+              </div>
+              <div className="text-center">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                  Desactivar autenticacion de dos factores
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                  Tu cuenta tendra menos seguridad. Podras volver a activarla en cualquier momento.
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowDisableMfaDialog(false)}
+                  disabled={mfaLoading}
+                  className="flex-1 px-4 py-2.5 bg-stone-100 dark:bg-gray-700 hover:bg-stone-200 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-100 font-medium rounded-lg transition-colors disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDisableMFA}
+                  disabled={mfaLoading}
+                  className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {mfaLoading ? 'Desactivando...' : 'Si, desactivar'}
+                </button>
+              </div>
             </div>
           </div>
         </div>

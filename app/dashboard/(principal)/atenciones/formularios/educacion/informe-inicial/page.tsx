@@ -1,6 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useFormularioAtencionEdicion } from '@/lib/hooks/use-formulario-atencion-edicion'
+import { actualizarAtencionYFormularioJson } from '@/lib/formulario-atencion-update'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { Save, ArrowLeft, User, FileText, BookOpen, GraduationCap } from 'lucide-react'
@@ -66,7 +68,7 @@ interface FormData {
   recomendaciones: string
 }
 
-export default function InformeInicialEducativoPage() {
+function InformeInicialEducativoForm() {
   const router = useRouter()
   const [jovenes, setJovenes] = useState<Joven[]>([])
   const [loading, setLoading] = useState(false)
@@ -107,6 +109,11 @@ export default function InformeInicialEducativoPage() {
     recomendaciones: ''
   })
 
+  const { atencionIdEdicion, loadingExisting, fichaEncontrada } = useFormularioAtencionEdicion<FormData>({
+    tipoFormulario: 'informe_inicial_educativo',
+    setFormData,
+  })
+
   useEffect(() => {
     loadJovenes()
   }, [])
@@ -143,9 +150,31 @@ export default function InformeInicialEducativoPage() {
     setLoading(true)
 
     try {
+      if (atencionIdEdicion && fichaEncontrada === true) {
+        const { data: att, error: attErr } = await supabase
+          .from('atenciones')
+          .select('tipo_atencion_id')
+          .eq('id', atencionIdEdicion)
+          .single()
+        if (attErr || !att?.tipo_atencion_id) {
+          throw new Error(attErr?.message || 'No se pudo resolver el tipo de atención.')
+        }
+        await actualizarAtencionYFormularioJson(supabase, {
+          atencionId: atencionIdEdicion,
+          tipoFormulario: 'informe_inicial_educativo',
+          jovenId: formData.joven_id,
+          tipoAtencionId: att.tipo_atencion_id,
+          datosJson: formData,
+        })
+        alert('Informe inicial educativo actualizado exitosamente')
+        router.push(`/dashboard/atenciones/${atencionIdEdicion}`)
+        return
+      }
+
       const { error } = await supabase
         .from('formularios_atencion')
         .insert({
+          ...(atencionIdEdicion ? { atencion_id: atencionIdEdicion } : {}),
           tipo_formulario: 'informe_inicial_educativo',
           joven_id: formData.joven_id,
           datos_json: formData,
@@ -155,13 +184,25 @@ export default function InformeInicialEducativoPage() {
       if (error) throw error
 
       alert('Informe inicial educativo guardado exitosamente')
-      router.push('/dashboard/atenciones')
+      if (atencionIdEdicion) {
+        router.push(`/dashboard/atenciones/${atencionIdEdicion}`)
+      } else {
+        router.push('/dashboard/atenciones')
+      }
     } catch (error) {
       console.error('Error saving form:', error)
       alert('Error al guardar el informe inicial educativo')
     } finally {
       setLoading(false)
     }
+  }
+
+  if (loadingExisting) {
+    return (
+      <div className="flex items-center justify-center min-h-[40vh] p-8">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      </div>
+    )
   }
 
   return (
@@ -762,7 +803,11 @@ export default function InformeInicialEducativoPage() {
           </Link>
           <button
             type="submit"
-            disabled={loading}
+            disabled={
+              loading ||
+              loadingExisting ||
+              (Boolean(atencionIdEdicion) && fichaEncontrada === null)
+            }
             className="btn-primary flex items-center gap-2"
           >
             <Save className="w-5 h-5" />
@@ -771,5 +816,21 @@ export default function InformeInicialEducativoPage() {
         </div>
       </form>
     </div>
+  )
+}
+
+function InformeInicialSuspenseFallback() {
+  return (
+    <div className="flex items-center justify-center min-h-[40vh] p-8 bg-gray-50 dark:bg-gray-900">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+    </div>
+  )
+}
+
+export default function InformeInicialEducativoPage() {
+  return (
+    <Suspense fallback={<InformeInicialSuspenseFallback />}>
+      <InformeInicialEducativoForm />
+    </Suspense>
   )
 }

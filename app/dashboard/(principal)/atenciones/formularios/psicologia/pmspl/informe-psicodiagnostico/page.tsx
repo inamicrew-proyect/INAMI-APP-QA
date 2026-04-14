@@ -10,6 +10,7 @@ import {
   TIPOS_FORMULARIOS 
 } from '@/lib/formularios-psicologicos'
 import JovenSearchInput from '@/components/JovenSearchInput'
+import { edadDesdeJoven } from '@/lib/joven-helpers'
 
 export default function InformePsicodiagnosticoPage() {
   const router = useRouter()
@@ -237,7 +238,7 @@ export default function InformePsicodiagnosticoPage() {
                       setFormData(prev => ({
                         ...prev,
                         nombre_nino: `${joven.nombres} ${joven.apellidos}`,
-                        edad: joven.edad?.toString() || prev.edad
+                        edad: String(edadDesdeJoven(joven))
                       }))
                     }
                   }}
